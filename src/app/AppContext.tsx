@@ -1,0 +1,298 @@
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import { Notification, ReviewCycle, Role, User } from '../types'
+import {
+  cycleService,
+  notificationService,
+  peopleService,
+  storageService,
+  supabaseAuthService,
+} from '../services'
+
+type AppContextType = {
+  currentUser: User
+  currentRole: Role
+  activeWorkspaceRole: Role
+  activeCycle: ReviewCycle
+  allUsers: User[]
+  allCycles: ReviewCycle[]
+  notifications: Notification[]
+  unreadNotificationsCount: number
+  theme: 'light' | 'dark'
+  toggleTheme: () => void
+  switchUser: (userId: string) => Promise<void>
+  switchWorkspaceRole: (role: Role) => void
+  switchActiveCycle: (cycleId: string) => Promise<void>
+  isLiveAuth: boolean
+  signOut: () => Promise<void>
+  refreshData: () => Promise<void>
+  resetDemoData: () => Promise<void>
+  markNotificationRead: (id: string) => Promise<void>
+  markAllNotificationsRead: () => Promise<void>
+}
+
+const AppContext = createContext<AppContextType | undefined>(undefined)
+
+export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [currentUser, setCurrentUser] = useState<User>(() => {
+    const state = storageService.getState()
+    return state.users.find((u) => u.id === state.currentUserId) || state.users[0]
+  })
+
+  const [activeWorkspaceRole, setActiveWorkspaceRole] = useState<Role>(() => {
+    const state = storageService.getState()
+    const user = state.users.find((u) => u.id === state.currentUserId) || state.users[0]
+    return user.role
+  })
+
+  const [activeCycle, setActiveCycle] = useState<ReviewCycle>(() => {
+    const state = storageService.getState()
+    return state.cycles.find((c) => c.id === state.activeCycleId) || state.cycles[0]
+  })
+
+  const [allUsers, setAllUsers] = useState<User[]>([])
+  const [allCycles, setAllCycles] = useState<ReviewCycle[]>([])
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [isLiveAuth, setIsLiveAuth] = useState(false)
+  const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
+    try {
+      const saved = localStorage.getItem('performiq_theme')
+      if (saved === 'dark' || saved === 'light') return saved
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+    } catch {
+      return 'light'
+    }
+  })
+
+  // Synchronize 'dark' class on <html> document element with zero-transition paint thrashing
+  const applyThemeWithNoTransition = (newTheme: 'light' | 'dark') => {
+    // 1. Temporarily disable all CSS transitions across the entire DOM during the flip
+    const css = document.createElement('style')
+    css.appendChild(
+      document.createTextNode(
+        `*, *::before, *::after {
+          -webkit-transition: none !important;
+          -moz-transition: none !important;
+          -o-transition: none !important;
+          -ms-transition: none !important;
+          transition: none !important;
+        }`
+      )
+    )
+    document.head.appendChild(css)
+
+    // 2. Synchronously toggle 'dark' on <html>
+    const root = document.documentElement
+    if (newTheme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+
+    try {
+      localStorage.setItem('performiq_theme', newTheme)
+    } catch (e) {
+      console.warn('Failed to save theme in localStorage', e)
+    }
+
+    // 3. Force reflow so the style is applied instantaneously in a single paint
+    window.getComputedStyle(css).opacity
+
+    // 4. Safely clean up in next frame so interactive button/hover transitions resume
+    requestAnimationFrame(() => {
+      if (document.head.contains(css)) {
+        document.head.removeChild(css)
+      }
+    })
+  }
+
+  // Initial sync on mount
+  useEffect(() => {
+    const root = document.documentElement
+    if (theme === 'dark') {
+      root.classList.add('dark')
+    } else {
+      root.classList.remove('dark')
+    }
+  }, [])
+
+  const toggleTheme = useCallback(() => {
+    setThemeState((prev) => {
+      const next = prev === 'light' ? 'dark' : 'light'
+      applyThemeWithNoTransition(next)
+      return next
+    })
+  }, [])
+
+  const loadAll = useCallback(async () => {
+    const users = await peopleService.list()
+    const cycles = await cycleService.list()
+    const currentActiveCycle = await cycleService.getActiveCycle()
+    const state = storageService.getState()
+
+    // 1. Inspect live Supabase session
+    const { session, user: authUser } = await supabaseAuthService.getSession()
+    let foundUser: User
+
+    if (session && authUser) {
+      setIsLiveAuth(true)
+      foundUser = authUser
+      if (!users.some((u) => u.id === authUser.id)) {
+        users.unshift(authUser)
+      }
+    } else {
+      setIsLiveAuth(false)
+      foundUser = users.find((u) => u.id === state.currentUserId) || users[0]
+    }
+
+    setAllUsers(users)
+    setAllCycles(cycles)
+    setActiveCycle(currentActiveCycle)
+    setCurrentUser(foundUser)
+    setActiveWorkspaceRole(foundUser.role)
+
+    const notifs = await notificationService.list(foundUser.id)
+    setNotifications(notifs)
+  }, [])
+
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
+
+  // Listen to Supabase Auth state transitions in real time
+  useEffect(() => {
+    const subscription = supabaseAuthService.onAuthStateChange(async (session, authUser) => {
+      if (session && authUser) {
+        setIsLiveAuth(true)
+        setCurrentUser(authUser)
+        setActiveWorkspaceRole(authUser.role)
+        setAllUsers((prev) => {
+          if (!prev.some((u) => u.id === authUser.id)) {
+            return [authUser, ...prev]
+          }
+          return prev.map((u) => (u.id === authUser.id ? authUser : u))
+        })
+      } else {
+        setIsLiveAuth(false)
+      }
+    })
+
+    return () => {
+      subscription?.unsubscribe()
+    }
+  }, [])
+
+  const switchUser = useCallback(
+    async (userId: string) => {
+      const targetUser = await peopleService.getById(userId)
+      if (!targetUser) return
+
+      storageService.updateState(() => ({ currentUserId: userId }))
+      setCurrentUser(targetUser)
+      setActiveWorkspaceRole(targetUser.role)
+
+      const notifs = await notificationService.list(userId)
+      setNotifications(notifs)
+    },
+    []
+  )
+
+  const switchWorkspaceRole = useCallback((role: Role) => {
+    setActiveWorkspaceRole(role)
+  }, [])
+
+  const switchActiveCycle = useCallback(async (cycleId: string) => {
+    const cycle = await cycleService.setActiveCycle(cycleId)
+    setActiveCycle(cycle)
+  }, [])
+
+  const refreshData = useCallback(async () => {
+    await loadAll()
+  }, [loadAll])
+
+  const resetDemoData = useCallback(async () => {
+    storageService.resetDemoData()
+    await loadAll()
+  }, [loadAll])
+
+  const markNotificationRead = useCallback(async (id: string) => {
+    await notificationService.markRead(id)
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)))
+  }, [])
+
+  const markAllNotificationsRead = useCallback(async () => {
+    await notificationService.markAllRead(currentUser.id)
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  }, [currentUser.id])
+
+  const signOut = useCallback(async () => {
+    await supabaseAuthService.signOut()
+    setIsLiveAuth(false)
+    const state = storageService.getState()
+    const fallback = state.users.find((u) => u.id === state.currentUserId) || state.users[0]
+    if (fallback) {
+      setCurrentUser(fallback)
+      setActiveWorkspaceRole(fallback.role)
+    }
+  }, [])
+
+  const unreadNotificationsCount = notifications.filter((n) => !n.read).length
+
+  const contextValue = useMemo(
+    () => ({
+      currentUser,
+      currentRole: currentUser.role,
+      activeWorkspaceRole,
+      activeCycle,
+      allUsers,
+      allCycles,
+      notifications,
+      unreadNotificationsCount,
+      theme,
+      toggleTheme,
+      switchUser,
+      switchWorkspaceRole,
+      switchActiveCycle,
+      isLiveAuth,
+      signOut,
+      refreshData,
+      resetDemoData,
+      markNotificationRead,
+      markAllNotificationsRead,
+    }),
+    [
+      currentUser,
+      activeWorkspaceRole,
+      activeCycle,
+      allUsers,
+      allCycles,
+      notifications,
+      unreadNotificationsCount,
+      theme,
+      toggleTheme,
+      switchUser,
+      switchWorkspaceRole,
+      switchActiveCycle,
+      isLiveAuth,
+      signOut,
+      refreshData,
+      resetDemoData,
+      markNotificationRead,
+      markAllNotificationsRead,
+    ]
+  )
+
+  return (
+    <AppContext.Provider value={contextValue}>
+      {children}
+    </AppContext.Provider>
+  )
+}
+
+export function useApp() {
+  const context = useContext(AppContext)
+  if (!context) {
+    throw new Error('useApp must be used within an AppProvider')
+  }
+  return context
+}
+
