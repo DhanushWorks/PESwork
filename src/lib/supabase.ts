@@ -21,19 +21,7 @@ function getEnv(key: string): string {
 const supabaseUrl = getEnv('VITE_SUPABASE_URL')
 const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY')
 
-/**
- * EXPLICIT BACKEND INTEGRATION TOGGLE:
- * By default, backend integration is paused and the application runs 100% in local frontend-only mode.
- * Set VITE_ENABLE_BACKEND=true in .env.local ONLY when you explicitly request to reconnect to Supabase.
- */
-export const isBackendEnabled = Boolean(
-  typeof import.meta !== 'undefined' &&
-  import.meta.env &&
-  import.meta.env.VITE_ENABLE_BACKEND === 'true'
-)
-
 export const isSupabaseConfigured = Boolean(
-  isBackendEnabled &&
   supabaseUrl &&
   supabaseAnonKey &&
   !supabaseUrl.includes('your-project') &&
@@ -42,19 +30,19 @@ export const isSupabaseConfigured = Boolean(
 )
 
 if (!isSupabaseConfigured) {
-  console.info(
-    '[PerformIQ] Running in local frontend-only presentation mode. Backend integration is paused with zero Supabase requests.'
+  console.warn(
+    '[PerformIQ] Supabase environment variables are missing or default. Running with local mock fallback.'
   )
 }
 
 export const supabase = createClient(
-  isSupabaseConfigured ? supabaseUrl : 'https://placeholder.supabase.co',
-  isSupabaseConfigured ? supabaseAnonKey : 'placeholder-anon-key',
+  supabaseUrl || 'https://placeholder.supabase.co',
+  supabaseAnonKey || 'placeholder-anon-key',
   {
     auth: {
-      persistSession: isSupabaseConfigured,
-      autoRefreshToken: isSupabaseConfigured,
-      detectSessionInUrl: isSupabaseConfigured,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
   }
 )
@@ -64,10 +52,7 @@ export const supabase = createClient(
  */
 export async function testSupabaseConnection(): Promise<{ ok: boolean; message: string }> {
   if (!isSupabaseConfigured) {
-    return {
-      ok: false,
-      message: 'Backend integration is currently paused (running in local frontend-only mode). Set VITE_ENABLE_BACKEND=true to activate.',
-    }
+    return { ok: false, message: 'Supabase credentials not configured in .env.local or environment' }
   }
 
   try {
