@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
 import { Notification, ReviewCycle, Role, User } from '../types'
+import { isSupabaseConfigured } from '../lib/supabase'
 import {
   cycleService,
   notificationService,
@@ -151,15 +152,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const currentActiveCycle = (await cycleService.getActiveCycle()) || cycles[0] || EMPTY_CYCLE
     const state = storageService.getState()
 
-    // 1. Inspect live Supabase session
-    const { session, user: authUser } = await supabaseAuthService.getSession()
+    // 1. Inspect live Supabase session (only if backend is configured)
     let foundUser: User
-
-    if (session && authUser) {
-      setIsLiveAuth(true)
-      foundUser = authUser
-      if (!users.some((u) => u.id === authUser.id)) {
-        users.unshift(authUser)
+    if (isSupabaseConfigured) {
+      const { session, user: authUser } = await supabaseAuthService.getSession()
+      if (session && authUser) {
+        setIsLiveAuth(true)
+        foundUser = authUser
+        if (!users.some((u) => u.id === authUser.id)) {
+          users.unshift(authUser)
+        }
+      } else {
+        setIsLiveAuth(false)
+        foundUser = users.find((u) => u.id === state.currentUserId) || users[0]
       }
     } else {
       setIsLiveAuth(false)
@@ -183,6 +188,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Listen to Supabase Auth state transitions in real time
   useEffect(() => {
+    if (!isSupabaseConfigured) return
     const subscription = supabaseAuthService.onAuthStateChange(async (session, authUser) => {
       if (session && authUser) {
         setIsLiveAuth(true)
@@ -227,7 +233,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     // 2. Supabase Realtime channel subscription if configured
     const unsubSupabase =
-      typeof (notificationService as any).subscribeToUserNotifications === 'function'
+      isSupabaseConfigured && typeof (notificationService as any).subscribeToUserNotifications === 'function'
         ? (notificationService as any).subscribeToUserNotifications(currentUser.id, reloadNotifs)
         : () => {}
 
