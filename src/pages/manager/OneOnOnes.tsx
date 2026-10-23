@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../../app/AppContext'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
+import { CustomDropdown } from '../../components/ui/CustomDropdown'
 import { Modal } from '../../components/ui/Modal'
 import { useToast } from '../../components/ui/Toast'
 import {
@@ -17,7 +18,6 @@ import {
   Check,
   UserCheck,
   TrendingUp,
-  MessagesSquare,
   BookOpen,
   ArrowRight,
   ShieldCheck,
@@ -49,195 +49,9 @@ export interface MeetingCheckIn {
   status: 'scheduled' | 'completed'
 }
 
-const INITIAL_MEETINGS: MeetingCheckIn[] = [
-  {
-    id: 'm-1',
-    employeeId: 'u-emp-1',
-    employeeName: 'Alex Rivera',
-    role: 'Staff Frontend Engineer',
-    department: 'Engineering',
-    employeeCode: 'EMP-042',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    date: 'This Thursday, 2:00 PM',
-    cadence: 'Bi-Weekly Sync · 30 min',
-    agendaTitle: 'Design System v3 Rollout & Core Architecture Alignment',
-    agendaDescription:
-      'Discuss Design System v3 rollout adoption metrics across product squads and align on the Q4 technical roadmap deliverables.',
-    agendaPoints: [
-      'Design token pipeline sync across Web and Mobile repositories',
-      'Bundle size budget enforcement in CI/CD telemetry pipeline',
-      'Mentorship roadmap for junior frontend engineers on team',
-    ],
-    actionItems: [
-      {
-        id: 'act-1',
-        text: 'Review lighthouse test pipeline telemetry',
-        completed: true,
-        targetDate: 'Nov 30, 2026',
-        assignedTo: 'Alex Rivera',
-      },
-      {
-        id: 'act-2',
-        text: 'Draft guild agenda for Tuesday technical share',
-        completed: false,
-        targetDate: 'Dec 05, 2026',
-        assignedTo: 'Alex Rivera',
-      },
-      {
-        id: 'act-3',
-        text: 'Finalize design token versioning RFC with platform lead',
-        completed: false,
-        targetDate: 'Dec 12, 2026',
-        assignedTo: 'Alex Rivera',
-      },
-    ],
-    status: 'scheduled',
-  },
-  {
-    id: 'm-2',
-    employeeId: 'u-emp-2',
-    employeeName: 'Priya Patel',
-    role: 'Senior Distributed Systems Engineer',
-    department: 'Engineering',
-    employeeCode: 'EMP-055',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-    date: 'Next Tuesday, 10:30 AM',
-    cadence: 'Bi-Weekly Sync · 45 min',
-    agendaTitle: 'Kafka Event Streaming Latency Milestones & SOC2 Audit Checks',
-    agendaDescription:
-      'Review Kafka event streaming latency milestones, consumer group throughput under peak load, and SOC2 compliance audit checks.',
-    agendaPoints: [
-      'End-to-end p99 message serialization benchmarks under peak load',
-      'PII field masking encryption at rest verification report',
-      'Cross-datacenter failover cluster dry-run scheduling',
-    ],
-    actionItems: [
-      {
-        id: 'act-4',
-        text: 'Finalize PII audit endpoint coverage report',
-        completed: true,
-        targetDate: 'Nov 28, 2026',
-        assignedTo: 'Priya Patel',
-      },
-      {
-        id: 'act-5',
-        text: 'Publish latency profiling dashboard to team Grafana',
-        completed: false,
-        targetDate: 'Dec 08, 2026',
-        assignedTo: 'Priya Patel',
-      },
-    ],
-    status: 'scheduled',
-  },
-  {
-    id: 'm-3',
-    employeeId: 'u-emp-3',
-    employeeName: 'Jordan Lee',
-    role: 'Lead Product Designer',
-    department: 'Design & Engineering',
-    employeeCode: 'EMP-063',
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150&auto=format&fit=crop&q=80',
-    date: 'Last Friday, 3:00 PM',
-    cadence: 'Bi-Weekly Sync · 30 min',
-    agendaTitle: 'Appraisal Calibration UX Prototype & Design Tokens',
-    agendaDescription:
-      'Agreed on Playwright synthetic tests coverage, appraisal calibration flow Figma prototypes, and micro-interaction rubber physics.',
-    agendaPoints: [
-      'H1 appraisal calibration flow UX prototype walkthrough',
-      'Micro-interactions and rubber physics sign-off',
-      'Accessibility contrast audit for High Contrast themes',
-    ],
-    actionItems: [
-      {
-        id: 'act-6',
-        text: 'Jordan submitted 2 revised goals for approval',
-        completed: true,
-        targetDate: 'Nov 15, 2026',
-        assignedTo: 'Jordan Lee',
-      },
-      {
-        id: 'act-7',
-        text: 'Export high-res component library tokens for UI engineers',
-        completed: true,
-        targetDate: 'Nov 20, 2026',
-        assignedTo: 'Jordan Lee',
-      },
-    ],
-    status: 'completed',
-  },
-  {
-    id: 'm-4',
-    employeeId: 'u-emp-4',
-    employeeName: 'Samantha Hayes',
-    role: 'Staff Platform Engineer',
-    department: 'DevOps & Platform',
-    employeeCode: 'EMP-071',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    date: 'Tomorrow, 11:00 AM',
-    cadence: 'Weekly Sync · 30 min',
-    agendaTitle: 'Kubernetes Pod Autoscaling & Spot Instance Cost Savings',
-    agendaDescription:
-      'Evaluate Kubernetes pod autoscaling thresholds during unexpected traffic spikes and spot instance cost-savings optimization.',
-    agendaPoints: [
-      'KEDA event-driven autoscaling for consumer worker pools',
-      'AWS Spot interruption tolerance strategy validation',
-    ],
-    actionItems: [
-      {
-        id: 'act-8',
-        text: 'Review staging chaos test results for Redis cluster failover',
-        completed: false,
-        targetDate: 'Dec 02, 2026',
-        assignedTo: 'Samantha Hayes',
-      },
-      {
-        id: 'act-9',
-        text: 'Submit infrastructure cost optimization estimate to VP',
-        completed: false,
-        targetDate: 'Dec 15, 2026',
-        assignedTo: 'Samantha Hayes',
-      },
-    ],
-    status: 'scheduled',
-  },
-  {
-    id: 'm-5',
-    employeeId: 'u-emp-5',
-    employeeName: 'David Kim',
-    role: 'Full Stack Software Engineer',
-    department: 'Engineering',
-    employeeCode: 'EMP-088',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
-    date: 'Yesterday, 4:30 PM',
-    cadence: 'Bi-Weekly Sync · 30 min',
-    agendaTitle: 'Career Growth Discussion: Promotion Path to Senior Engineer',
-    agendaDescription:
-      'Career growth discussion: Progress towards Senior Software Engineer promotion criteria and cross-team project ownership.',
-    agendaPoints: [
-      'Independent ownership of appraisal calibration module',
-      'Cross-team technical alignment with People Ops guild',
-    ],
-    actionItems: [
-      {
-        id: 'act-10',
-        text: 'Complete system architecture documentation for calibrations',
-        completed: true,
-        targetDate: 'Nov 10, 2026',
-        assignedTo: 'David Kim',
-      },
-      {
-        id: 'act-11',
-        text: 'Schedule peer architecture review session with staff leads',
-        completed: true,
-        targetDate: 'Nov 18, 2026',
-        assignedTo: 'David Kim',
-      },
-    ],
-    status: 'completed',
-  },
-]
+const INITIAL_MEETINGS: MeetingCheckIn[] = []
 
-const STORAGE_KEY = 'performiq_1on1_checkins_v2'
+const STORAGE_KEY = 'performiq_1on1_checkins_v3'
 
 export const ManagerOneOnOnes: React.FC = () => {
   const { currentUser } = useApp()
@@ -461,122 +275,52 @@ export const ManagerOneOnOnes: React.FC = () => {
   const totalMeetings = meetings.length
   const scheduledCount = meetings.filter((m) => m.status === 'scheduled').length
   const completedCount = meetings.filter((m) => m.status === 'completed').length
-  const allActionItems = meetings.flatMap((m) => m.actionItems)
-  const totalActionCount = allActionItems.length
-  const resolvedActionCount = allActionItems.filter((a) => a.completed).length
-  const inProgressActionCount = totalActionCount - resolvedActionCount
-  const pctComplete = totalActionCount > 0 ? Math.round((resolvedActionCount / totalActionCount) * 100) : 0
-
   return (
-    <div className="space-y-7 w-full pb-16 font-sans animate-fade-in">
-      {/* Page Header matching reference */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="heading-premium text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.04em] text-slate-900 dark:text-white leading-[1.15]">
-            Bi-Weekly 1:1 Executive Check-ins
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Structured sync agendas, mutual commitments & alignment logs with direct reports
-          </p>
+    <div className="space-y-4 w-full pb-16 font-sans animate-fade-in">
+      {/* Top Action Toolbar: Segmented Tabs (Left) + Search & Schedule Button (Right) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        {/* Left: Filter Tabs */}
+        <div className="shrink-0">
+          <RubberSegmentedControl
+            options={[
+              { value: 'all', label: 'All', count: totalMeetings },
+              {
+                value: 'scheduled',
+                label: 'Scheduled',
+                count: scheduledCount,
+              },
+              {
+                value: 'completed',
+                label: 'Completed',
+                count: completedCount,
+              },
+            ]}
+            value={statusFilter}
+            onChange={(val) => setStatusFilter(val as any)}
+            size="sm"
+          />
         </div>
 
-        <button
-          type="button"
-          onClick={() => setIsScheduleModalOpen(true)}
-          className="premium-glow-btn h-11 px-5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-xs"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Schedule 1:1 Sync</span>
-        </button>
-      </div>
-
-      {/* SECTION 1: Cadence Velocity & Roster Overview (Hero Card) */}
-      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
-        {/* Top Header Row matching Reference */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-indigo-600 dark:text-[#8B7CFF] flex items-center justify-center shrink-0 shadow-2xs">
-              <MessagesSquare className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
-                  MANAGEMENT CADENCE · CONTINUOUS ALIGNMENT
-                </span>
-              </div>
-              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white mt-0.5">
-                Active 1:1 Sync Roster & Agenda Ledgers
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                Review discussion agendas, track agreed commitments, and cycle action item completion.
-              </p>
-            </div>
-          </div>
-
-          {/* Rubber Segmented Control Filter Tabs */}
-          <div className="flex items-center gap-3 self-start lg:self-center shrink-0">
-            <RubberSegmentedControl
-              options={[
-                { value: 'all', label: 'All', count: totalMeetings },
-                {
-                  value: 'scheduled',
-                  label: 'Scheduled',
-                  count: scheduledCount,
-                },
-                {
-                  value: 'completed',
-                  label: 'Completed',
-                  count: completedCount,
-                },
-              ]}
-              value={statusFilter}
-              onChange={(val) => setStatusFilter(val as any)}
-              size="sm"
-            />
-          </div>
-        </div>
-
-        {/* Milestone Execution Summary Pill & Progress Track (Matching Reference) */}
-        <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-white/[0.025] border border-slate-200/80 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="font-bold text-slate-900 dark:text-white">
-              Cadence Velocity:
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50/90 text-indigo-700 dark:text-[#B7B1FF] font-semibold font-mono text-[11px] border border-indigo-200/90 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15">
-              {resolvedActionCount} of {totalActionCount} Commitments Met ({pctComplete}%)
-            </span>
-            {inProgressActionCount > 0 && (
-              <span className="text-slate-500 dark:text-zinc-400 text-[11px] hidden md:inline">
-                · {inProgressActionCount} active commitments in progress
-              </span>
-            )}
-          </div>
-
-          {/* Proportional Segmented Progress Mini Track */}
-          <div className="w-full sm:w-64 h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-white/[0.08] flex items-center p-0.5 gap-0.5">
-            <div
-              style={{ width: `${pctComplete}%` }}
-              className="h-full rounded-full bg-indigo-600 dark:bg-[#8B7CFF] transition-all duration-500"
-              title={`Completed Commitments: ${resolvedActionCount}`}
-            />
-            <div
-              style={{ width: `${100 - pctComplete}%` }}
-              className="h-full rounded-full bg-indigo-500 dark:bg-[#8B7CFF] transition-all duration-500"
-              title={`In Progress: ${inProgressActionCount}`}
-            />
-          </div>
-        </div>
-
-        {/* Search Bar */}
-        <div className="max-w-md">
+        {/* Right: Search Bar & Schedule 1:1 Sync Button - Tight & Aligned */}
+        <div className="flex items-center gap-2.5 shrink-0">
           <AnimatedSearchBar
             value={searchQuery}
             onChangeValue={setSearchQuery}
-            placeholder="Search direct report, agenda topic or deliverable..."
-            animatedText="Search direct report, agenda topic or deliverable..."
+            placeholder="Search direct report, agenda..."
+            animatedText="Search direct report, agenda..."
             variant="pill"
             sizeVariant="sm"
+            containerClassName="w-52 sm:w-64"
           />
+
+          <button
+            type="button"
+            onClick={() => setIsScheduleModalOpen(true)}
+            className="h-8 px-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0 whitespace-nowrap"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Schedule 1:1 Sync</span>
+          </button>
         </div>
       </div>
 
@@ -617,7 +361,6 @@ export const ManagerOneOnOnes: React.FC = () => {
                           e.currentTarget.style.display = 'none'
                         }}
                       />
-                      <span className="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full bg-indigo-600 dark:bg-emerald-500 ring-2 ring-white dark:ring-[#0B0E14]" />
                     </div>
 
                     <div className="space-y-0.5 min-w-0">
@@ -625,7 +368,7 @@ export const ManagerOneOnOnes: React.FC = () => {
                         <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white truncate">
                           {item.employeeName}
                         </h2>
-                        <span className="font-mono text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10 whitespace-nowrap shrink-0">
+                        <span className="font-sans text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10 whitespace-nowrap shrink-0">
                           {item.employeeCode}
                         </span>
                       </div>
@@ -637,18 +380,18 @@ export const ManagerOneOnOnes: React.FC = () => {
 
                   {/* Right: Date Capsule + Status Capsule matching Reference */}
                   <div className="flex items-center gap-2.5 sm:self-center shrink-0 flex-wrap">
-                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-mono font-medium bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10 whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-sans font-medium bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-zinc-300 border border-slate-200/80 dark:border-white/10 whitespace-nowrap">
                       <Calendar className="w-3.5 h-3.5 text-indigo-500 dark:text-[#8B7CFF]" />
                       <span>{item.date}</span>
                     </div>
 
                     {/* Status Capsule matching Reference Image */}
                     {isCompleted ? (
-                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-indigo-50/90 text-indigo-700 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF] border border-indigo-200/90 shadow-2xs whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-sans font-bold uppercase tracking-wider bg-indigo-50/90 text-indigo-700 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF] border border-indigo-200/90 shadow-2xs whitespace-nowrap">
                         COMPLETED
                       </span>
                     ) : (
-                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-700 dark:text-[#8B7CFF] border border-[#8B7CFF]/35 shadow-2xs whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-sans font-bold uppercase tracking-wider bg-indigo-500/15 text-indigo-700 dark:text-[#8B7CFF] border border-[#8B7CFF]/35 shadow-2xs whitespace-nowrap">
                         SCHEDULED
                       </span>
                     )}
@@ -662,11 +405,11 @@ export const ManagerOneOnOnes: React.FC = () => {
                       <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-[#8B7CFF] flex items-center justify-center">
                         <Sparkles className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
+                      <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
                         DISCUSSION AGENDA · STRATEGIC TOPICS
                       </span>
                     </div>
-                    <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 hidden sm:inline">
+                    <span className="text-[11px] font-sans text-slate-400 dark:text-zinc-500 hidden sm:inline">
                       {item.cadence}
                     </span>
                   </div>
@@ -684,8 +427,8 @@ export const ManagerOneOnOnes: React.FC = () => {
                     {item.agendaPoints && item.agendaPoints.length > 0 && (
                       <div className="pt-3 border-t border-indigo-500/15 dark:border-[#8B7CFF]/15 space-y-2">
                         {item.agendaPoints.map((point, idx) => (
-                          <div key={idx} className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-[#8D96AA]">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#8B7CFF] shrink-0" />
+                          <div key={idx} className="flex items-center gap-2 text-xs text-slate-600 dark:text-zinc-300">
+                            <span className="text-slate-400 dark:text-zinc-600">—</span>
                             <span className="font-normal">{point}</span>
                           </div>
                         ))}
@@ -701,12 +444,12 @@ export const ManagerOneOnOnes: React.FC = () => {
                       <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-white/[0.04] text-indigo-600 dark:text-[#8B7CFF] flex items-center justify-center">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
+                      <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
                         AGREED ACTION ITEMS · MUTUAL COMMITMENTS
                       </span>
                     </div>
 
-                    <span className="text-[11px] font-mono font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-zinc-400 border border-slate-200/80 dark:border-white/10">
+                    <span className="text-[11px] font-sans font-medium px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-zinc-400 border border-slate-200/80 dark:border-white/10">
                       {completedCountForCard} of {item.actionItems.length} Resolved
                     </span>
                   </div>
@@ -726,8 +469,8 @@ export const ManagerOneOnOnes: React.FC = () => {
                             onClick={() => handleToggleActionItem(item.id, act.id)}
                             className={`group relative rounded-2xl p-4 sm:p-4.5 border transition-all duration-200 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none ${
                               isActDone
-                                ? 'bg-indigo-50/70 dark:bg-emerald-500/[0.08] border-indigo-200/90 dark:border-emerald-500/30 hover:border-indigo-300 dark:hover:border-emerald-500/50 hover:bg-indigo-50 dark:hover:bg-emerald-500/[0.12] text-slate-800 dark:text-[#E6E9F2] shadow-2xs'
-                                : 'bg-indigo-500/[0.04] dark:bg-[#8B7CFF]/[0.09] border-[#8B7CFF]/35 dark:border-[#8B7CFF]/35 hover:border-[#8B7CFF]/60 hover:bg-indigo-500/[0.07] dark:hover:bg-[#8B7CFF]/[0.14] text-slate-900 dark:text-[#F0F3FA] shadow-2xs'
+                                ? 'bg-slate-100/90 dark:bg-white/[0.04] border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300'
+                                : 'bg-white dark:bg-zinc-900 border-slate-200 dark:border-zinc-800 hover:border-slate-300 dark:hover:border-zinc-700 text-slate-900 dark:text-white'
                             }`}
                             role="button"
                             tabIndex={0}
@@ -745,14 +488,14 @@ export const ManagerOneOnOnes: React.FC = () => {
                               <div
                                 className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
                                   isActDone
-                                    ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-500/30 dark:bg-emerald-500 dark:shadow-emerald-500/30'
-                                    : 'bg-indigo-500/20 text-[#8B7CFF] border border-[#8B7CFF]/40 shadow-xs'
+                                    ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-500 dark:text-zinc-400 border border-slate-300 dark:border-zinc-700 shadow-xs'
                                 }`}
                               >
                                 {isActDone ? (
                                   <Check className="w-4 h-4 stroke-[3]" />
                                 ) : (
-                                  <span className="w-2 h-2 rounded-full bg-[#8B7CFF] live-dot-pulse" />
+                                  <div className="w-2.5 h-2.5 rounded-xs border-2 border-[#8B7CFF]" />
                                 )}
                               </div>
 
@@ -762,7 +505,7 @@ export const ManagerOneOnOnes: React.FC = () => {
                                   <span
                                     className={`font-display font-bold text-sm sm:text-[15px] tracking-[-0.015em] transition-colors leading-snug ${
                                       isActDone
-                                        ? 'line-through decoration-indigo-400/50 dark:decoration-emerald-400/40 text-slate-500 dark:text-zinc-400'
+                                        ? 'line-through decoration-slate-400 text-slate-500 dark:text-zinc-400'
                                         : 'text-slate-900 dark:text-white'
                                     }`}
                                   >
@@ -771,7 +514,7 @@ export const ManagerOneOnOnes: React.FC = () => {
                                 </div>
 
                                 {/* Meta Pill Row */}
-                                <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
+                                <div className="flex items-center gap-2 flex-wrap text-xs font-sans">
                                   <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-zinc-300 text-[11px] font-medium">
                                     <Calendar className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
                                     <span>Target: {act.targetDate || 'Prior to next sync'}</span>
@@ -793,7 +536,7 @@ export const ManagerOneOnOnes: React.FC = () => {
                             {/* Right: Status Capsule matching Reference */}
                             <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/10">
                               <span
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider border shadow-2xs ${
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-bold uppercase tracking-wider border shadow-2xs ${
                                   isActDone
                                     ? 'bg-indigo-50/90 text-indigo-700 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF] border-indigo-200/90'
                                     : 'bg-indigo-500/15 text-indigo-700 dark:text-[#8B7CFF] border-[#8B7CFF]/35'
@@ -824,7 +567,7 @@ export const ManagerOneOnOnes: React.FC = () => {
                         </>
                       ) : (
                         <>
-                          <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-emerald-500" />
+                          <Check className="w-3.5 h-3.5 text-slate-900 dark:text-white" />
                           <span>Mark 1:1 as Completed</span>
                         </>
                       )}
@@ -870,7 +613,7 @@ export const ManagerOneOnOnes: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-[#8B7CFF]">
+                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-[#8B7CFF]">
                   ENGINEERING LEADERSHIP · CONVERSATION PLAYBOOKS
                 </span>
               </div>
@@ -889,7 +632,7 @@ export const ManagerOneOnOnes: React.FC = () => {
           {/* Card 1 */}
           <div className="group rounded-2xl p-5 border border-slate-200/90 dark:border-white/[0.08] bg-slate-50/60 dark:bg-white/[0.02] hover:bg-white dark:hover:bg-white/[0.04] transition-all duration-200 hover:border-slate-300 dark:hover:border-white/20 hover:shadow-xs space-y-3.5 flex flex-col justify-between">
             <div className="space-y-2">
-              <div className="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
+              <div className="text-[10px] font-sans uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
                 PERFORMIQ ACADEMY · 15 MIN READ
               </div>
               <h3 className="heading-premium font-bold text-base text-slate-900 dark:text-white leading-snug">
@@ -912,7 +655,7 @@ export const ManagerOneOnOnes: React.FC = () => {
           {/* Card 2 */}
           <div className="group rounded-2xl p-5 border border-slate-200/90 dark:border-white/[0.08] bg-slate-50/60 dark:bg-white/[0.02] hover:bg-white dark:hover:bg-white/[0.04] transition-all duration-200 hover:border-slate-300 dark:hover:border-white/20 hover:shadow-xs space-y-3.5 flex flex-col justify-between">
             <div className="space-y-2">
-              <div className="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
+              <div className="text-[10px] font-sans uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
                 LEADERSHIP LAB · 30 MIN TEMPLATE
               </div>
               <h3 className="heading-premium font-bold text-base text-slate-900 dark:text-white leading-snug">
@@ -935,7 +678,7 @@ export const ManagerOneOnOnes: React.FC = () => {
           {/* Card 3 */}
           <div className="group rounded-2xl p-5 border border-slate-200/90 dark:border-white/[0.08] bg-slate-50/60 dark:bg-white/[0.02] hover:bg-white dark:hover:bg-white/[0.04] transition-all duration-200 hover:border-slate-300 dark:hover:border-white/20 hover:shadow-xs space-y-3.5 flex flex-col justify-between">
             <div className="space-y-2">
-              <div className="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
+              <div className="text-[10px] font-sans uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
                 STAFF PROTOCOL · QUARTERLY CHECK-IN
               </div>
               <h3 className="heading-premium font-bold text-base text-slate-900 dark:text-white leading-snug">
@@ -1033,17 +776,20 @@ export const ManagerOneOnOnes: React.FC = () => {
               <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
                 Direct Report
               </label>
-              <select
+              <CustomDropdown
                 value={newMeetingForm.employeeName}
-                onChange={(e) => setNewMeetingForm({ ...newMeetingForm, employeeName: e.target.value })}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
-              >
-                <option value="Alex Rivera">Alex Rivera (Staff Frontend Engineer)</option>
-                <option value="Priya Patel">Priya Patel (Senior Distributed Systems Engineer)</option>
-                <option value="Jordan Lee">Jordan Lee (Lead Product Designer)</option>
-                <option value="Samantha Hayes">Samantha Hayes (Staff Platform Engineer)</option>
-                <option value="David Kim">David Kim (Full Stack Software Engineer)</option>
-              </select>
+                onChange={(val) => setNewMeetingForm({ ...newMeetingForm, employeeName: val })}
+                fullWidth
+                triggerClassName="h-10 px-3.5 rounded-xl border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#18181b] text-slate-900 dark:text-zinc-100 text-xs font-medium shadow-2xs w-full"
+                menuClassName="w-full rounded-xl border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] shadow-xl p-1 z-[120]"
+                options={[
+                  { value: 'Alex Rivera', label: 'Alex Rivera (Staff Frontend Engineer)' },
+                  { value: 'Priya Patel', label: 'Priya Patel (Senior Distributed Systems Engineer)' },
+                  { value: 'Jordan Lee', label: 'Jordan Lee (Lead Product Designer)' },
+                  { value: 'Samantha Hayes', label: 'Samantha Hayes (Staff Platform Engineer)' },
+                  { value: 'David Kim', label: 'David Kim (Full Stack Software Engineer)' },
+                ]}
+              />
             </div>
 
             <div>

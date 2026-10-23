@@ -7,32 +7,13 @@ export const developmentService = {
     const plans = storageService.getState().developmentPlans || {}
     const existing = plans[userId]
 
-    // Default template if employee has no custom plan yet or seed plan
+    // Default empty plan if employee has no custom plan yet
     const defaultTemplate: DevelopmentPlan = SEED_DEVELOPMENT_PLANS[userId] || {
       id: `dev-${userId}`,
       userId,
-      skills: [
-        { name: 'Core Domain Execution', currentLevel: 3, targetLevel: 4 },
-        { name: 'Cross-functional Collaboration', currentLevel: 3, targetLevel: 4 },
-        { name: 'Technical Leadership & Mentoring', currentLevel: 2, targetLevel: 3 },
-      ],
-      agreedActions: [
-        {
-          id: `act-${Date.now()}-1`,
-          title: 'Complete foundational leadership curriculum module',
-          targetDate: '2026-11-30',
-          status: 'not_started',
-        },
-      ],
-      recommendedCourses: [
-        {
-          id: `crs-${Date.now()}-1`,
-          title: 'Enterprise Architecture & High-Scale Systems',
-          provider: 'PerformIQ Academy',
-          duration: '10 hrs',
-          status: 'recommended',
-        },
-      ],
+      skills: [],
+      agreedActions: [],
+      recommendedCourses: [],
     }
 
     if (existing) {

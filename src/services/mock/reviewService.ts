@@ -2,7 +2,9 @@ import { ManagerReview, SelfReview, User } from '../../types'
 import { calculateCompositeScore } from '../../lib/scoring'
 import { cycleService } from './cycleService'
 import { peopleService } from './peopleService'
+import { matchesUser, matchesCycle } from '../../lib/workflow'
 import { storageService } from './storageService'
+import { mockNotificationService } from './notificationService'
 
 export type TeamReviewSummary = {
   employee: User
@@ -19,7 +21,10 @@ export const reviewService = {
   async getSelfReview(userId: string, cycleId: string): Promise<SelfReview | null> {
     const review = storageService
       .getState()
-      .selfReviews.find((r) => r.userId === userId && r.cycleId === cycleId)
+      .selfReviews.find((r) =>
+        (r.userId === userId || matchesUser(r.userId, userId)) &&
+        (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
+      )
     return review ? { ...review } : null
   },
 
@@ -83,6 +88,22 @@ export const reviewService = {
       }
     })
 
+    // In-app notification: Notify assigned manager that self-review is submitted
+    const state = storageService.getState()
+    const employee = state.users.find((u) => u.id === reviewData.userId)
+    const cycle = state.cycles.find((c) => c.id === reviewData.cycleId)
+    const managerId = employee?.managerId
+    if (managerId) {
+      await mockNotificationService.create({
+        id: `notif-self-review-${reviewData.userId}-${reviewData.cycleId}-${Date.now()}`,
+        userId: managerId,
+        title: 'Self-Review Submitted',
+        message: `${employee?.name || 'Employee'} submitted their self-evaluation for ${cycle?.name || 'performance cycle'}. You can now complete your manager appraisal.`,
+        link: `/manager/reviews/${reviewData.userId}`,
+        type: 'action',
+      })
+    }
+
     return submitted
   },
 
@@ -91,9 +112,18 @@ export const reviewService = {
     const { selfReviews, managerReviews, goals } = storageService.getState()
 
     return reports.map((employee) => {
-      const sr = selfReviews.find((r) => r.userId === employee.id && r.cycleId === cycleId)
-      const mr = managerReviews.find((r) => r.employeeId === employee.id && r.cycleId === cycleId)
-      const userGoals = goals.filter((g) => g.userId === employee.id && g.cycleId === cycleId)
+      const sr = selfReviews.find((r) =>
+        (r.userId === employee.id || matchesUser(r.userId, employee.id)) &&
+        (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
+      )
+      const mr = managerReviews.find((r) =>
+        (r.employeeId === employee.id || matchesUser(r.employeeId, employee.id)) &&
+        (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
+      )
+      const userGoals = goals.filter((g) =>
+        (g.userId === employee.id || matchesUser(g.userId, employee.id)) &&
+        (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId))
+      )
 
       return {
         employee,
@@ -111,7 +141,10 @@ export const reviewService = {
   async getManagerReview(employeeId: string, cycleId: string): Promise<ManagerReview | null> {
     const review = storageService
       .getState()
-      .managerReviews.find((r) => r.employeeId === employeeId && r.cycleId === cycleId)
+      .managerReviews.find((r) =>
+        (r.employeeId === employeeId || matchesUser(r.employeeId, employeeId)) &&
+        (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
+      )
     return review ? { ...review } : null
   },
 
@@ -196,7 +229,22 @@ export const reviewService = {
       }
     })
 
+    // In-app notification: Notify authorized Admin(s) that manager evaluation is submitted and awaits calibration review
+    const state = storageService.getState()
+    const manager = state.users.find((u) => u.id === reviewData.managerId)
+    const employee = state.users.find((u) => u.id === reviewData.employeeId)
+    const adminUsers = state.users.filter((u) => u.role === 'admin')
+    for (const admin of adminUsers) {
+      await mockNotificationService.create({
+        id: `notif-mgr-review-${reviewData.employeeId}-${admin.id}-${Date.now()}`,
+        userId: admin.id,
+        title: 'Manager Evaluation Submitted',
+        message: `${manager?.name || 'Manager'} submitted performance evaluation for ${employee?.name || 'Employee'} (Score: ${submitted.compositeScore.toFixed(2)}). Awaiting calibration review.`,
+        link: '/admin/calibration',
+        type: 'action',
+      })
+    }
+
     return submitted
   },
 }
-

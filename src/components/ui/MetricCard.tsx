@@ -29,25 +29,25 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`dark-glass-card dark-glass-card-lift p-5 sm:p-6 select-none flex flex-col justify-between ${
-        onClick ? 'cursor-pointer' : ''
-      }`}
+      className={`dark-glass-card ${
+        onClick ? 'dark-glass-card-lift cursor-pointer' : ''
+      } p-3.5 sm:p-4 rounded-xl sm:rounded-2xl select-none flex flex-col justify-between transition-all`}
     >
       {/* Top row: Label & Chip Icon */}
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-mono font-medium uppercase tracking-wider text-slate-500 dark:text-[#8D96AA]">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-bold uppercase tracking-[0.06em] text-slate-900 dark:text-white">
           {title}
         </span>
         {icon && (
-          <div className="w-8 h-8 rounded-xl grid place-items-center text-[#8B7CFF] bg-[#8B7CFF]/15 border border-[#8B7CFF]/28 shrink-0">
+          <div className="w-6 h-6 rounded-lg grid place-items-center text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shrink-0">
             {icon}
           </div>
         )}
       </div>
 
       {/* Value & Badge */}
-      <div className="mt-3 flex items-baseline justify-between gap-2 overflow-hidden">
-        <div className="text-3xl sm:text-4xl font-semibold tracking-tight text-slate-900 dark:text-white tabular-nums leading-tight truncate">
+      <div className="my-1.5 flex items-baseline justify-between gap-2 overflow-hidden">
+        <div className="text-2xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white tabular-nums leading-none truncate">
           {value}
         </div>
         {badge && <div className="shrink-0">{badge}</div>}
@@ -55,20 +55,11 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Subtitle / Trend */}
       {(subtitle || trend) && (
-        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-[#8D96AA] flex-wrap">
+        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-zinc-300 flex-wrap font-medium">
           {trend && (
             <span
-              className={`font-mono text-[11px] font-semibold px-2.5 py-0.5 rounded-full border inline-flex items-center gap-1.5 shrink-0 ${
-                trend.neutral
-                  ? 'bg-slate-100 text-slate-800 border-slate-200/90 dark:bg-white/10 dark:text-zinc-200 dark:border-white/15'
-                  : trend.isPositive
-                  ? 'bg-indigo-50/90 text-indigo-700 border-indigo-200 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF] dark:border-[#8B7CFF]/30'
-                  : 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-[#FFB454]/10 dark:text-[#FFB454] dark:border-[#FFB454]/35'
-              }`}
+              className="text-[10px] sm:text-[10.5px] font-semibold px-2 py-0.5 rounded-md border inline-flex items-center shrink-0 bg-slate-100 text-slate-800 border-slate-300/80 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700"
             >
-              {trend.pulse && (
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-[#4FE3C1] animate-pulse" />
-              )}
               <span>{trend.value}</span>
             </span>
           )}
@@ -113,17 +104,17 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   }[size]
 
   const variantClass = {
-    indigo: 'bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:to-[#4FE3C1]',
-    emerald: 'bg-gradient-to-r from-indigo-600 to-violet-500 dark:from-[#4FE3C1] dark:to-emerald-400',
-    amber: 'bg-gradient-to-r from-amber-500 to-orange-500 dark:from-[#FFB454] dark:to-amber-400',
-    blue: 'bg-gradient-to-r from-sky-500 to-blue-600 dark:from-sky-400 dark:to-blue-500',
-    rose: 'bg-gradient-to-r from-rose-500 to-pink-500 dark:from-rose-400 dark:to-pink-500',
+    indigo: 'bg-slate-900 dark:bg-white',
+    emerald: 'bg-slate-900 dark:bg-white',
+    amber: 'bg-slate-700 dark:bg-zinc-300',
+    blue: 'bg-slate-800 dark:bg-zinc-200',
+    rose: 'bg-slate-600 dark:bg-zinc-400',
   }[variant || 'indigo']
 
   return (
     <div className="w-full">
       {(label || showPercentage) && (
-        <div className="flex items-center justify-between text-xs text-slate-600 dark:text-[#8D96AA] mb-1.5 font-mono">
+        <div className="flex items-center justify-between text-xs text-slate-700 dark:text-zinc-200 mb-1.5 font-sans font-medium">
           {label && <span>{label}</span>}
           {showPercentage && (
             <span className="tabular-nums font-semibold text-slate-700 dark:text-zinc-200">

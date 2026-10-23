@@ -66,7 +66,7 @@ export const RubberSegmentedControl: React.FC<RubberSegmentedControlProps> = ({
 
   const sizeClasses = {
     xs: 'py-1 px-2.5 text-[11px]',
-    sm: 'py-1.5 px-3.5 text-xs',
+    sm: 'py-1 px-3 text-xs',
     md: 'py-2 px-4.5 text-xs sm:text-sm',
   }[size]
 
@@ -233,7 +233,7 @@ export const RubberSegmentedControl: React.FC<RubberSegmentedControlProps> = ({
             <span>{opt.label}</span>
             {typeof opt.count === 'number' && (
               <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-bold transition-colors ${
+                className={`text-[10px] px-2 py-0.5 rounded-full font-sans font-bold transition-colors ${
                   isActive
                     ? 'bg-white/20 text-white dark:bg-black/15 dark:text-black'
                     : 'bg-slate-200/80 text-slate-600 dark:bg-white/10 dark:text-zinc-400'

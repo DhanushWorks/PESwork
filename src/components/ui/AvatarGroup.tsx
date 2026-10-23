@@ -215,11 +215,6 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
                   {initials}
                 </div>
               )}
-
-              {/* Status pulse dot for active user */}
-              {u.active && (
-                <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-indigo-600 dark:bg-emerald-500 ring-1.5 ring-white dark:ring-black" />
-              )}
             </div>
           )
         })}
@@ -302,9 +297,6 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
                   <div className="min-w-0 flex-1">
                     <div className="font-medium text-slate-900 dark:text-zinc-100 truncate flex items-center gap-1.5">
                       <span>{hoveredUser.name}</span>
-                      {hoveredUser.active && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 dark:bg-emerald-500 shrink-0" />
-                      )}
                     </div>
                     <div className="text-[11px] text-slate-500 dark:text-zinc-400 truncate">
                       {hoveredUser.designation}
@@ -314,7 +306,7 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
 
                 <div className="pt-2 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-between text-[11px]">
                   <RoleBadge role={hoveredUser.role} />
-                  <span className="text-slate-400 dark:text-zinc-500 font-mono text-[10px]">
+                  <span className="text-slate-400 dark:text-zinc-500 font-sans text-[10px]">
                     {hoveredUser.employeeCode}
                   </span>
                 </div>
@@ -373,7 +365,7 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
                 <span className="font-semibold text-slate-900 dark:text-white text-xs tracking-tight">
                   Team Personnel
                 </span>
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold font-mono bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/30">
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold font-sans bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/30">
                   {users.length}
                 </span>
               </div>
@@ -423,15 +415,12 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
                           {initials}
                         </div>
                       )}
-                      {u.active && (
-                        <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 ring-1.5 ring-white dark:ring-[#121214]" />
-                      )}
                     </div>
 
                     <div className="min-w-0 flex-1">
                       <div className="font-semibold text-slate-900 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors flex items-center justify-between gap-1">
                         <span className="truncate">{u.name}</span>
-                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-zinc-400 capitalize border border-slate-200/60 dark:border-white/10 shrink-0 font-normal">
+                        <span className="text-[10px] font-sans px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-zinc-400 capitalize border border-slate-200/60 dark:border-white/10 shrink-0 font-normal">
                           {u.role}
                         </span>
                       </div>
@@ -447,7 +436,7 @@ export const AvatarGroup: React.FC<AvatarGroupProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="pt-2 mt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-mono px-0.5">
+            <div className="pt-2 mt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-[10px] text-slate-400 dark:text-zinc-500 font-sans px-0.5">
               <span>{remainingCount > 0 ? `${remainingCount} hidden in stack` : 'All team members'}</span>
               <span>Esc to close</span>
             </div>

@@ -24,6 +24,8 @@ export type ProgressLog = {
   percentage: number
   note: string
   evidenceFileName?: string
+  evidenceUrl?: string
+  evidenceFileSize?: string
 }
 
 export type Goal = {
@@ -41,6 +43,9 @@ export type Goal = {
   dueDate: string
   status: GoalStatus
   returnReason?: string
+  evidenceFileName?: string
+  evidenceUrl?: string
+  evidenceFileSize?: string
   progressHistory: ProgressLog[]
   createdAt: string
   updatedAt: string
@@ -81,6 +86,7 @@ export type ReviewCycle = {
     calibrationDue: string
     releaseDate: string
   }
+  participantIds?: string[]
 }
 
 export type RatingCategory = {
@@ -138,6 +144,9 @@ export type CalibrationRecord = {
   reason: string
   calibratedBy: string
   calibratedAt: string
+  adminApproved?: boolean
+  adminApprovedAt?: string
+  status?: 'pending_admin_approval' | 'approved'
 }
 
 export type EvaluationResult = {

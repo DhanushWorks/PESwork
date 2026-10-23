@@ -183,7 +183,7 @@ export const AnimatedSearchBar: React.FC<AnimatedSearchBarProps> = ({
             }`}
           >
             <span
-              className={`font-mono text-slate-400 dark:text-zinc-500 truncate ${sizeConfig.text}`}
+              className={`font-sans text-slate-400 dark:text-zinc-500 truncate ${sizeConfig.text}`}
             >
               {displayText}
             </span>
@@ -207,7 +207,7 @@ export const AnimatedSearchBar: React.FC<AnimatedSearchBarProps> = ({
           onBlur={handleBlur}
           placeholder=""
           aria-label={placeholder}
-          className={`relative z-10 w-full h-full bg-transparent border-0 p-0 text-slate-900 dark:text-zinc-100 focus:outline-hidden font-mono ${sizeConfig.text} ${className}`}
+          className={`relative z-10 w-full h-full bg-transparent border-0 p-0 text-slate-900 dark:text-zinc-100 focus:outline-hidden font-sans ${sizeConfig.text} ${className}`}
           {...props}
         />
       </div>

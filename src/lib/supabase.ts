@@ -1,13 +1,32 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || ''
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
+function getEnv(key: string): string {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
+      return import.meta.env[key]
+    }
+    if (typeof window !== 'undefined') {
+      const win = window as any
+      if (win.__ENV__ && win.__ENV__[key]) return win.__ENV__[key]
+      const localVal =
+        localStorage.getItem(key) ||
+        localStorage.getItem(key.toLowerCase()) ||
+        localStorage.getItem(`performiq_${key.toLowerCase()}`)
+      if (localVal) return localVal
+    }
+  } catch {}
+  return ''
+}
+
+const supabaseUrl = getEnv('VITE_SUPABASE_URL')
+const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY')
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
   supabaseAnonKey &&
   !supabaseUrl.includes('your-project') &&
-  !supabaseAnonKey.includes('your-supabase')
+  !supabaseAnonKey.includes('your-supabase') &&
+  !supabaseUrl.includes('placeholder')
 )
 
 if (!isSupabaseConfigured) {
@@ -33,15 +52,14 @@ export const supabase = createClient(
  */
 export async function testSupabaseConnection(): Promise<{ ok: boolean; message: string }> {
   if (!isSupabaseConfigured) {
-    return { ok: false, message: 'Supabase credentials not configured in .env.local' }
+    return { ok: false, message: 'Supabase credentials not configured in .env.local or environment' }
   }
 
   try {
-    const { data, error } = await supabase.from('profiles').select('id').limit(1)
+    const { error } = await supabase.from('profiles').select('id').limit(1)
     if (error) {
-      // If table doesn't exist yet, connection is still valid!
       if (error.code === '42P01') {
-        return { ok: true, message: 'Connected to Supabase! (Database tables need to be created)' }
+        return { ok: true, message: 'Connected to Supabase! (Database tables need to be created with schema_combined.sql)' }
       }
       return { ok: false, message: error.message }
     }
@@ -50,4 +68,3 @@ export async function testSupabaseConnection(): Promise<{ ok: boolean; message: 
     return { ok: false, message: err.message || 'Failed to connect to Supabase' }
   }
 }
-

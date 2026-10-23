@@ -164,7 +164,7 @@ export const MotionSearchBar: React.FC<MotionSearchBarProps> = ({
               isPlaying ? 'bg-indigo-500 animate-pulse' : 'bg-gray-400'
             }`}
           />
-          <span className="font-mono font-semibold text-gray-900">
+          <span className="font-sans font-semibold text-gray-900">
             {Math.min(time, ACTIVE_DURATION).toFixed(2)}s
           </span>
           <span className="text-gray-400">/ {ACTIVE_DURATION.toFixed(1)}s</span>
@@ -248,7 +248,7 @@ export const MotionSearchBar: React.FC<MotionSearchBarProps> = ({
             style={{ width: `${(Math.min(time, ACTIVE_DURATION) / ACTIVE_DURATION) * 100}%` }}
           />
         </div>
-        <div className="flex justify-between items-center text-[10px] text-gray-400 font-mono mt-1 px-1">
+        <div className="flex justify-between items-center text-[10px] text-gray-400 font-sans mt-1 px-1">
           <span>00:00 Initial Top</span>
           <span>00:01 Gliding Down</span>
           <span>00:02 Typing</span>

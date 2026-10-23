@@ -122,18 +122,6 @@ export const ManagerApprovals: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Clean Dashboard Standard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.035em] text-slate-900 dark:text-white leading-[1.15]">
-            Team Goal Commitments
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Review, calibrate & approve direct report performance plans for {activeCycle.name}
-          </p>
-        </div>
-      </div>
-
       {/* Search Toolbar with 270px x 48px Animated Search Bar */}
       {pendingGoals.length > 0 && (
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
@@ -154,16 +142,16 @@ export const ManagerApprovals: React.FC = () => {
           <button
             type="button"
             onClick={() => setShowApproveAllConfirm(true)}
-            className="premium-glow-btn h-11 px-5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2 self-start sm:self-auto shrink-0"
+            className="h-8.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent self-start sm:self-auto shrink-0"
           >
-            <Check className="w-4 h-4" />
+            <Check className="w-3.5 h-3.5" />
             <span>Approve All ({pendingGoals.length})</span>
           </button>
         </div>
       )}
 
       {loading ? (
-        <div className="p-12 text-center text-xs text-slate-400 font-mono">Loading pending goals...</div>
+        <div className="p-12 text-center text-xs text-slate-400 font-sans">Loading pending goals...</div>
       ) : pendingGoals.length === 0 ? (
         <EmptyState
           icon={<CheckCircle2 className="w-8 h-8 text-indigo-600 dark:text-[#4FE3C1]" />}
@@ -193,15 +181,15 @@ export const ManagerApprovals: React.FC = () => {
                   />
                   <div>
                     <div className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA]">{employee.name}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-[#8D96AA] font-mono">{employee.designation}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-zinc-300 font-sans">{employee.designation}</div>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="font-mono font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200/90 dark:border-zinc-700/80 text-[11px]">
+                  <span className="font-sans font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200/90 dark:border-zinc-700/80 text-[11px]">
                     Weight: {goal.weight}%
                   </span>
-                  <span className="text-slate-500 dark:text-[#8D96AA] font-mono text-[11px]">
+                  <span className="text-slate-500 dark:text-zinc-300 font-sans text-[11px]">
                     Due: <strong className="text-slate-700 dark:text-[#F0F3FA]">{formatDate(goal.dueDate)}</strong>
                   </span>
                 </div>
@@ -210,22 +198,22 @@ export const ManagerApprovals: React.FC = () => {
               {/* Goal Content */}
               <div className="space-y-1">
                 <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">{goal.title}</h2>
-                <p className="text-xs text-slate-600 dark:text-[#8D96AA] leading-relaxed">{goal.description}</p>
+                <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">{goal.description}</p>
               </div>
 
               {/* Metric Spec Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
                 <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.08] rounded-xl p-3 text-xs">
-                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-[#8D96AA] tracking-wider">
+                  <span className="text-[10px] uppercase font-sans text-slate-400 dark:text-zinc-300 tracking-wider">
                     Measurable Metric
                   </span>
                   <div className="font-semibold text-slate-800 dark:text-[#F0F3FA] mt-0.5">{goal.metric}</div>
                 </div>
                 <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.08] rounded-xl p-3 text-xs">
-                  <span className="text-[10px] uppercase font-mono text-slate-400 dark:text-[#8D96AA] tracking-wider">
+                  <span className="text-[10px] uppercase font-sans text-slate-400 dark:text-zinc-300 tracking-wider">
                     Target Commitment
                   </span>
-                  <div className="font-semibold text-slate-800 dark:text-[#F0F3FA] mt-0.5 font-mono">
+                  <div className="font-semibold text-slate-800 dark:text-[#F0F3FA] mt-0.5 font-sans">
                     {goal.target} {goal.unit}
                   </div>
                 </div>
@@ -240,7 +228,7 @@ export const ManagerApprovals: React.FC = () => {
                     setReturnReason('')
                     setShowReturnModal(true)
                   }}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all cursor-pointer font-mono"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[12px] border border-rose-500/20 text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 text-xs font-semibold transition-all cursor-pointer font-sans"
                 >
                   <CornerDownLeft className="w-3.5 h-3.5" />
                   <span>Return for Revision</span>

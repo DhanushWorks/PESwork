@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../app/AppContext'
 import { useToast } from '../components/ui/Toast'
 import { peopleService, supabaseAuthService } from '../services'
+import { isSupabaseConfigured } from '../lib/supabase'
 import { Role } from '../types'
 import {
   AlertCircle,
@@ -152,8 +153,8 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
     try {
       const normalized = trimmedEmail.toLowerCase()
 
-      // 1. Try Supabase Auth first if real password is provided
-      if (password && password !== '••••••••') {
+      // 1. Try Supabase Auth first if real password is provided AND Supabase is configured
+      if (isSupabaseConfigured && password && password !== '••••••••') {
         const { user: authUser, session, error: authError } = await supabaseAuthService.signIn(normalized, password)
         if (authUser && session) {
           success('Welcome back!', `Logged in via Supabase as ${authUser.name}`)
@@ -172,24 +173,51 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
             return
           }
 
-          // If not a demo user email, stop and alert user
+          // If not a demo user email and not a config error, alert user
           const isDemoEmail = allUsers.some((u) => u.email.toLowerCase() === normalized)
-          if (!isDemoEmail) {
+          if (!isDemoEmail && !authError.toLowerCase().includes('not configured')) {
             error('Sign in failed', authError)
             return
           }
         }
       }
 
-      // 2. Demo Persona / fallback matching
+      // 2. Local / Persona authentication & Auto-Provisioning fallback
       let matchedUser = allUsers.find((u) => u.email.toLowerCase() === normalized)
 
       if (!matchedUser) {
-        matchedUser =
+        // Check for role or exact name match
+        const roleOrNameMatch =
           allUsers.find((u) => u.role.toLowerCase() === normalized) ||
-          allUsers.find((u) => u.name.toLowerCase().includes(normalized)) ||
-          allUsers[0]
-        info('Demo Mode', `Authenticated as sample persona: ${matchedUser.name} (${matchedUser.role})`)
+          allUsers.find((u) => u.name.toLowerCase() === normalized)
+
+        if (roleOrNameMatch) {
+          matchedUser = roleOrNameMatch
+          success('Welcome back!', `Logged into PerformIQ as ${matchedUser.name}`)
+        } else {
+          // Auto-provision user account seamlessly with their custom email
+          const rawUsername = normalized.split('@')[0]
+          const formattedName =
+            rawUsername
+              .replace(/[._-]+/g, ' ')
+              .replace(/\b\w/g, (char) => char.toUpperCase()) || 'User'
+
+          const newUser = await peopleService.create({
+            name: formattedName,
+            email: normalized,
+            role: 'employee',
+            department: 'Engineering',
+            designation: 'Software Engineer',
+            active: true,
+            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            joinedDate: new Date().toISOString().split('T')[0],
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          })
+
+          await refreshData()
+          matchedUser = newUser
+          success('Welcome to PerformIQ!', `Logged in as ${matchedUser.name}`)
+        }
       } else {
         success('Welcome back!', `Logged into PerformIQ as ${matchedUser.name}`)
       }
@@ -251,55 +279,93 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
 
       const normalizedEmail = email.trim().toLowerCase()
 
-      // 1. Register with live Supabase Auth
-      const { user: authUser, session, error: authErr } = await supabaseAuthService.signUp({
-        email: normalizedEmail,
-        password,
-        name: fullName.trim(),
-        role,
-        department,
-        designation: designation.trim() || defaultTitle,
-      })
+      // 1. If Supabase is configured, register with live Supabase Auth
+      if (isSupabaseConfigured) {
+        const { user: authUser, session, error: authErr } = await supabaseAuthService.signUp({
+          email: normalizedEmail,
+          password,
+          name: fullName.trim(),
+          role,
+          department,
+          designation: designation.trim() || defaultTitle,
+        })
 
-      const isRateLimit = authErr && authErr.toLowerCase().includes('rate limit')
-      const isAlreadyRegistered = authErr && authErr.toLowerCase().includes('already registered')
+        const isRateLimit = authErr && authErr.toLowerCase().includes('rate limit')
+        const isAlreadyRegistered = authErr && authErr.toLowerCase().includes('already registered')
 
-      if (isAlreadyRegistered) {
+        if (isAlreadyRegistered) {
+          info('Account exists', 'This email is already registered. Switching to sign-in screen.')
+          setMode('signin')
+          return
+        }
+
+        if (isRateLimit) {
+          // Create user locally so the user is NEVER blocked by Supabase's free SMTP quota
+          const newUser = await peopleService.create({
+            name: fullName.trim(),
+            email: normalizedEmail,
+            role,
+            department,
+            designation: designation.trim() || defaultTitle,
+            active: true,
+            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            joinedDate: new Date().toISOString().split('T')[0],
+            avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+          })
+
+          await refreshData()
+          await switchUser(newUser.id)
+          info(
+            'Account Activated!',
+            'Logged in seamlessly so you can continue!'
+          )
+          navigate(`/${newUser.role}`)
+          return
+        }
+
+        if (authErr && !authErr.toLowerCase().includes('not configured')) {
+          error('Registration Error', authErr)
+          return
+        }
+
+        if (session && authUser) {
+          await peopleService.create({
+            name: fullName.trim(),
+            email: normalizedEmail,
+            role,
+            department,
+            designation: designation.trim() || defaultTitle,
+            active: true,
+            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            joinedDate: new Date().toISOString().split('T')[0],
+            avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+          })
+          await refreshData()
+          await switchUser(authUser.id)
+          success(
+            'Account Registered & Connected!',
+            `Welcome ${fullName}! You are signed in as ${role}.`
+          )
+          navigate(`/${role}`)
+          return
+        } else if (!authErr) {
+          info(
+            'Registration Successful!',
+            `Verification email sent to ${normalizedEmail}. Please confirm your email in your inbox before signing in, or disable "Confirm email" in your Supabase Dashboard.`
+          )
+          setMode('signin')
+          return
+        }
+      }
+
+      // 2. Seamless local creation (offline / fallback when Supabase is not configured)
+      const existingUser = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
+      if (existingUser) {
         info('Account exists', 'This email is already registered. Switching to sign-in screen.')
         setMode('signin')
         return
       }
 
-      if (isRateLimit) {
-        // Create user locally so the user is NEVER blocked by Supabase's free SMTP quota
-        const newUser = await peopleService.create({
-          name: fullName.trim(),
-          email: normalizedEmail,
-          role,
-          department,
-          designation: designation.trim() || defaultTitle,
-          active: true,
-          employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-          joinedDate: new Date().toISOString().split('T')[0],
-          avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-        })
-
-        await refreshData()
-        await switchUser(newUser.id)
-        info(
-          'Account Activated!',
-          'Supabase email quota reached (max 3/hr on free tier). Logged in seamlessly so you can continue! To remove this limit, disable "Confirm email" in Supabase Auth settings.'
-        )
-        navigate(`/${newUser.role}`)
-        return
-      }
-
-      if (authErr) {
-        error('Registration Error', authErr)
-        return
-      }
-
-      // 2. Ensure user is available in local state as well
       const newUser = await peopleService.create({
         name: fullName.trim(),
         email: normalizedEmail,
@@ -313,22 +379,12 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       })
 
       await refreshData()
-
-      if (session) {
-        await switchUser(authUser?.id || newUser.id)
-        success(
-          'Account Registered & Connected!',
-          `Welcome ${fullName}! You are signed in via Supabase as ${role}.`
-        )
-        navigate(`/${role}`)
-      } else {
-        // Email confirmation enabled in Supabase project settings
-        info(
-          'Registration Successful!',
-          `Verification email sent to ${normalizedEmail}. Please confirm your email in your inbox before signing in, or disable "Confirm email" in your Supabase Dashboard.`
-        )
-        setMode('signin')
-      }
+      await switchUser(newUser.id)
+      success(
+        'Account Registered!',
+        `Welcome ${newUser.name}! Your account has been initialized.`
+      )
+      navigate(`/${newUser.role}`)
     } catch (err: any) {
       error('Registration failed', err.message || 'Unable to complete sign-up.')
     } finally {

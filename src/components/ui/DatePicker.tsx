@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, ChevronDown, X } from 'lucide-react'
 import { formatDate } from '../../lib/formatters'
 
 export type DatePickerProps = {
@@ -78,6 +78,20 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     selectedDate ? selectedDate.getMonth() : todayMonth
   )
 
+  // Calendar view mode: 'days' | 'months' | 'years'
+  const [calendarView, setCalendarView] = useState<'days' | 'months' | 'years'>('days')
+  const [yearRangeStart, setYearRangeStart] = useState<number>(
+    Math.floor((selectedDate ? selectedDate.getFullYear() : todayYear) / 10) * 10 - 1
+  )
+
+  // Reset view to 'days' whenever popover opens
+  useEffect(() => {
+    if (isOpen) {
+      setCalendarView('days')
+      setYearRangeStart(Math.floor(viewYear / 10) * 10 - 1)
+    }
+  }, [isOpen, viewYear])
+
   // Update viewing month/year when value changes externally
   useEffect(() => {
     if (value) {
@@ -85,6 +99,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
       if (!isNaN(d.getTime())) {
         setViewYear(d.getFullYear())
         setViewMonth(d.getMonth())
+        setYearRangeStart(Math.floor(d.getFullYear() / 10) * 10 - 1)
       }
     }
   }, [value])
@@ -139,11 +154,15 @@ export const DatePicker: React.FC<DatePickerProps> = ({
         !popoverRef.current.contains(target)
       ) {
         setIsOpen(false)
+        setCalendarView('days')
       }
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false)
+      if (e.key === 'Escape') {
+        setIsOpen(false)
+        setCalendarView('days')
+      }
     }
 
     window.addEventListener('scroll', handleScrollOrResize, true)
@@ -159,24 +178,36 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     }
   }, [isOpen, updatePosition])
 
-  // Navigation handlers
-  const handlePrevMonth = (e: React.MouseEvent) => {
+  // Navigation handlers (adaptive based on active view)
+  const handlePrev = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (viewMonth === 0) {
-      setViewMonth(11)
+    if (calendarView === 'days') {
+      if (viewMonth === 0) {
+        setViewMonth(11)
+        setViewYear((prev) => prev - 1)
+      } else {
+        setViewMonth((prev) => prev - 1)
+      }
+    } else if (calendarView === 'months') {
       setViewYear((prev) => prev - 1)
-    } else {
-      setViewMonth((prev) => prev - 1)
+    } else if (calendarView === 'years') {
+      setYearRangeStart((prev) => prev - 10)
     }
   }
 
-  const handleNextMonth = (e: React.MouseEvent) => {
+  const handleNext = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (viewMonth === 11) {
-      setViewMonth(0)
+    if (calendarView === 'days') {
+      if (viewMonth === 11) {
+        setViewMonth(0)
+        setViewYear((prev) => prev + 1)
+      } else {
+        setViewMonth((prev) => prev + 1)
+      }
+    } else if (calendarView === 'months') {
       setViewYear((prev) => prev + 1)
-    } else {
-      setViewMonth((prev) => prev + 1)
+    } else if (calendarView === 'years') {
+      setYearRangeStart((prev) => prev + 10)
     }
   }
 
@@ -204,6 +235,7 @@ export const DatePicker: React.FC<DatePickerProps> = ({
 
     onChange(formatted)
     setIsOpen(false)
+    setCalendarView('days')
   }
 
   const handleSelectToday = (e: React.MouseEvent) => {
@@ -213,17 +245,22 @@ export const DatePicker: React.FC<DatePickerProps> = ({
     onChange(`${todayYear}-${m}-${d}`)
     setViewYear(todayYear)
     setViewMonth(todayMonth)
+    setCalendarView('days')
     setIsOpen(false)
   }
 
   const handleClear = (e: React.MouseEvent) => {
     e.stopPropagation()
     onChange('')
+    setCalendarView('days')
     setIsOpen(false)
   }
 
   // Format date display on trigger
   const displayValue = value ? formatDate(value) : placeholder
+
+  const decadeStart = yearRangeStart + 1
+  const decadeEnd = yearRangeStart + 10
 
   return (
     <div className={`relative ${className}`}>
@@ -302,114 +339,245 @@ export const DatePicker: React.FC<DatePickerProps> = ({
           >
             {/* Header Month / Year & Prev / Next navigation */}
             <div className="flex items-center justify-between pb-2.5 border-b border-slate-100 dark:border-zinc-700/80">
-              <div className="flex items-center gap-1.5 font-bold text-xs tracking-tight text-slate-900 dark:text-white uppercase font-mono">
-                <span>{MONTH_NAMES[viewMonth]}</span>
-                <span className="text-slate-500 dark:text-zinc-400 font-semibold">{viewYear}</span>
+              <div className="flex items-center gap-1 font-sans text-xs">
+                {/* Touch/Click Month to select month */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setCalendarView((curr) => (curr === 'months' ? 'days' : 'months'))
+                  }}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg font-bold tracking-tight uppercase transition-all cursor-pointer group active:scale-95 ${
+                    calendarView === 'months'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs ring-1 ring-slate-900/10 dark:ring-white/20'
+                      : 'text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-zinc-800'
+                  }`}
+                  title={calendarView === 'months' ? 'Return to days' : 'Touch to change month'}
+                  aria-label="Select month"
+                >
+                  <span>{MONTH_NAMES[viewMonth]}</span>
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${
+                      calendarView === 'months'
+                        ? 'rotate-180 text-current'
+                        : 'opacity-50 text-slate-500 dark:text-zinc-400 group-hover:opacity-100'
+                    }`}
+                  />
+                </button>
+
+                {/* Touch/Click Year to select year */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setYearRangeStart(Math.floor(viewYear / 10) * 10 - 1)
+                    setCalendarView((curr) => (curr === 'years' ? 'days' : 'years'))
+                  }}
+                  className={`flex items-center gap-1 px-2 py-1 rounded-lg font-semibold tracking-tight transition-all cursor-pointer group active:scale-95 ${
+                    calendarView === 'years'
+                      ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-950 shadow-xs ring-1 ring-slate-900/10 dark:ring-white/20'
+                      : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800'
+                  }`}
+                  title={calendarView === 'years' ? 'Return to days' : 'Touch to change year'}
+                  aria-label="Select year"
+                >
+                  <span>{calendarView === 'years' ? `${decadeStart}–${decadeEnd}` : viewYear}</span>
+                  <ChevronDown
+                    className={`w-3 h-3 transition-transform duration-200 ${
+                      calendarView === 'years'
+                        ? 'rotate-180 text-current'
+                        : 'opacity-50 text-slate-500 dark:text-zinc-400 group-hover:opacity-100'
+                    }`}
+                  />
+                </button>
               </div>
 
+              {/* Prev / Next Chevrons */}
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  onClick={handlePrevMonth}
+                  onClick={handlePrev}
                   className="p-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer active:scale-95"
-                  title="Previous month"
-                  aria-label="Previous month"
+                  title={
+                    calendarView === 'years'
+                      ? 'Previous decade'
+                      : calendarView === 'months'
+                      ? 'Previous year'
+                      : 'Previous month'
+                  }
+                  aria-label="Previous"
                 >
                   <ChevronLeft className="w-3.5 h-3.5" />
                 </button>
                 <button
                   type="button"
-                  onClick={handleNextMonth}
+                  onClick={handleNext}
                   className="p-1 rounded-lg text-slate-500 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer active:scale-95"
-                  title="Next month"
-                  aria-label="Next month"
+                  title={
+                    calendarView === 'years'
+                      ? 'Next decade'
+                      : calendarView === 'months'
+                      ? 'Next year'
+                      : 'Next month'
+                  }
+                  aria-label="Next"
                 >
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
-            {/* Days of the Week Row */}
-            <div className="grid grid-cols-7 gap-1 text-center my-2">
-              {DAYS_OF_WEEK.map((d) => (
-                <span
-                  key={d}
-                  className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-mono"
-                >
-                  {d}
-                </span>
-              ))}
-            </div>
+            {/* View 1: DAYS MATRIX */}
+            {calendarView === 'days' && (
+              <>
+                {/* Days of the Week Row */}
+                <div className="grid grid-cols-7 gap-1 text-center my-2">
+                  {DAYS_OF_WEEK.map((d) => (
+                    <span
+                      key={d}
+                      className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-sans"
+                    >
+                      {d}
+                    </span>
+                  ))}
+                </div>
 
-            {/* Month Days Matrix */}
-            <div className="grid grid-cols-7 gap-1">
-              {/* Leading days from previous month */}
-              {Array.from({ length: firstDayOfWeek }).map((_, i) => {
-                const day = daysInPrevMonth - firstDayOfWeek + i + 1
-                return (
-                  <button
-                    key={`prev-${i}`}
-                    type="button"
-                    onClick={() => handleSelectDay(day, -1)}
-                    className="w-7 h-7 sm:w-8 sm:h-8 mx-auto flex items-center justify-center rounded-xl text-xs font-medium text-slate-300 dark:text-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
-                  >
-                    {day}
-                  </button>
-                )
-              })}
+                {/* Month Days Matrix */}
+                <div className="grid grid-cols-7 gap-1">
+                  {/* Leading days from previous month */}
+                  {Array.from({ length: firstDayOfWeek }).map((_, i) => {
+                    const day = daysInPrevMonth - firstDayOfWeek + i + 1
+                    return (
+                      <button
+                        key={`prev-${i}`}
+                        type="button"
+                        onClick={() => handleSelectDay(day, -1)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 mx-auto flex items-center justify-center rounded-xl text-xs font-medium text-slate-300 dark:text-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                      >
+                        {day}
+                      </button>
+                    )
+                  })}
 
-              {/* Current month days */}
-              {Array.from({ length: daysInCurrentMonth }).map((_, i) => {
-                const day = i + 1
-                const isSelected =
-                  selectedDate &&
-                  selectedDate.getFullYear() === viewYear &&
-                  selectedDate.getMonth() === viewMonth &&
-                  selectedDate.getDate() === day
+                  {/* Current month days */}
+                  {Array.from({ length: daysInCurrentMonth }).map((_, i) => {
+                    const day = i + 1
+                    const isSelected =
+                      selectedDate &&
+                      selectedDate.getFullYear() === viewYear &&
+                      selectedDate.getMonth() === viewMonth &&
+                      selectedDate.getDate() === day
 
-                const isCurrentDay =
-                  todayYear === viewYear &&
-                  todayMonth === viewMonth &&
-                  todayDate === day
+                    const isCurrentDay =
+                      todayYear === viewYear &&
+                      todayMonth === viewMonth &&
+                      todayDate === day
 
-                return (
-                  <button
-                    key={`day-${day}`}
-                    type="button"
-                    onClick={() => handleSelectDay(day, 0)}
-                    className={`w-7 h-7 sm:w-8 sm:h-8 mx-auto flex items-center justify-center rounded-xl text-xs font-medium relative transition-all duration-150 cursor-pointer ${
-                      isSelected
-                        ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-md scale-105 z-10'
-                        : isCurrentDay
-                        ? 'text-slate-900 dark:text-white font-bold border border-slate-900/40 dark:border-white/50 hover:bg-slate-100 dark:hover:bg-zinc-800'
-                        : 'text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <span>{day}</span>
-                    {isCurrentDay && !isSelected && (
-                      <span className="absolute bottom-1 w-1 h-1 rounded-full bg-slate-900 dark:bg-white" />
-                    )}
-                  </button>
-                )
-              })}
+                    return (
+                      <button
+                        key={`day-${day}`}
+                        type="button"
+                        onClick={() => handleSelectDay(day, 0)}
+                        className={`w-7 h-7 sm:w-8 sm:h-8 mx-auto flex items-center justify-center rounded-xl text-xs font-medium relative transition-all duration-150 cursor-pointer ${
+                          isSelected
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-md scale-105 z-10'
+                            : isCurrentDay
+                            ? 'text-slate-900 dark:text-white font-bold border border-slate-900/40 dark:border-white/50 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                            : 'text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white'
+                        }`}
+                      >
+                        <span>{day}</span>
+                        {isCurrentDay && !isSelected && (
+                          <span className="absolute bottom-1 w-1 h-1 rounded-full bg-slate-900 dark:bg-white" />
+                        )}
+                      </button>
+                    )
+                  })}
 
-              {/* Trailing days for next month */}
-              {Array.from({
-                length: (7 - ((firstDayOfWeek + daysInCurrentMonth) % 7)) % 7,
-              }).map((_, i) => {
-                const day = i + 1
-                return (
-                  <button
-                    key={`next-${i}`}
-                    type="button"
-                    onClick={() => handleSelectDay(day, 1)}
-                    className="w-7 h-7 sm:w-8 sm:h-8 mx-auto flex items-center justify-center rounded-xl text-xs font-medium text-slate-300 dark:text-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
-                  >
-                    {day}
-                  </button>
-                )
-              })}
-            </div>
+                  {/* Trailing days for next month */}
+                  {Array.from({
+                    length: (7 - ((firstDayOfWeek + daysInCurrentMonth) % 7)) % 7,
+                  }).map((_, i) => {
+                    const day = i + 1
+                    return (
+                      <button
+                        key={`next-${i}`}
+                        type="button"
+                        onClick={() => handleSelectDay(day, 1)}
+                        className="w-7 h-7 sm:w-8 sm:h-8 mx-auto flex items-center justify-center rounded-xl text-xs font-medium text-slate-300 dark:text-zinc-600 hover:bg-slate-50 dark:hover:bg-zinc-800/40 transition-colors cursor-pointer"
+                      >
+                        {day}
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+
+            {/* View 2: MONTH SELECTION GRID (Touch friendly 3x4 layout) */}
+            {calendarView === 'months' && (
+              <div className="grid grid-cols-3 gap-2 py-2.5 my-1 min-h-[212px]">
+                {MONTH_NAMES.map((mName, idx) => {
+                  const isSelected = viewMonth === idx
+                  const isCurrentMonth = todayYear === viewYear && todayMonth === idx
+                  const shortName = mName.slice(0, 3).toUpperCase()
+
+                  return (
+                    <button
+                      key={mName}
+                      type="button"
+                      onClick={() => {
+                        setViewMonth(idx)
+                        setCalendarView('days')
+                      }}
+                      className={`h-11 rounded-xl text-xs font-semibold flex flex-col items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                        isSelected
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-md scale-[1.02]'
+                          : isCurrentMonth
+                          ? 'text-slate-900 dark:text-white font-bold border border-slate-900/40 dark:border-white/50 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                          : 'text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span className="font-sans tracking-wider font-bold">{shortName}</span>
+                      <span className="text-[10px] opacity-75 font-normal leading-tight">{mName}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* View 3: YEAR SELECTION GRID (Touch friendly 3x4 layout) */}
+            {calendarView === 'years' && (
+              <div className="grid grid-cols-3 gap-2 py-2.5 my-1 min-h-[212px]">
+                {Array.from({ length: 12 }, (_, i) => yearRangeStart + i).map((yr, idx) => {
+                  const isSelected = viewYear === yr
+                  const isCurrentYear = todayYear === yr
+                  const isOutside = idx === 0 || idx === 11
+
+                  return (
+                    <button
+                      key={yr}
+                      type="button"
+                      onClick={() => {
+                        setViewYear(yr)
+                        setCalendarView('days')
+                      }}
+                      className={`h-11 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer font-sans active:scale-95 ${
+                        isSelected
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-zinc-950 font-bold shadow-md scale-[1.02]'
+                          : isCurrentYear
+                          ? 'text-slate-900 dark:text-white font-bold border border-slate-900/40 dark:border-white/50 hover:bg-slate-100 dark:hover:bg-zinc-800'
+                          : isOutside
+                          ? 'text-slate-400 dark:text-zinc-600 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-700 dark:hover:text-zinc-300'
+                          : 'text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 hover:text-slate-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <span>{yr}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
             {/* Quick Action Footer */}
             <div className="pt-2.5 mt-2.5 border-t border-slate-100 dark:border-zinc-800/80 flex items-center justify-between text-xs">

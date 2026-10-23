@@ -132,7 +132,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
               title="Copy Profile Link"
               className="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
-              {copied ? <Check className="w-4 h-4 text-emerald-500" /> : <Share2 className="w-4 h-4" />}
+              {copied ? <Check className="w-4 h-4 text-slate-900 dark:text-white" /> : <Share2 className="w-4 h-4" />}
             </button>
             <button
               type="button"
@@ -170,16 +170,6 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
               </div>
             </div>
 
-            {/* Active Status Pulse Badge */}
-            {user.active && (
-              <span
-                className="absolute bottom-2 right-2 w-5 h-5 rounded-full bg-emerald-500 ring-3 ring-white dark:ring-[#121214] shadow-md flex items-center justify-center"
-                title="Active Now"
-              >
-                <span className="w-2 h-2 rounded-full bg-white animate-ping opacity-75" />
-              </span>
-            )}
-
             {/* Double-tap Floating Instagram Heart Animation */}
             {heartAnim && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none animate-in zoom-in-50 fade-in duration-200">
@@ -199,8 +189,8 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
             <p className="text-xs font-semibold text-slate-500 dark:text-zinc-400 mt-0.5">
               {user.designation}
             </p>
-            <div className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-zinc-500 mt-1 font-mono">
-              <Building className="w-3 h-3 text-[#8B7CFF]" />
+            <div className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-zinc-500 mt-1 font-sans">
+              <Building className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
               <span>{user.department}</span>
             </div>
           </div>
@@ -208,7 +198,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
           {/* Instagram 3-Column Stats Row */}
           <div className="grid grid-cols-3 gap-2 w-full mt-4 py-3 border-y border-slate-100 dark:border-white/[0.08] text-center">
             <div className="px-2">
-              <div className="font-bold font-mono text-xs text-slate-900 dark:text-white">
+              <div className="font-bold font-sans text-xs text-slate-900 dark:text-white">
                 {user.employeeCode}
               </div>
               <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-medium uppercase tracking-wider">
@@ -216,8 +206,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
               </div>
             </div>
             <div className="px-2 border-x border-slate-100 dark:border-white/[0.08]">
-              <div className="font-bold text-xs text-emerald-600 dark:text-[#4FE3C1] flex items-center justify-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#4FE3C1]" />
+              <div className="font-bold text-xs text-slate-900 dark:text-white flex items-center justify-center">
                 {user.active ? 'Active' : 'Inactive'}
               </div>
               <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-medium uppercase tracking-wider">
@@ -225,7 +214,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
               </div>
             </div>
             <div className="px-2">
-              <div className="font-bold text-xs text-indigo-600 dark:text-indigo-400 capitalize">
+              <div className="font-bold text-xs text-slate-900 dark:text-white capitalize">
                 {user.role}
               </div>
               <div className="text-[10px] text-slate-400 dark:text-zinc-500 font-medium uppercase tracking-wider">
@@ -235,16 +224,16 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
           </div>
 
           {/* Instagram Bio Section */}
-          <div className="w-full text-left mt-3.5 space-y-1.5 text-xs text-slate-600 dark:text-zinc-300 bg-slate-50 dark:bg-white/[0.02] p-3 rounded-2xl border border-slate-100 dark:border-white/[0.06] font-mono text-[11px]">
+          <div className="w-full text-left mt-3.5 space-y-1.5 text-xs text-slate-600 dark:text-zinc-300 bg-slate-50 dark:bg-white/[0.02] p-3 rounded-2xl border border-slate-100 dark:border-white/[0.06] font-sans text-[11px]">
             <div className="flex items-center gap-2">
-              <ShieldCheck className="w-3.5 h-3.5 text-indigo-500 shrink-0" />
+              <ShieldCheck className="w-3.5 h-3.5 text-slate-500 shrink-0" />
               <span>PerformIQ Enterprise Talent</span>
             </div>
             <div className="flex items-center gap-2 text-slate-500 dark:text-zinc-400 truncate">
               <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <a
                 href={`mailto:${user.email}`}
-                className="hover:text-indigo-600 dark:hover:text-indigo-400 truncate"
+                className="hover:text-slate-900 dark:hover:text-white truncate"
               >
                 {user.email}
               </a>
@@ -261,7 +250,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
           <div className="w-full flex items-center gap-2 mt-4">
             <a
               href={`mailto:${user.email}`}
-              className="flex-1 py-2.5 px-3 rounded-xl bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-500 hover:to-indigo-600 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition-all cursor-pointer"
+              className="flex-1 py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold text-xs flex items-center justify-center gap-1.5 shadow-xs active:scale-98 transition-all cursor-pointer"
             >
               <Mail className="w-3.5 h-3.5" />
               <span>Contact</span>
@@ -276,7 +265,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
                 }}
                 className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/15 text-slate-800 dark:text-white font-semibold text-xs flex items-center justify-center gap-1.5 active:scale-98 transition-all cursor-pointer"
               >
-                <Edit2 className="w-3.5 h-3.5 text-[#8B7CFF]" />
+                <Edit2 className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                 <span>Edit</span>
               </button>
             )}
@@ -296,7 +285,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
           </div>
 
           {/* Instagram Footer Hint */}
-          <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono mt-3 select-none flex items-center gap-1">
+          <p className="text-[10px] text-slate-400 dark:text-zinc-500 font-sans mt-3 select-none flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-amber-500" />
             <span>Double-tap photo to like · Press Esc to close</span>
           </p>

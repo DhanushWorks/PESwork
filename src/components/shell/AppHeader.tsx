@@ -5,11 +5,10 @@ import { useToast } from '../../components/ui/Toast'
 import {
   Bell,
   Search,
-  ChevronDown,
   CheckCircle2,
   Calendar,
   Layers,
-  Menu,
+  PanelLeft,
   RotateCcw,
   Sparkles,
   UserCheck,
@@ -22,19 +21,113 @@ import {
   CreditCard,
   Building2,
   Shield,
+  LayoutDashboard,
+  Users,
+  RefreshCw,
+  Sliders,
+  PieChart,
+  History,
+  CheckSquare,
+  BarChart3,
+  MessagesSquare,
+  ClipboardList,
+  MessageSquareHeart,
+  FolderArchive,
+  TrendingUp,
 } from 'lucide-react'
 import { CYCLE_STAGE_DETAILS } from '../../lib/formatters'
 import { ConfirmDialog } from '../ui/Modal'
 import { storageService } from '../../services'
 import { Goal } from '../../types'
-import { AnimatedSearchBar } from '../ui/AnimatedSearchBar'
-import { AnimatedBrandLogo } from '../ui/AnimatedBrandLogo'
 import { ThemeToggle } from '../ui/ThemeToggle'
+import { FullscreenToggle } from '../ui/FullscreenToggle'
 
 type AppHeaderProps = {
   onToggleSidebar: () => void
   isCollapsed?: boolean
   onToggleCollapse?: () => void
+}
+
+type PageInfo = {
+  title: string
+  subtitle?: string
+}
+
+const getPageInfo = (pathname: string): PageInfo => {
+  const path = pathname.replace(/\/+$/, '') || '/'
+
+  // Common routes
+  if (path === '/settings') {
+    return { title: 'Settings' }
+  }
+  if (path === '/profile' || path === '/employee/profile') {
+    return { title: 'Profile' }
+  }
+
+  // Admin routes
+  if (path === '/admin' || path === '/admin/overview') {
+    return { title: 'Dashboard' }
+  }
+  if (path.startsWith('/admin/users')) {
+    return { title: 'People Directory' }
+  }
+  if (path.startsWith('/admin/cycles')) {
+    if (path !== '/admin/cycles') {
+      return { title: 'Review Cycles', subtitle: 'Cycle Details' }
+    }
+    return { title: 'Review Cycles' }
+  }
+  if (path.startsWith('/admin/calibration')) {
+    return { title: 'Calibration Hub' }
+  }
+  if (path.startsWith('/admin/reports')) {
+    return { title: 'Chart & Reports' }
+  }
+  if (path.startsWith('/admin/audit')) {
+    return { title: 'Audit Trail' }
+  }
+
+  // Manager routes
+  if (path === '/manager' || path === '/manager/dashboard') {
+    return { title: 'Dashboard' }
+  }
+  if (path.startsWith('/manager/approvals')) {
+    return { title: 'Goal Approvals' }
+  }
+  if (path.startsWith('/manager/reviews')) {
+    return { title: 'Goal Approvals', subtitle: 'Review Workspace' }
+  }
+  if (path.startsWith('/manager/analytics')) {
+    return { title: 'Chart & Analytics' }
+  }
+  if (path.startsWith('/manager/one-on-ones')) {
+    return { title: '1-on-1 Discussions' }
+  }
+
+  // Employee routes
+  if (path === '/employee' || path === '/employee/dashboard') {
+    return { title: 'Dashboard' }
+  }
+  if (path.startsWith('/employee/goals')) {
+    if (path !== '/employee/goals') {
+      return { title: 'Progress Tracking', subtitle: 'Goal Details' }
+    }
+    return { title: 'Progress Tracking' }
+  }
+  if (path.startsWith('/employee/self-review') || path.startsWith('/employee/review')) {
+    return { title: 'Forms & Review' }
+  }
+  if (path.startsWith('/employee/feedback')) {
+    return { title: 'Peer Feedback' }
+  }
+  if (path.startsWith('/employee/results')) {
+    return { title: 'Portfolio & Results' }
+  }
+  if (path.startsWith('/employee/development')) {
+    return { title: 'Talent Map' }
+  }
+
+  return { title: 'Dashboard' }
 }
 
 export const AppHeader: React.FC<AppHeaderProps> = ({
@@ -63,6 +156,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const location = useLocation()
   const { success } = useToast()
 
+  const pageInfo = getPageInfo(location.pathname)
+
   const [showUserMenu, setShowUserMenu] = useState(false)
   const [showNotifMenu, setShowNotifMenu] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
@@ -70,6 +165,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [searchQuery, setSearchQuery] = useState('')
   const [showSearchResults, setShowSearchResults] = useState(false)
   const [goalsList, setGoalsList] = useState<Goal[]>([])
+  const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
   const notifMenuRef = useRef<HTMLDivElement>(null)
@@ -142,8 +238,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     }
   }, [showSearchResults])
 
-  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false)
-  const mobileSearchRef = useRef<HTMLDivElement>(null)
+  const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   // Close dropdowns on outside click
   useEffect(() => {
@@ -154,11 +250,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
         setShowNotifMenu(false)
       }
-      if (
-        searchRef.current &&
-        !searchRef.current.contains(e.target as Node) &&
-        (!mobileSearchRef.current || !mobileSearchRef.current.contains(e.target as Node))
-      ) {
+      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
+        setIsSearchOpen(false)
         setShowSearchResults(false)
       }
     }
@@ -166,30 +259,33 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Close mobile search and dropdowns on Escape key
+  // Close search and dropdowns on Escape key, or toggle on Ctrl+K / Cmd+K
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setShowSearchResults(false)
-        setIsMobileSearchOpen(false)
+        setIsSearchOpen(false)
         setShowUserMenu(false)
         setShowNotifMenu(false)
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setIsSearchOpen((prev) => !prev)
+        setShowSearchResults(true)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
 
-  // Automatically reset mobile search if screen widens to >= sm
+  // Focus search input when opened
   useEffect(() => {
-    const handleResize = () => {
-      if (window.innerWidth >= 640 && isMobileSearchOpen) {
-        setIsMobileSearchOpen(false)
-      }
+    if (isSearchOpen) {
+      setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 50)
     }
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [isMobileSearchOpen])
+  }, [isSearchOpen])
 
   const handleReset = async () => {
     setIsResetting(true)
@@ -218,7 +314,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       navigate('/employee/feedback')
     }
     setShowSearchResults(false)
-    setIsMobileSearchOpen(false)
+    setIsSearchOpen(false)
     setSearchQuery('')
   }
 
@@ -231,7 +327,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       navigate(`/employee/goals/${g.id}`)
     }
     setShowSearchResults(false)
-    setIsMobileSearchOpen(false)
+    setIsSearchOpen(false)
     setSearchQuery('')
   }
 
@@ -301,124 +397,110 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   return (
     <>
       <header
-        className={`fixed top-0 right-0 z-30 h-12 bg-white/95 dark:bg-[#000000]/95 backdrop-blur-md border-b border-[#d6deea] dark:border-white/[0.08] px-3 sm:px-5 flex items-center justify-between shadow-2xs transition-[left] duration-300 ease-in-out left-0 ${
-          isCollapsed ? 'lg:left-12' : 'lg:left-60'
-        }`}
+        className="sticky top-0 z-30 h-12 w-full bg-white/95 dark:bg-[#000000]/95 backdrop-blur-md border-b border-[#d6deea] dark:border-white/[0.08] px-3 sm:px-5 flex items-center justify-between shadow-2xs shrink-0"
       >
-        {isMobileSearchOpen ? (
-          /* Mobile Full-Width Search Input Mode */
-          <div className="flex items-center gap-2 w-full animate-in fade-in duration-150" ref={mobileSearchRef}>
-            <div className="relative flex-1">
-              <AnimatedSearchBar
-                value={searchQuery}
-                onChangeValue={(val) => {
-                  setSearchQuery(val)
-                  setShowSearchResults(true)
-                }}
-                onFocus={() => setShowSearchResults(true)}
-                placeholder="Search directory..."
-                animatedText="Search directory..."
-                variant="pill"
-                sizeVariant="sm"
-                containerClassName="w-full"
-                autoFocus
-              />
+        {/* Left Section: Mobile Drawer Trigger + Active Sidebar Page Name / Breadcrumb */}
+        <div className="flex items-center gap-2.5 shrink-0 min-w-0">
+          {/* Mobile-only toggle button */}
+          <button
+            type="button"
+            onClick={onToggleSidebar}
+            className="lg:hidden w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-white/[0.08] rounded-lg transition-colors shrink-0 cursor-pointer active:scale-95"
+            title="Open navigation menu"
+            aria-label="Open navigation sidebar"
+          >
+            <PanelLeft className="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" />
+          </button>
 
-              {/* Mobile Live Search Quick Results Dropdown */}
-              {showSearchResults && queryLower.length > 0 && (
-                <div
-                  ref={searchDropdownRef}
-                  className="fixed left-3 right-3 top-13 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700/80 py-2 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 overscroll-contain"
-                  role="menu"
-                >
-                  {renderSearchResults()}
-                </div>
-              )}
-            </div>
+          {/* Active Sidebar Page Name Display (Clean typography only, zero logo/icon) */}
+          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight truncate flex items-center gap-1.5 select-none">
+            <span>{pageInfo.title}</span>
+            {pageInfo.subtitle && (
+              <>
+                <span className="text-slate-300 dark:text-zinc-700 font-normal">/</span>
+                <span className="text-xs sm:text-sm font-medium text-slate-600 dark:text-zinc-400 truncate">
+                  {pageInfo.subtitle}
+                </span>
+              </>
+            )}
+          </h1>
+        </div>
 
+        {/* Right Actions: Search Icon Button + Theme Toggle + Bell 🔔 + Avatar */}
+        <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+          {/* Search Icon Trigger & Dropdown */}
+          <div className="relative" ref={searchRef}>
             <button
               type="button"
               onClick={() => {
-                setIsMobileSearchOpen(false)
-                setShowSearchResults(false)
-                setSearchQuery('')
+                setIsSearchOpen(!isSearchOpen)
+                setShowSearchResults(true)
               }}
-              className="p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0 cursor-pointer"
-              title="Close search"
-              aria-label="Close search bar"
+              className={`relative p-2 rounded-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
+                isSearchOpen
+                  ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white border-slate-300 dark:border-white ring-2 ring-slate-900/10 dark:ring-white/40 dark:shadow-[0_0_16px_rgba(255,255,255,0.4)]'
+                  : 'bg-slate-50 dark:bg-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.16] text-slate-700 dark:text-white border-slate-200 dark:border-white/30 hover:border-slate-300 dark:hover:border-white/60 dark:shadow-[0_0_12px_rgba(255,255,255,0.1)]'
+              }`}
+              title="Search directory (Ctrl+K)"
+              aria-label="Search directory"
             >
-              <X className="w-5 h-5 text-slate-600 dark:text-slate-300" />
+              <Search
+                strokeWidth={2.4}
+                className={`w-4 h-4 transition-all duration-300 text-slate-800 dark:text-white dark:stroke-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] ${
+                  isSearchOpen ? 'scale-105' : 'group-hover:scale-110'
+                }`}
+              />
             </button>
-          </div>
-        ) : (
-          <>
-            {/* Left: Mobile-only drawer toggle + Project Logo & Brand Name */}
-            <div className="flex items-center gap-2 sm:gap-3.5 shrink-0 min-w-max">
-              <button
-                type="button"
-                onClick={onToggleSidebar}
-                className="lg:hidden p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors shrink-0 cursor-pointer"
-                title="Open navigation menu"
-                aria-label="Open navigation sidebar"
+
+            {/* Live Search Quick Results Popover Dropdown */}
+            {isSearchOpen && (
+              <div
+                ref={searchDropdownRef}
+                className="fixed left-3 right-3 sm:left-auto sm:right-0 sm:absolute top-13 sm:top-full mt-2 sm:w-84 md:w-96 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700/80 p-3 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 overscroll-contain"
+                role="dialog"
+                aria-label="Search directory"
               >
-                <Menu className="w-5 h-5 text-slate-600 dark:text-slate-300" />
-              </button>
+                <div className="relative flex items-center">
+                  <Search className="absolute left-3 w-4 h-4 text-slate-400 dark:text-zinc-400 pointer-events-none" />
+                  <input
+                    ref={searchInputRef}
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setShowSearchResults(true)
+                    }}
+                    placeholder="Search directory..."
+                    className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-slate-400/30 dark:focus:ring-zinc-600/30 focus:border-slate-400 dark:focus:border-zinc-500 transition-all"
+                  />
+                  {searchQuery ? (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                      title="Clear search"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : (
+                    <span className="absolute right-2.5 text-[10px] text-slate-400 dark:text-zinc-500 font-mono hidden sm:inline-block border border-slate-200 dark:border-zinc-700 rounded px-1.5 py-0.5">
+                      ESC
+                    </span>
+                  )}
+                </div>
 
-              {/* Project Name with Logo Symbol: (logo symbol)PerformIQ */}
-              <div className="flex items-center shrink-0">
-                <AnimatedBrandLogo
-                  to={`/${currentUser.role}`}
-                  logoSize="w-6 h-6 sm:w-6.5 sm:h-6.5"
-                  textSize="text-sm sm:text-base font-bold tracking-tight whitespace-nowrap"
-                  showGlow={false}
-                  interactive={true}
-                />
-              </div>
-            </div>
-
-            {/* Right Actions: Mobile Search Trigger / Desktop Pill Search Bar + Theme Toggle + Bell 🔔 + Avatar */}
-            <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-              {/* Mobile Search Button (visible only below sm breakpoint) */}
-              <button
-                type="button"
-                onClick={() => {
-                  setIsMobileSearchOpen(true)
-                  setShowSearchResults(true)
-                }}
-                className="sm:hidden p-1.5 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer shrink-0"
-                title="Search directory"
-                aria-label="Open search bar"
-              >
-                <Search className="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" />
-              </button>
-
-              {/* Desktop & Tablet Inline Search Bar (visible on sm and up) */}
-              <div className="relative hidden sm:block" ref={searchRef}>
-                <AnimatedSearchBar
-                  value={searchQuery}
-                  onChangeValue={(val) => {
-                    setSearchQuery(val)
-                    setShowSearchResults(true)
-                  }}
-                  onFocus={() => setShowSearchResults(true)}
-                  placeholder="Search directory..."
-                  animatedText="Search directory..."
-                  variant="pill"
-                  sizeVariant="sm"
-                  containerClassName="w-36 md:w-48 lg:w-56 focus-within:w-48 md:focus-within:w-56 lg:focus-within:w-64"
-                />
-
-                {/* Desktop Live Search Quick Results Dropdown */}
+                {/* Live Search Quick Results */}
                 {showSearchResults && queryLower.length > 0 && (
-                  <div
-                    ref={searchDropdownRef}
-                    className="absolute right-0 top-full mt-2 w-72 sm:w-80 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700/80 py-2 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 overscroll-contain"
-                    role="menu"
-                  >
+                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-zinc-800/80">
                     {renderSearchResults()}
                   </div>
                 )}
               </div>
+            )}
+          </div>
+
+          {/* Full Screen Mode Toggle */}
+          <FullscreenToggle />
 
           {/* Dark Mode / White Mode Animated Toggle */}
           <ThemeToggle />
@@ -428,23 +510,24 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <button
               type="button"
               onClick={() => setShowNotifMenu(!showNotifMenu)}
-              className={`relative p-2 rounded-xl transition-all duration-200 cursor-pointer group active:scale-95 ${
+              className={`relative p-2 rounded-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
                 showNotifMenu
-                  ? 'bg-slate-100 dark:bg-zinc-800/90 text-slate-900 dark:text-white ring-2 ring-slate-900/10 dark:ring-white/15'
-                  : 'text-slate-500 hover:text-slate-800 dark:text-zinc-400 dark:hover:text-zinc-100 hover:bg-slate-100/80 dark:hover:bg-zinc-800/60'
+                  ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white border-slate-300 dark:border-white ring-2 ring-slate-900/10 dark:ring-white/40 dark:shadow-[0_0_16px_rgba(255,255,255,0.4)]'
+                  : 'bg-slate-50 dark:bg-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.16] text-slate-700 dark:text-white border-slate-200 dark:border-white/30 hover:border-slate-300 dark:hover:border-white/60 dark:shadow-[0_0_12px_rgba(255,255,255,0.1)]'
               }`}
               title="Notifications"
               aria-label="View notifications"
             >
               <Bell
-                className={`w-4 h-4 transition-transform duration-300 ${
-                  showNotifMenu ? 'animate-bell-ring text-slate-900 dark:text-white' : 'group-hover:scale-110'
+                strokeWidth={2.4}
+                className={`w-4 h-4 transition-all duration-300 text-slate-800 dark:text-white dark:stroke-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] ${
+                  showNotifMenu ? 'animate-bell-ring scale-105' : 'group-hover:scale-110 dark:group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,1)]'
                 }`}
               />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-900 dark:bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-900 dark:bg-white ring-2 ring-white dark:ring-[#121215]"></span>
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-900 dark:bg-white opacity-90"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-900 dark:bg-white border border-white dark:border-black dark:shadow-[0_0_6px_#ffffff]"></span>
                 </span>
               )}
             </button>
@@ -467,16 +550,16 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                           Notifications
                         </span>
                         {unreadNotificationsCount > 0 ? (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-zinc-950 font-bold">
+                          <span className="text-[9px] font-sans px-1.5 py-0.5 rounded-full bg-slate-900 dark:bg-white text-white dark:text-zinc-950 font-bold">
                             {unreadNotificationsCount} NEW
                           </span>
                         ) : (
-                          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-semibold">
+                          <span className="text-[9px] font-sans px-1.5 py-0.5 rounded-full bg-slate-200/80 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 font-semibold">
                             ALL READ
                           </span>
                         )}
                       </div>
-                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-mono tracking-tight mt-0.5">
+                      <p className="text-[10px] text-slate-500 dark:text-zinc-400 font-sans tracking-tight mt-0.5">
                         LIVE APPRAISAL FEED
                       </p>
                     </div>
@@ -504,7 +587,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       <div className="w-10 h-10 rounded-2xl bg-slate-100 dark:bg-zinc-800 mx-auto flex items-center justify-center text-slate-400 dark:text-zinc-500 mb-2.5">
                         <CheckCircle2 className="w-5 h-5" />
                       </div>
-                      <p className="text-xs font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider font-mono">
+                      <p className="text-xs font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider font-sans">
                         Stack Cleared
                       </p>
                       <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">
@@ -563,7 +646,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                               </div>
 
                               {/* Category Pill */}
-                              <span className="text-[9px] font-mono font-bold tracking-widest uppercase text-slate-600 dark:text-zinc-400 flex items-center gap-1">
+                              <span className="text-[9px] font-sans font-bold tracking-widest uppercase text-slate-600 dark:text-zinc-400 flex items-center gap-1">
                                 <CardIcon className="w-2.5 h-2.5" />
                                 {cardCategory}
                               </span>
@@ -571,7 +654,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
                             {/* Micro Card Number & Unread Pulse */}
                             <div className="flex items-center gap-1.5">
-                              <span className="text-[9px] font-mono text-slate-400 dark:text-zinc-500 tracking-wider">
+                              <span className="text-[9px] font-sans text-slate-400 dark:text-zinc-500 tracking-wider">
                                 #{cardId}
                               </span>
                               {!n.read && (
@@ -599,7 +682,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
                           {/* Card Footer: Timestamp + Action Link */}
                           <div className="mt-2.5 pt-2 border-t border-slate-200/60 dark:border-zinc-800/60 flex items-center justify-between text-[10px]">
-                            <span className="font-mono text-slate-400 dark:text-zinc-500">
+                            <span className="font-sans text-slate-400 dark:text-zinc-500">
                               {new Date(n.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                             </span>
                             <span className="notif-card-pill inline-flex items-center gap-1 text-[10px] font-semibold px-2.5 py-0.5 rounded-full transition-all">
@@ -635,8 +718,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             <button
               type="button"
               onClick={() => setShowUserMenu(!showUserMenu)}
-              className="flex items-center gap-2 p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-xl transition-colors group cursor-pointer"
+              className="p-1 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-all group cursor-pointer shrink-0"
               aria-label="User profile and role menu"
+              title="Touch to view profile details & settings"
             >
               <div className="relative">
                 <img
@@ -645,12 +729,9 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'
                   }
                   alt={currentUser.name}
-                  className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-zinc-700 group-hover:ring-slate-400 dark:group-hover:ring-zinc-500 transition-all"
+                  className="w-8 h-8 rounded-full object-cover ring-2 ring-slate-200 dark:ring-zinc-700 group-hover:ring-slate-400 dark:group-hover:ring-zinc-500 group-hover:scale-105 active:scale-95 transition-all"
                 />
-                {/* Active status indicator dot */}
-                <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-indigo-600 dark:bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
               </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 dark:group-hover:text-zinc-200 transition-transform" />
             </button>
 
             {/* User Dropdown / Authenticated User Profile */}
@@ -669,21 +750,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                         alt={currentUser.name}
                         className="w-12 h-12 rounded-xl object-cover ring-2 ring-slate-200 dark:ring-zinc-700 shadow-xs"
                       />
-                      <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-zinc-900" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1.5">
                         <p className="font-bold text-slate-900 dark:text-zinc-100 truncate text-sm tracking-tight">
                           {currentUser.name}
                         </p>
-                        <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
+                        <span className="text-[9px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
                           {currentUser.role}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 dark:text-zinc-400 truncate mt-0.5">
                         {currentUser.designation}
                       </p>
-                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 truncate font-mono mt-0.5">
+                      <p className="text-[10px] text-slate-400 dark:text-zinc-500 truncate font-sans mt-0.5">
                         {currentUser.email}
                       </p>
                     </div>
@@ -695,7 +775,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       <Building2 className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
                       <span className="truncate">{currentUser.department}</span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 truncate justify-end font-mono">
+                    <div className="flex items-center gap-1.5 text-slate-600 dark:text-zinc-400 truncate justify-end font-sans">
                       <span className="text-slate-400 dark:text-zinc-500">ID:</span>
                       <span className="truncate">{currentUser.employeeCode}</span>
                     </div>
@@ -773,8 +853,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             )}
           </div>
         </div>
-        </>
-        )}
       </header>
 
       {/* Reset Confirmation Dialog */}

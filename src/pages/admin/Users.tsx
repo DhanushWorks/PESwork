@@ -25,6 +25,7 @@ import {
   UserCheck,
   UserX,
   Users,
+  X,
 } from 'lucide-react'
 
 // Deterministic clean neutral palette for initials
@@ -190,28 +191,7 @@ export const AdminUsers: React.FC = () => {
   const managersList = users.filter((u) => u.role === 'manager' || u.role === 'admin')
 
   return (
-    <div className="space-y-6 w-full pb-12 font-sans">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.035em] text-slate-900 dark:text-white leading-[1.15]">
-            Talent Directory
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Enterprise personnel roster, organizational hierarchy & governance roles
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={openCreateModal}
-          className="h-10 sm:h-11 px-4 sm:px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-black font-semibold text-xs sm:text-sm cursor-pointer inline-flex items-center gap-2 shadow-xs transition-all border border-transparent dark:border-white/10 shrink-0 self-start sm:self-auto"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Employee</span>
-        </button>
-      </div>
-
+    <div className="space-y-4 w-full pb-3 font-sans">
       {/* Executive Talent Cohort Showcase Banner */}
       <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md transition-colors">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -226,29 +206,22 @@ export const AdminUsers: React.FC = () => {
                 <span className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
                   {users.length} Total Enterprise Personnel
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-emerald-500/15 text-emerald-700 dark:text-[#4FE3C1] border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#4FE3C1] live-dot-pulse" />
-                  {users.filter((u) => u.active).length} Active Now
-                </span>
               </div>
-              <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-zinc-400" />
+              <div className="flex items-center gap-2 flex-wrap text-xs font-sans">
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] text-[11px]">
                   Engineering: <strong className="text-slate-900 dark:text-white font-semibold">{users.filter((u) => u.department === 'Engineering').length}</strong>
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#4FE3C1]" />
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] text-[11px]">
                   Product: <strong className="text-slate-900 dark:text-white font-semibold">{users.filter((u) => u.department === 'Product & Design').length}</strong>
                 </span>
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] text-[11px]">
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-400 dark:bg-zinc-400" />
+                <span className="inline-flex items-center px-3 py-1 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200 dark:border-white/[0.08] text-[11px]">
                   Managers: <strong className="text-slate-900 dark:text-white font-semibold">{users.filter((u) => u.role === 'manager' || u.role === 'admin').length}</strong>
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-start lg:self-center">
+          <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
             {/* View Mode Switcher Capsule */}
             <RubberSegmentedControl
               options={[
@@ -259,46 +232,23 @@ export const AdminUsers: React.FC = () => {
               onChange={(val) => setViewMode(val as 'grid' | 'table')}
               size="sm"
             />
+
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="h-8.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Employee</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Search and Filters Toolbar (Matching Linear / Vercel Pattern from Goals) */}
-      <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md space-y-3.5">
-        {/* Top Search Input & Department Selector */}
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          <div className="relative flex-1 w-full flex items-center">
-            <Search className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-4 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by name, email, employee ID, or title..."
-              className="w-full h-11 pl-11 pr-12 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans"
-            />
-            <div className="absolute right-3.5 pointer-events-none px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10 text-[11px] font-mono text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.06]">
-              /
-            </div>
-          </div>
-
-          <div className="w-full sm:w-auto shrink-0 flex items-center gap-2">
-            <CustomDropdown
-              value={deptFilter}
-              onChange={setDeptFilter}
-              align="right"
-              options={[
-                { value: 'all', label: 'All Departments' },
-                { value: 'Engineering', label: 'Engineering' },
-                { value: 'Product & Design', label: 'Product & Design' },
-                { value: 'People Operations', label: 'People Operations' },
-              ]}
-            />
-          </div>
-        </div>
-
-        {/* Bottom Role Filter Tabs Capsule */}
-        <div className="overflow-x-auto w-full sm:w-fit scrollbar-none">
+      {/* Search & Filters Single-Line Bar (No Card Wrapper: Segment on Left, Search & Dropdown on Right) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
+        {/* Left: Role Filter Segmented Control */}
+        <div className="overflow-x-auto scrollbar-none py-0.5 shrink-0">
           <RubberSegmentedControl
             options={[
               { value: 'all', label: 'All Roles', count: users.length },
@@ -323,17 +273,63 @@ export const AdminUsers: React.FC = () => {
             size="sm"
           />
         </div>
+
+        {/* Right: Search Input & Department Dropdown */}
+        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
+          {/* Compact Search Input */}
+          <div className="relative w-full sm:w-52 md:w-60 flex items-center shrink-0">
+            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search personnel..."
+              className="w-full h-9 pl-8.5 pr-8 rounded-xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition-all font-sans shadow-2xs"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <kbd className="absolute right-2.5 pointer-events-none px-1.5 py-0.5 rounded border border-slate-200 dark:border-zinc-800 text-[10px] font-mono text-slate-400 dark:text-zinc-500 bg-slate-50 dark:bg-zinc-900 hidden sm:inline-block">
+                /
+              </kbd>
+            )}
+          </div>
+
+          {/* Department Filter Dropdown */}
+          <div className="shrink-0">
+            <CustomDropdown
+              value={deptFilter}
+              onChange={setDeptFilter}
+              align="right"
+              triggerClassName="h-9 px-3 rounded-xl border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#18181b] hover:bg-slate-50 dark:hover:bg-zinc-900 text-slate-900 dark:text-zinc-100 text-xs font-semibold shadow-2xs"
+              options={[
+                { value: 'all', label: 'All Departments' },
+                { value: 'Engineering', label: 'Engineering' },
+                { value: 'Product & Design', label: 'Product & Design' },
+                { value: 'People Operations', label: 'People Operations' },
+              ]}
+            />
+          </div>
+        </div>
       </div>
 
       {/* Directory Content: Grid Cards View vs Table View */}
       {viewMode === 'grid' ? (
         loading ? (
-          <div className="text-center py-16 text-slate-400 font-mono text-xs">Loading talent directory...</div>
+          <div className="text-center py-16 text-slate-400 font-sans text-xs">Loading talent directory...</div>
         ) : filteredUsers.length === 0 ? (
           <div className="dark-glass-card p-12 text-center">
             <Users className="w-10 h-10 text-slate-300 dark:text-zinc-600 mx-auto mb-3" />
             <div className="text-sm font-bold text-slate-800 dark:text-zinc-200">No personnel found</div>
-            <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 font-mono">Try adjusting your search criteria or role filters.</p>
+            <p className="text-xs text-slate-400 dark:text-zinc-500 mt-1 font-sans">Try adjusting your search criteria or role filters.</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -350,17 +346,11 @@ export const AdminUsers: React.FC = () => {
                   <div className="space-y-4">
                     {/* Top row: Code badge + RoleBadge + Status Dot */}
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-mono text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-[#8D96AA] border border-slate-200/70 dark:border-white/[0.08]">
+                      <span className="font-sans text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-md bg-slate-100 dark:bg-white/[0.04] text-slate-600 dark:text-zinc-300 border border-slate-200/70 dark:border-white/[0.08]">
                         {u.employeeCode}
                       </span>
                       <div className="flex items-center gap-2">
                         <RoleBadge role={u.role} />
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            u.active ? 'bg-[#4FE3C1] ring-2 ring-[#4FE3C1]/30 live-dot-pulse' : 'bg-zinc-500'
-                          }`}
-                          title={u.active ? 'Active' : 'Inactive'}
-                        />
                       </div>
                     </div>
 
@@ -392,16 +382,13 @@ export const AdminUsers: React.FC = () => {
                             )}
                           </div>
                         </div>
-                        {u.active && (
-                          <span className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#4FE3C1] ring-2 ring-white dark:ring-[#18181b] shadow-xs" />
-                        )}
                       </div>
 
                       <div className="min-w-0 flex-1">
                         <h3 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-slate-900 dark:group-hover:text-white transition-colors truncate">
                           {u.name}
                         </h3>
-                        <p className="text-xs font-medium text-slate-600 dark:text-[#8D96AA] truncate mt-0.5 font-mono">
+                        <p className="text-xs font-medium text-slate-600 dark:text-zinc-300 truncate mt-0.5 font-sans">
                           {u.designation}
                         </p>
                         <div className="inline-flex items-center gap-1 text-[11px] text-slate-400 dark:text-zinc-500 mt-1">
@@ -412,14 +399,14 @@ export const AdminUsers: React.FC = () => {
                     </div>
 
                     {/* Reporting Line & Contact */}
-                    <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-100 dark:border-white/[0.06] space-y-1.5 text-[11px] font-mono">
-                      <div className="flex items-center justify-between text-slate-500 dark:text-[#8D96AA]">
+                    <div className="p-3 rounded-xl bg-slate-50/80 dark:bg-white/[0.02] border border-slate-100 dark:border-white/[0.06] space-y-1.5 text-[11px] font-sans">
+                      <div className="flex items-center justify-between text-slate-500 dark:text-zinc-300">
                         <span>Reports to</span>
                         <span className="font-semibold text-slate-800 dark:text-zinc-200 truncate max-w-[130px]">
                           {manager ? manager.name : '— (Executive)'}
                         </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-[#8D96AA] truncate pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                      <div className="flex items-center gap-1.5 text-slate-500 dark:text-zinc-300 truncate pt-1 border-t border-slate-100 dark:border-white/[0.06]">
                         <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                         <span className="truncate">{u.email}</span>
                       </div>
@@ -427,14 +414,14 @@ export const AdminUsers: React.FC = () => {
                   </div>
 
                   {/* Card Actions Footer */}
-                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-xs font-mono">
+                  <div className="pt-3 mt-3 border-t border-slate-100 dark:border-white/[0.06] flex items-center justify-between text-xs font-sans">
                     <button
                       type="button"
                       onClick={() => handleToggleActive(u)}
                       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer ${
                         u.active
-                          ? 'bg-emerald-50 dark:bg-[#4FE3C1]/10 text-emerald-700 dark:text-[#4FE3C1] border-emerald-200 dark:border-[#4FE3C1]/30 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-200'
-                          : 'bg-slate-100 dark:bg-white/[0.04] text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-white/[0.08] hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200'
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent hover:bg-slate-800'
+                          : 'bg-slate-100 dark:bg-zinc-850 text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-zinc-700 hover:bg-slate-200'
                       }`}
                     >
                       {u.active ? <UserCheck className="w-3 h-3" /> : <UserX className="w-3 h-3" />}
@@ -461,7 +448,7 @@ export const AdminUsers: React.FC = () => {
           <div className="overflow-x-auto no-scrollbar">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="bg-slate-50/80 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-[#8D96AA] uppercase tracking-wider text-[11px] font-mono">
+                <tr className="bg-slate-100/80 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/[0.12] text-slate-900 dark:text-white uppercase tracking-wider text-xs font-bold font-sans">
                   <th className="py-3.5 px-4">Employee</th>
                   <th className="py-3.5 px-4">Role</th>
                   <th className="py-3.5 px-4">Department & Title</th>
@@ -519,7 +506,7 @@ export const AdminUsers: React.FC = () => {
                             </div>
                             <div>
                               <div className="font-bold text-slate-900 dark:text-zinc-100">{u.name}</div>
-                              <div className="text-[11px] text-slate-400 dark:text-zinc-400 font-mono group-hover:text-slate-500 dark:group-hover:text-zinc-300 transition-colors">
+                              <div className="text-[11px] text-slate-400 dark:text-zinc-400 font-sans group-hover:text-slate-500 dark:group-hover:text-zinc-300 transition-colors">
                                 {u.employeeCode} · {u.email}
                               </div>
                             </div>
@@ -541,17 +528,12 @@ export const AdminUsers: React.FC = () => {
 
                         <td className="py-3.5 px-4">
                           <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold border shadow-2xs ${
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-medium border ${
                               u.active
-                                ? 'bg-indigo-50 dark:bg-[#4FE3C1]/10 text-indigo-700 dark:text-[#4FE3C1] border-indigo-200 dark:border-[#4FE3C1]/30'
-                                : 'bg-slate-50 dark:bg-white/[0.04] text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-white/[0.08]'
+                                ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 border-transparent'
+                                : 'bg-slate-100 dark:bg-zinc-850 text-slate-500 dark:text-zinc-400 border-slate-200 dark:border-zinc-700'
                             }`}
                           >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                u.active ? 'bg-indigo-600 dark:bg-[#4FE3C1] ring-2 ring-indigo-500/20 dark:ring-[#4FE3C1]/30' : 'bg-zinc-400'
-                              }`}
-                            />
                             {u.active ? 'Active' : 'Inactive'}
                           </span>
                         </td>
@@ -589,6 +571,11 @@ export const AdminUsers: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Pagination / Results count under cards/table */}
+      <div className="flex items-center justify-end pt-1 pb-1 text-xs text-slate-500 dark:text-zinc-400 font-sans">
+        <span>Showing {filteredUsers.length} of {users.length} enterprise personnel</span>
+      </div>
 
       {/* Create / Edit User Modal */}
       <Modal
@@ -688,7 +675,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowModal(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-[#8D96AA] hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-mono text-xs cursor-pointer"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
             >
               Cancel
             </button>

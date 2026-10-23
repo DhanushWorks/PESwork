@@ -45,12 +45,12 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
   viewBox,
   radius: customRadius,
   gradientId = 'animated-gauge-gradient',
-  gradientColors = ['#8B7CFF', '#4FE3C1'],
+  gradientColors,
   duration = 1300,
   delay = 100,
   className = '',
   trackClassName = 'text-slate-200 dark:text-white/[0.07]',
-  arcClassName = '',
+  arcClassName = 'text-slate-900 dark:text-white',
   children,
   enabled = true,
   triggerKey = 0,
@@ -112,8 +112,8 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
       >
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor={gradientColors[0]} />
-            <stop offset="100%" stopColor={gradientColors[1]} />
+            <stop offset="0%" stopColor={gradientColors ? gradientColors[0] : 'currentColor'} />
+            <stop offset="100%" stopColor={gradientColors ? gradientColors[1] : 'currentColor'} />
           </linearGradient>
         </defs>
 
@@ -134,7 +134,7 @@ export const AnimatedProgressRing: React.FC<AnimatedProgressRingProps> = ({
           cy={cy}
           r={radius}
           fill="none"
-          stroke={`url(#${gradientId})`}
+          stroke={gradientColors ? `url(#${gradientId})` : 'currentColor'}
           strokeWidth={strokeWidth}
           strokeLinecap="round"
           strokeDasharray={circumference}

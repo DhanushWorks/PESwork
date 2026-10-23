@@ -51,7 +51,7 @@ export const Modal: React.FC<ModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md transition-all animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md transition-all animate-in fade-in duration-200 overflow-y-auto"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -61,9 +61,7 @@ export const Modal: React.FC<ModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`w-full ${widthClasses} bg-white dark:bg-[#18181b] menu-solid-bg modal-surface rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 transform transition-all animate-in zoom-in-95 duration-150 flex flex-col max-h-[min(90vh,calc(100vh-2rem))] my-auto ${
-          overflowVisible ? 'overflow-visible' : 'overflow-hidden'
-        }`}
+        className={`w-full ${widthClasses} bg-white dark:bg-[#18181b] menu-solid-bg modal-surface rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 transform transition-all animate-in zoom-in-95 duration-150 flex flex-col max-h-[min(90vh,calc(100vh-2rem))] my-auto overflow-hidden`}
       >
         {/* Header */}
         <div className="flex items-start justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-zinc-700/80 shrink-0">
@@ -84,9 +82,7 @@ export const Modal: React.FC<ModalProps> = ({
         </div>
 
         {/* Content */}
-        <div className={`p-4 sm:p-6 flex-1 min-h-0 text-slate-900 dark:text-zinc-100 ${
-          overflowVisible ? 'overflow-visible' : 'overflow-y-auto'
-        }`}>
+        <div className="p-4 sm:p-6 flex-1 min-h-0 text-slate-900 dark:text-zinc-100 overflow-y-auto overscroll-contain">
           {children}
         </div>
       </div>

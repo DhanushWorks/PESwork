@@ -17,6 +17,7 @@ import {
   Check,
   CheckCircle2,
   Edit2,
+  FileText,
   FileUp,
   Filter,
   Plus,
@@ -25,6 +26,7 @@ import {
   Sliders,
   Target,
   Trash2,
+  X,
 } from 'lucide-react'
 
 // Mini circular donut progress ring for goal weight
@@ -137,6 +139,12 @@ export const EmployeeGoals: React.FC = () => {
   const [progressPercentage, setProgressPercentage] = useState(50)
   const [progressNote, setProgressNote] = useState('')
   const [evidenceFileName, setEvidenceFileName] = useState('')
+  const [evidenceFileUrl, setEvidenceFileUrl] = useState('')
+  const [evidenceFileSize, setEvidenceFileSize] = useState('')
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [isUploading, setIsUploading] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Submit Goal Set Confirmation
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
@@ -242,26 +250,113 @@ export const EmployeeGoals: React.FC = () => {
     setProgressGoal(goal)
     setProgressPercentage(goal.progress)
     setProgressNote('')
+    setSelectedFile(null)
     setEvidenceFileName('')
+    setEvidenceFileUrl('')
+    setEvidenceFileSize('')
+    setIsDragging(false)
     setShowProgressModal(true)
+  }
+
+  const processSelectedFile = (file: File) => {
+    if (file.size > 15 * 1024 * 1024) {
+      error('File too large', 'Please choose a file smaller than 15MB.')
+      return
+    }
+
+    const sizeFormatted =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`
+
+    setSelectedFile(file)
+    setEvidenceFileName(file.name)
+    setEvidenceFileSize(sizeFormatted)
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      setEvidenceFileUrl(reader.result as string)
+      success('File ready', `${file.name} (${sizeFormatted}) attached.`)
+    }
+    reader.onerror = () => {
+      error('Upload error', 'Failed to read file from your device.')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      processSelectedFile(file)
+    }
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+    const file = e.dataTransfer.files?.[0]
+    if (file) {
+      processSelectedFile(file)
+    }
   }
 
   const handleSaveProgress = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!progressGoal) return
+    setIsUploading(true)
 
     try {
+      let finalFileName = evidenceFileName
+      let finalFileUrl = evidenceFileUrl
+      let finalFileSize = evidenceFileSize
+
+      // If a real file was chosen from device, upload through goalService.uploadEvidence
+      if (selectedFile) {
+        const uploaded = await goalService.uploadEvidence(
+          selectedFile,
+          currentUser.id,
+          progressGoal.id
+        )
+        finalFileName = uploaded.fileName
+        finalFileUrl = uploaded.fileUrl
+        finalFileSize = uploaded.fileSize
+      }
+
       await goalService.addProgress(
         progressGoal.id,
         progressPercentage,
         progressNote || 'Regular milestone checkpoint update.',
-        evidenceFileName || undefined
+        finalFileName || undefined,
+        finalFileUrl || undefined,
+        finalFileSize || undefined
       )
+
       success('Progress recorded', `Updated progress on "${progressGoal.title}" to ${progressPercentage}%.`)
       setShowProgressModal(false)
-      fetchGoals()
+      setSelectedFile(null)
+      setEvidenceFileName('')
+      setEvidenceFileUrl('')
+      setEvidenceFileSize('')
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      await fetchGoals()
     } catch (err: any) {
-      error('Progress update failed', err.message)
+      console.error('Progress update failed:', err)
+      error('Progress update failed', err.message || 'Could not save progress and evidence.')
+    } finally {
+      setIsUploading(false)
     }
   }
 
@@ -296,44 +391,33 @@ export const EmployeeGoals: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Page Header (Matching Reference UI) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.035em] text-slate-900 dark:text-white leading-[1.15]">
-            Performance Goals
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Define measurable OKRs, milestones & weighted commitments for {activeCycle.name}
-          </p>
-        </div>
+      {/* Top Action Bar */}
+      <div className="flex items-center justify-end gap-2 pb-1">
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="h-8.5 px-3.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-slate-100 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Create Goal</span>
+        </button>
 
-        <div className="flex items-center gap-2.5 shrink-0">
+        {goals.some((g) => g.status === 'draft' || g.status === 'returned') && (
           <button
             type="button"
-            onClick={openCreateModal}
-            className="h-10 sm:h-11 px-4 sm:px-5 rounded-xl bg-white hover:bg-slate-100 text-slate-900 dark:bg-white dark:hover:bg-slate-100 dark:text-black font-semibold text-xs sm:text-sm cursor-pointer inline-flex items-center gap-2 shadow-xs transition-all border border-slate-200 dark:border-white/10"
+            onClick={() => {
+              if (!validation.isValid) {
+                warning('Goal plan incomplete', validation.errors[0])
+              } else {
+                setShowSubmitConfirm(true)
+              }
+            }}
+            className="h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 text-slate-800 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all"
           >
-            <Plus className="w-4 h-4" />
-            <span>Create Goal</span>
+            <Send className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
+            <span>Submit for Approval</span>
           </button>
-
-          {goals.some((g) => g.status === 'draft' || g.status === 'returned') && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!validation.isValid) {
-                  warning('Goal plan incomplete', validation.errors[0])
-                } else {
-                  setShowSubmitConfirm(true)
-                }
-              }}
-              className="inline-flex items-center gap-2 h-10 sm:h-11 px-4 rounded-xl border border-slate-200 dark:border-white/12 bg-white dark:bg-white/[0.04] text-slate-700 dark:text-[#E6E9F2] hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-all font-medium text-xs cursor-pointer shadow-xs"
-            >
-              <Send className="w-3.5 h-3.5 text-indigo-600 dark:text-[#4FE3C1]" />
-              <span>Submit for Approval</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Goal Plan Balance Card (Matching Reference Screenshot) */}
@@ -342,17 +426,17 @@ export const EmployeeGoals: React.FC = () => {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-xs font-mono font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+              <span className="text-xs font-sans font-medium uppercase tracking-wider text-slate-500 dark:text-zinc-400">
                 GOAL PLAN BALANCE
               </span>
               {validation.isValid ? (
-                <span className="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full bg-indigo-50/90 text-indigo-700 dark:text-[#B7B1FF] border border-indigo-200/90 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 shadow-2xs font-semibold">
-                  <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-[#B7B1FF]" />
+                <span className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1 rounded-full bg-slate-100 text-slate-900 dark:bg-white/10 dark:text-zinc-100 border border-slate-200 dark:border-white/15 shadow-2xs font-semibold">
+                  <Check className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
                   <span>Ready to Submit</span>
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-xs font-mono px-3 py-1 rounded-full bg-amber-500/15 text-amber-700 dark:text-[#FFB454] border border-amber-500/30">
-                  <AlertCircle className="w-3.5 h-3.5 text-amber-600 dark:text-[#FFB454]" />
+                <span className="inline-flex items-center gap-1.5 text-xs font-sans px-3 py-1 rounded-full bg-slate-100 text-slate-600 dark:bg-white/5 dark:text-zinc-400 border border-slate-200 dark:border-white/10 font-medium">
+                  <AlertCircle className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
                   <span>Requirements Pending</span>
                 </span>
               )}
@@ -365,7 +449,7 @@ export const EmployeeGoals: React.FC = () => {
           {/* Metric Stat Blocks */}
           <div className="flex items-center gap-6 sm:gap-8 shrink-0">
             <div className="text-right">
-              <div className="text-[10px] sm:text-[11px] font-mono tracking-wider uppercase text-slate-500 dark:text-zinc-400">
+              <div className="text-[10px] sm:text-[11px] font-sans tracking-wider uppercase text-slate-500 dark:text-zinc-400">
                 ACTIVE GOALS
               </div>
               <div className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white mt-0.5">
@@ -376,14 +460,14 @@ export const EmployeeGoals: React.FC = () => {
             <div className="h-9 w-px bg-slate-200 dark:bg-white/10" />
 
             <div className="text-right">
-              <div className="text-[10px] sm:text-[11px] font-mono tracking-wider uppercase text-slate-500 dark:text-zinc-400">
+              <div className="text-[10px] sm:text-[11px] font-sans tracking-wider uppercase text-slate-500 dark:text-zinc-400">
                 TOTAL WEIGHT
               </div>
               <div
                 className={`text-xl sm:text-2xl font-bold mt-0.5 tabular-nums ${
                   totalWeight === 100
-                    ? 'text-indigo-600 dark:text-[#8B7CFF]'
-                    : 'text-amber-600 dark:text-[#FFB454]'
+                    ? 'text-slate-900 dark:text-white'
+                    : 'text-slate-500 dark:text-zinc-400'
                 }`}
               >
                 {totalWeight}% / 100%
@@ -403,7 +487,7 @@ export const EmployeeGoals: React.FC = () => {
                 style={{ width: `${Math.min(100, Math.max(0, totalWeight))}%` }}
               >
                 {goals.map((g, idx) => {
-                  const colors = ['bg-indigo-600 dark:bg-[#8B7CFF]', 'bg-slate-900 dark:bg-white', 'bg-slate-400 dark:bg-zinc-300', 'bg-slate-600 dark:bg-zinc-400', 'bg-slate-500 dark:bg-zinc-500']
+                  const colors = ['bg-slate-900 dark:bg-white', 'bg-slate-700 dark:bg-zinc-300', 'bg-slate-500 dark:bg-zinc-400', 'bg-slate-400 dark:bg-zinc-500', 'bg-slate-300 dark:bg-zinc-600']
                   const colorClass = colors[idx % colors.length]
 
                   return (
@@ -421,14 +505,14 @@ export const EmployeeGoals: React.FC = () => {
 
           {/* Legend Row */}
           {goals.length > 0 && (
-            <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-xs font-mono text-slate-600 dark:text-zinc-300 pt-1">
+            <div className="flex items-center gap-x-5 gap-y-2 flex-wrap text-xs font-sans text-slate-600 dark:text-zinc-300 pt-1">
               {goals.map((g, idx) => {
-                const colors = ['bg-indigo-600 dark:bg-[#8B7CFF]', 'bg-slate-900 dark:bg-white', 'bg-slate-400 dark:bg-zinc-300', 'bg-slate-600 dark:bg-zinc-400', 'bg-slate-500 dark:bg-zinc-500']
+                const colors = ['bg-slate-900 dark:bg-white', 'bg-slate-700 dark:bg-zinc-300', 'bg-slate-500 dark:bg-zinc-400', 'bg-slate-400 dark:bg-zinc-500', 'bg-slate-300 dark:bg-zinc-600']
                 const colorClass = colors[idx % colors.length]
 
                 return (
                   <div key={g.id || idx} className="flex items-center gap-2">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${colorClass}`} />
+                    <span className={`w-3 h-1.5 rounded-sm shrink-0 ${colorClass}`} />
                     <span className="truncate max-w-[210px] sm:max-w-[260px] text-slate-800 dark:text-zinc-200">
                       {g.title}
                     </span>
@@ -445,10 +529,10 @@ export const EmployeeGoals: React.FC = () => {
           {/* Bottom Validation Badges */}
           <div className="flex items-center gap-3 flex-wrap">
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono border font-semibold ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans border font-medium ${
                 goals.length >= 3 && goals.length <= 7
-                  ? 'border-indigo-200/90 bg-indigo-50/90 text-indigo-700 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF]'
-                  : 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-[#FFB454]'
+                  ? 'border-slate-300 bg-slate-100 text-slate-800 dark:border-white/15 dark:bg-white/10 dark:text-zinc-200'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400'
               }`}
             >
               <Check className="w-3.5 h-3.5" />
@@ -456,10 +540,10 @@ export const EmployeeGoals: React.FC = () => {
             </span>
 
             <span
-              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono border font-semibold ${
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans border font-medium ${
                 totalWeight === 100
-                  ? 'border-indigo-200/90 bg-indigo-50/90 text-indigo-700 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF]'
-                  : 'border-amber-500/30 bg-amber-500/15 text-amber-700 dark:text-[#FFB454]'
+                  ? 'border-slate-300 bg-slate-100 text-slate-800 dark:border-white/15 dark:bg-white/10 dark:text-zinc-200'
+                  : 'border-slate-200 bg-slate-50 text-slate-600 dark:border-white/10 dark:bg-white/5 dark:text-zinc-400'
               }`}
             >
               <Check className="w-3.5 h-3.5" />
@@ -469,44 +553,17 @@ export const EmployeeGoals: React.FC = () => {
 
           {/* Incomplete details if any */}
           {!validation.isValid && validation.errors.length > 0 && (
-            <div className="text-xs font-mono text-amber-700 dark:text-[#FFB454]">
+            <div className="text-xs font-sans text-slate-500 dark:text-zinc-400">
               {validation.errors[0]}
             </div>
           )}
         </div>
       </div>
 
-      {/* Filter and Search Bar Card (Matching Reference Screenshot) */}
-      <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md space-y-3.5">
-        {/* Top Search Input & Filter Button */}
-        <div className="flex items-center gap-3">
-          <div className="relative flex-1 flex items-center">
-            <Search className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-4 pointer-events-none" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search goals by title..."
-              className="w-full h-11 pl-11 pr-12 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-sm text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans"
-            />
-            <div className="absolute right-3.5 pointer-events-none px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/10 text-[11px] font-mono text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.06]">
-              /
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setStatusFilter('all')}
-            className="h-11 w-11 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.04] hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0"
-            title="Reset filters"
-          >
-            <Filter className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Status Filter Tabs Capsule */}
-        <div className="overflow-x-auto w-full sm:w-fit scrollbar-none">
+      {/* Search & Segmented Filter Bar (Single-Line, No Card Wrapper: Equal Heights & Balanced Widths) */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
+        {/* Left: Status Filter Capsule */}
+        <div className="overflow-x-auto scrollbar-none py-0.5">
           <RubberSegmentedControl
             options={[
               { value: 'all', label: 'All', count: goals.length },
@@ -536,6 +593,47 @@ export const EmployeeGoals: React.FC = () => {
             onChange={(val) => setStatusFilter(val as any)}
             size="sm"
           />
+        </div>
+
+        {/* Right: Compact Search Input (Matching h-8.5 height & rounded-full capsule geometry) */}
+        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+          <div className="relative w-full sm:w-56 md:w-64 flex items-center shrink-0">
+            <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search goals by title..."
+              className="w-full h-8.5 pl-8.5 pr-8 rounded-full bg-white dark:bg-[#18181b] border border-slate-200/90 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans shadow-2xs"
+            />
+            {search ? (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            ) : (
+              <kbd className="absolute right-2.5 pointer-events-none px-1.5 py-0.5 rounded border border-slate-200 dark:border-white/10 text-[10px] font-mono text-slate-400 dark:text-zinc-500 bg-slate-50 dark:bg-white/[0.06] hidden sm:inline-block">
+                /
+              </kbd>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => {
+              setStatusFilter('all')
+              setSearch('')
+            }}
+            className="h-8.5 w-8.5 rounded-full border border-slate-200/90 dark:border-white/10 bg-white dark:bg-[#18181b] hover:bg-slate-50 dark:hover:bg-zinc-800 text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-all flex items-center justify-center cursor-pointer shrink-0 shadow-2xs"
+            title="Reset filters"
+          >
+            <Filter className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
@@ -577,13 +675,13 @@ export const EmployeeGoals: React.FC = () => {
                     </span>
 
                     {/* Due Date */}
-                    <span className="text-xs font-mono text-slate-500 dark:text-zinc-400">
+                    <span className="text-xs font-sans text-slate-500 dark:text-zinc-400">
                       Due: {formatDate(g.dueDate)}
                     </span>
 
                     {/* Dynamic Urgency Status Pill */}
                     {dueStatus && (
-                      <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-full border ${dueStatus.badgeClass}`}>
+                      <span className={`text-[11px] font-sans px-2.5 py-0.5 rounded-full border ${dueStatus.badgeClass}`}>
                         {dueStatus.label}
                       </span>
                     )}
@@ -644,7 +742,7 @@ export const EmployeeGoals: React.FC = () => {
 
                 {/* Returned Comment Banner if returned */}
                 {g.status === 'returned' && g.returnReason && (
-                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs font-mono text-rose-600 dark:text-rose-400 space-y-1">
+                  <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-xs font-sans text-rose-600 dark:text-rose-400 space-y-1">
                     <div className="font-semibold flex items-center gap-1.5 text-rose-700 dark:text-rose-300">
                       <AlertCircle className="w-3.5 h-3.5" /> Manager Revision Feedback:
                     </div>
@@ -657,7 +755,7 @@ export const EmployeeGoals: React.FC = () => {
                   {/* Left Column: Metric Target, Giant Big Number, and Visual Slider Track with Glowing Knob */}
                   <div className="flex-1 min-w-0 pr-0 lg:pr-8">
                     {/* Metric Target Label */}
-                    <div className="text-xs font-mono text-slate-500 dark:text-zinc-400 tracking-tight">
+                    <div className="text-xs font-sans text-slate-500 dark:text-zinc-400 tracking-tight">
                       Metric: {g.metric} (Target: {g.target} {g.unit})
                     </div>
 
@@ -669,31 +767,31 @@ export const EmployeeGoals: React.FC = () => {
                       <span className="text-2xl font-bold text-slate-400 dark:text-zinc-500 ml-1 leading-none">
                         %
                       </span>
-                      <span className="text-xs font-mono font-medium text-slate-500 dark:text-zinc-400 ml-3.5">
+                      <span className="text-xs font-sans font-medium text-slate-500 dark:text-zinc-400 ml-3.5">
                         {g.progress >= 100 ? (
-                          <span className="text-indigo-600 dark:text-[#B7B1FF] font-semibold">Target achieved</span>
+                          <span className="text-slate-900 dark:text-white font-semibold">Target achieved</span>
                         ) : (
                           `${remainingToTarget}% to target`
                         )}
                       </span>
                     </div>
 
-                    {/* Visual Slider Track with Glowing Knob */}
+                    {/* Visual Slider Track with Knob */}
                     <div className="relative w-full pt-1">
                       <div className="w-full bg-slate-200/90 dark:bg-zinc-900 border border-slate-300/80 dark:border-zinc-800/90 rounded-full h-2.5 relative">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:via-[#6366f1] dark:to-[#4FE3C1] transition-all duration-500"
+                          className="h-full rounded-full bg-slate-900 dark:bg-white transition-all duration-500"
                           style={{ width: `${Math.min(100, Math.max(0, g.progress))}%` }}
                         />
-                        {/* Luminous Knob at current progress tip */}
+                        {/* Executive Knob at current progress tip */}
                         <div
-                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-white dark:bg-white border-2 border-slate-900 dark:border-zinc-950 shadow-[0_0_12px_rgba(139,124,255,0.7)] ring-2 ring-indigo-500/40 dark:ring-[#4FE3C1]/50 transition-all duration-500 pointer-events-none"
+                          className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white dark:bg-[#18181b] border-2 border-slate-900 dark:border-white shadow-2xs transition-all duration-500 pointer-events-none"
                           style={{ left: `${Math.min(100, Math.max(0, g.progress))}%` }}
                         />
                       </div>
 
                       {/* Milestone Scale Ticks */}
-                      <div className="flex justify-between text-[10px] font-mono text-slate-400 dark:text-zinc-500 pt-2 px-0.5 select-none">
+                      <div className="flex justify-between text-[10px] font-sans text-slate-400 dark:text-zinc-500 pt-2 px-0.5 select-none">
                         <span>0</span>
                         <span>25</span>
                         <span>50</span>
@@ -705,17 +803,25 @@ export const EmployeeGoals: React.FC = () => {
 
                   {/* Right Column: Checkpoint Stats */}
                   <div className="lg:border-l border-slate-200 dark:border-white/[0.08] lg:pl-8 lg:min-w-[220px] flex flex-col justify-end pt-3 lg:pt-0">
-                    <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-widest text-slate-400 dark:text-zinc-500 font-bold block mb-1">
+                    <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-widest text-slate-400 dark:text-zinc-500 font-bold block mb-1">
                       PROGRESS UPDATES LOGGED
                     </span>
                     <div className="flex items-baseline gap-2">
-                      <span className="text-3xl sm:text-4xl font-extrabold font-mono text-slate-900 dark:text-white leading-none">
+                      <span className="text-3xl sm:text-4xl font-extrabold font-sans text-slate-900 dark:text-white leading-none">
                         {g.progressHistory?.length || 0}
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-zinc-400 font-mono">
+                      <span className="text-xs text-slate-500 dark:text-zinc-400 font-sans">
                         {(g.progressHistory?.length || 0) === 1 ? 'checkpoint recorded' : 'checkpoints recorded'}
                       </span>
                     </div>
+
+                    {(g.evidenceFileName || g.progressHistory?.[0]?.evidenceFileName) && (
+                      <div className="mt-2 pt-2 border-t border-slate-100 dark:border-white/[0.06] flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-zinc-300 min-w-0" title={g.evidenceFileName || g.progressHistory?.[0]?.evidenceFileName}>
+                        <FileText className="w-3.5 h-3.5 text-rose-500 shrink-0" />
+                        <span className="truncate font-medium">{g.evidenceFileName || g.progressHistory?.[0]?.evidenceFileName}</span>
+                      </div>
+                    )}
+
                     <Link
                       to={`/employee/goals/${g.id}`}
                       className="text-xs font-semibold text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-zinc-200 inline-flex items-center gap-1 mt-2.5 transition-colors group"
@@ -731,6 +837,13 @@ export const EmployeeGoals: React.FC = () => {
         </div>
       )}
 
+      {/* Results count under cards */}
+      {filteredGoals.length > 0 && (
+        <div className="flex items-center justify-end pt-1 pb-1 text-xs text-slate-500 dark:text-zinc-400 font-sans">
+          <span>Showing {filteredGoals.length} of {goals.length} strategic targets</span>
+        </div>
+      )}
+
       {/* Goal Create/Edit Modal */}
       <Modal
         isOpen={showGoalModal}
@@ -738,7 +851,6 @@ export const EmployeeGoals: React.FC = () => {
         title={editingGoal ? 'Edit Performance Goal' : 'Define New Performance Goal'}
         subtitle={`Goal will be part of ${activeCycle.name}`}
         maxWidth="lg"
-        overflowVisible={true}
       >
         <form onSubmit={handleSaveGoal} className="space-y-4 text-xs">
           <div>
@@ -854,11 +966,11 @@ export const EmployeeGoals: React.FC = () => {
         subtitle={progressGoal?.title}
         maxWidth="md"
       >
-        <form onSubmit={handleSaveProgress} className="space-y-4 text-xs">
+        <form onSubmit={handleSaveProgress} className="space-y-4 text-xs font-sans">
           <div>
             <div className="flex items-center justify-between mb-1.5">
               <label className="font-semibold text-slate-700 dark:text-zinc-300">Completion Percentage</label>
-              <span className="font-mono font-bold text-sm text-indigo-600 dark:text-indigo-400">{progressPercentage}%</span>
+              <span className="font-sans font-bold text-sm text-slate-900 dark:text-white">{progressPercentage}%</span>
             </div>
             <input
               type="range"
@@ -867,61 +979,133 @@ export const EmployeeGoals: React.FC = () => {
               step="5"
               value={progressPercentage}
               onChange={(e) => setProgressPercentage(parseInt(e.target.value))}
-              className="w-full h-2 bg-slate-200 dark:bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+              className="rating-slider w-full h-2.5 bg-slate-200 dark:bg-zinc-800 rounded-full appearance-none cursor-pointer"
             />
+            <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 pt-1">
+              <span>0% Not Started</span>
+              <span>50% In Progress</span>
+              <span>100% Completed</span>
+            </div>
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Progress Notes & Milestones Achieved</label>
+            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
+              Progress Notes & Milestones Achieved *
+            </label>
             <textarea
               rows={3}
               required
               value={progressNote}
               onChange={(e) => setProgressNote(e.target.value)}
               placeholder="Describe what was delivered, hurdles cleared, or metrics verified..."
-              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
+              className="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-[#18181b] text-slate-900 dark:text-zinc-100 text-xs"
             />
           </div>
 
           <div>
-            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
-              Evidence Document / Snapshot (Optional)
+            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1.5">
+              Evidence Document / Snapshot (Upload from Device)
             </label>
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                value={evidenceFileName}
-                onChange={(e) => setEvidenceFileName(e.target.value)}
-                placeholder="e.g. lighthouse_audit_q3.pdf or dashboard_snapshot.png"
-                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
-              />
-              <button
-                type="button"
-                onClick={() => setEvidenceFileName('metric_telemetry_snapshot.pdf')}
-                className="px-2.5 py-2 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 rounded-lg text-slate-600 dark:text-zinc-300 flex-shrink-0 cursor-pointer"
-                title="Use sample filename"
+
+            {/* Hidden native file input for local device file picker */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".pdf,.png,.jpg,.jpeg,.webp,.doc,.docx"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+
+            {evidenceFileName ? (
+              <div className="p-3.5 rounded-xl border border-slate-200 dark:border-white/10 bg-slate-50/80 dark:bg-white/[0.03] flex items-center justify-between gap-3 shadow-2xs">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center shrink-0">
+                    <FileText className="w-5 h-5" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-xs text-slate-900 dark:text-white truncate">
+                      {evidenceFileName}
+                    </div>
+                    <div className="text-[11px] text-slate-500 dark:text-zinc-400 flex items-center gap-2 mt-0.5">
+                      <span>{evidenceFileSize || 'Local document'}</span>
+                      <span>•</span>
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">Ready to attach</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-2.5 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-zinc-800 hover:bg-slate-50 dark:hover:bg-zinc-700 text-xs font-medium text-slate-700 dark:text-zinc-200 transition-colors cursor-pointer"
+                    title="Choose a different file"
+                  >
+                    Change
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEvidenceFileName('')
+                      setEvidenceFileUrl('')
+                      setEvidenceFileSize('')
+                      if (fileInputRef.current) fileInputRef.current.value = ''
+                    }}
+                    className="p-1.5 rounded-lg hover:bg-slate-200/80 dark:hover:bg-zinc-700 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                    title="Remove attached file"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl p-4 sm:p-5 text-center cursor-pointer transition-all ${
+                  isDragging
+                    ? 'border-slate-900 dark:border-white bg-slate-100/90 dark:bg-white/[0.08] scale-[1.01]'
+                    : 'border-slate-300 dark:border-zinc-700 bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.05] hover:border-slate-400 dark:hover:border-zinc-500'
+                }`}
               >
-                <FileUp className="w-4 h-4" />
-              </button>
-            </div>
-            <span className="text-[11px] text-slate-400 dark:text-zinc-500 mt-1 block">
-              In preview mode, file references are logged in the goal audit history.
-            </span>
+                <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-white/10 text-slate-700 dark:text-zinc-300 flex items-center justify-center mx-auto mb-2">
+                  <FileUp className="w-4 h-4" />
+                </div>
+                <div className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
+                  Click to browse from your device or drag & drop file here
+                </div>
+                <div className="text-[11px] text-slate-400 dark:text-zinc-500 mt-1">
+                  Upload local PDF audit report, benchmark document, or screenshot (up to 15MB)
+                </div>
+              </div>
+            )}
+
+            {progressGoal?.evidenceFileName && !evidenceFileName && (
+              <div className="mt-2.5 p-2.5 rounded-xl bg-slate-100 dark:bg-white/[0.04] text-[11px] text-slate-600 dark:text-zinc-400 flex items-center gap-2 border border-slate-200/60 dark:border-white/[0.06]">
+                <FileText className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <span className="truncate">
+                  Previous evidence on file: <strong className="text-slate-800 dark:text-zinc-200 font-semibold">{progressGoal.evidenceFileName}</strong>. Upload a new file above to update it.
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2">
             <button
               type="button"
               onClick={() => setShowProgressModal(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors"
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold transition-colors shadow-xs cursor-pointer"
+              disabled={isUploading}
+              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Record Checkpoint
+              {isUploading ? 'Uploading Evidence...' : 'Record Checkpoint'}
             </button>
           </div>
         </form>

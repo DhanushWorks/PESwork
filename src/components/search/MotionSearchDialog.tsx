@@ -180,7 +180,7 @@ export const MotionSearchDialog: React.FC<MotionSearchDialogProps> = ({ isOpen, 
               <Command className="w-3.5 h-3.5" />
             </span>
             <span className="text-xs font-bold text-slate-900 tracking-tight">PerformIQ Motion Search</span>
-            <span className="text-[10px] uppercase font-mono px-2 py-0.5 bg-slate-200 text-slate-700 rounded font-semibold ml-1">
+            <span className="text-[10px] uppercase font-sans px-2 py-0.5 bg-slate-200 text-slate-700 rounded font-semibold ml-1">
               ESC to close
             </span>
           </div>
@@ -231,9 +231,8 @@ export const MotionSearchDialog: React.FC<MotionSearchDialogProps> = ({ isOpen, 
           <div className="p-6 sm:p-8 bg-[#F4F4F4] flex flex-col items-center justify-between min-h-[380px] select-none relative overflow-hidden">
             {/* Timeline Progress Bar & Status Pill */}
             <div className="w-full flex items-center justify-between mb-4 z-20">
-              <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/90 backdrop-blur-xs rounded-full border border-slate-200 shadow-2xs text-[11px] text-slate-700 font-medium">
-                <span className="w-2 h-2 rounded-full bg-indigo-500 animate-pulse" />
-                <span className="font-mono font-bold text-slate-900">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/90 backdrop-blur-xs rounded-full border border-slate-200 shadow-2xs text-[11px] text-slate-700 font-medium">
+                <span className="font-sans font-bold text-slate-900">
                   {timelineSec.toFixed(2)}s
                 </span>
                 <span className="text-slate-400">/ {TOTAL_DURATION.toFixed(1)}s</span>
@@ -318,7 +317,7 @@ export const MotionSearchDialog: React.FC<MotionSearchDialogProps> = ({ isOpen, 
                   style={{ width: `${(timelineSec / TOTAL_DURATION) * 100}%` }}
                 />
               </div>
-              <div className="flex justify-between items-center text-[10px] text-slate-400 font-mono mt-1 px-0.5">
+              <div className="flex justify-between items-center text-[10px] text-slate-400 font-sans mt-1 px-0.5">
                 <span>00:00 Initial</span>
                 <span>00:02 Reposition & Clear</span>
                 <span>00:04 Settle</span>
@@ -409,10 +408,10 @@ export const MotionSearchDialog: React.FC<MotionSearchDialogProps> = ({ isOpen, 
         <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono shadow-2xs">ESC</kbd> to exit
+              <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-sans shadow-2xs">ESC</kbd> to exit
             </span>
             <span className="flex items-center gap-1">
-              <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-mono shadow-2xs">⌘K</kbd> quick shortcut
+              <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-sans shadow-2xs">⌘K</kbd> quick shortcut
             </span>
           </div>
 

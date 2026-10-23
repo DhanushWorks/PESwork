@@ -67,28 +67,28 @@ const getCourseMetadata = (crs: RecommendedCourse) => {
   const t = crs.title.toLowerCase()
   if (t.includes('architecture') || t.includes('distributed')) {
     return {
-      description: 'Distributed consensus, fault-tolerant clusters, multi-region event streams & zero-downtime ledger migration patterns.',
+      description: 'Distributed consensus, fault tolerance, and event streams.',
       tag: 'System Design',
       progress: crs.status === 'completed' ? 100 : crs.status === 'enrolled' ? 65 : 0,
-      modules: '8 of 8 Modules',
-      icon: <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-[#4FE3C1]" />,
+      modules: '8 Modules',
+      icon: <Sparkles className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />,
     }
   }
   if (t.includes('communication') || t.includes('leadership') || t.includes('strategic')) {
     return {
-      description: 'Executive narrative framing, RFC technical consensus, cross-functional alignment & navigating high-stakes technical debate.',
-      tag: 'Executive Presence',
+      description: 'Technical consensus, RFC framing, and stakeholder alignment.',
+      tag: 'Leadership',
       progress: crs.status === 'completed' ? 100 : crs.status === 'enrolled' ? 40 : 0,
       modules: '5 Modules',
-      icon: <Compass className="w-3.5 h-3.5 text-indigo-500" />,
+      icon: <Compass className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />,
     }
   }
   return {
-    description: 'Browser rendering engine profiling, memory leak diagnostics, CLS elimination & multi-threaded Web Worker offloading.',
-    tag: 'Web Performance',
+    description: 'Browser profiling, memory optimization, and worker threading.',
+    tag: 'Performance',
     progress: crs.status === 'completed' ? 100 : crs.status === 'enrolled' ? 55 : 0,
     modules: '4 Modules',
-    icon: <Laptop className="w-3.5 h-3.5 text-amber-500" />,
+    icon: <Laptop className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />,
   }
 }
 
@@ -163,7 +163,7 @@ export const EmployeeDevelopment: React.FC = () => {
     return (
       <div className="py-24 text-center">
         <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-        <p className="text-xs text-slate-400 dark:text-[#8D96AA] font-mono">Decrypting career growth ledger...</p>
+        <p className="text-xs text-slate-400 dark:text-zinc-300 font-mono">Decrypting career growth ledger...</p>
       </div>
     )
   }
@@ -181,48 +181,24 @@ export const EmployeeDevelopment: React.FC = () => {
   })
 
   return (
-    <div className="space-y-7 w-full pb-16 font-sans">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="heading-premium text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.04em] text-slate-900 dark:text-white leading-[1.15]">
-            Development & Growth Plan
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Competency matrix, targeted skill roadmaps & verified professional learning milestones
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => setShowAddModal(true)}
-          className="premium-glow-btn h-11 px-5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2 self-start sm:self-auto shrink-0 shadow-xs"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Growth Action</span>
-        </button>
-      </div>
-
-      {/* SECTION 1: Skills Matrix (Hero Card with Conic Glow) */}
+    <div className="space-y-5 w-full pb-16 font-sans">
+      {/* SECTION 1: Skills Matrix */}
       <div className="dark-glass-card conic-border-glow rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-[#8B7CFF] flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0">
               <TrendingUp className="w-4 h-4" />
             </div>
             <div>
-              <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-[#8B7CFF]">
-                CAPABILITY ROADMAP
-              </div>
-              <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white mt-0.5">
-                Technical & Leadership Capabilities Matrix
+              <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
+                Skills Matrix
               </h2>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">
-              <span>{plan?.skills?.length || 0} Core Competencies</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">
+              <span>{plan?.skills?.length || 0} Competencies</span>
             </span>
           </div>
         </div>
@@ -241,7 +217,7 @@ export const EmployeeDevelopment: React.FC = () => {
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-1">
-                    <span className="text-[10px] font-mono uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
+                    <span className="text-[10px] font-sans uppercase tracking-wider font-semibold text-slate-400 dark:text-zinc-500">
                       Competency {String(i + 1).padStart(2, '0')}
                     </span>
                     <div className="font-display font-bold text-sm sm:text-[15px] tracking-[-0.015em] text-slate-900 dark:text-white leading-snug">
@@ -249,19 +225,19 @@ export const EmployeeDevelopment: React.FC = () => {
                     </div>
                   </div>
 
-                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-50 dark:bg-[#8B7CFF]/10 text-indigo-700 dark:text-[#8B7CFF] border border-indigo-200/80 dark:border-[#8B7CFF]/25 font-mono text-[11px] font-bold shrink-0">
+                  <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-800 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 font-sans text-[11px] font-semibold shrink-0">
                     L{skill.currentLevel} → L{skill.targetLevel}
                     {delta > 0 && <span className="text-[10px] opacity-80">(+{delta})</span>}
                   </span>
                 </div>
 
                 {/* Level Descriptions */}
-                <div className="flex items-center justify-between text-xs font-mono">
+                <div className="flex items-center justify-between text-xs font-sans">
                   <span className="text-slate-600 dark:text-zinc-400">
                     Current: <strong className="text-slate-900 dark:text-white">{currentLevelName}</strong>
                   </span>
                   <span className="text-slate-500 dark:text-zinc-400">
-                    Target: <strong className="text-indigo-600 dark:text-[#8B7CFF]">{targetLevelName}</strong>
+                    Target: <strong className="text-slate-900 dark:text-white">{targetLevelName}</strong>
                   </span>
                 </div>
 
@@ -277,9 +253,9 @@ export const EmployeeDevelopment: React.FC = () => {
                           key={level}
                           className={`h-2 rounded-full transition-all duration-300 relative ${
                             isCurrent
-                              ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:to-[#4FE3C1]'
+                              ? 'bg-indigo-600 dark:bg-indigo-500'
                               : isTarget
-                              ? 'bg-indigo-300/40 dark:bg-[#8B7CFF]/25 border border-dashed border-indigo-500/60 dark:border-[#8B7CFF]/50'
+                              ? 'bg-indigo-100 dark:bg-indigo-950/40 border border-dashed border-indigo-400 dark:border-indigo-600'
                               : 'bg-slate-200 dark:bg-white/[0.08]'
                           }`}
                           title={`Level ${level}: ${getLevelDescription(level)}`}
@@ -287,7 +263,7 @@ export const EmployeeDevelopment: React.FC = () => {
                       )
                     })}
                   </div>
-                  <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 dark:text-zinc-500">
+                  <div className="flex items-center justify-between text-[10px] font-sans text-slate-400 dark:text-zinc-500">
                     <span>L1 · Baseline</span>
                     <span>L3 · Proficient</span>
                     <span>L5 · Mastery</span>
@@ -299,31 +275,23 @@ export const EmployeeDevelopment: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 2: Agreed Development Commitments (High-End Luxury Overhaul) */}
+      {/* SECTION 2: Development Commitments */}
       <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         {/* Top Header Row */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/90 text-indigo-600 dark:bg-white/[0.04] dark:border-white/10 dark:text-[#8B7CFF] flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0 shadow-2xs">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
-                  CAREER COMMITMENTS · NEGOTIATED MILESTONES
-                </span>
-              </div>
-              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white mt-0.5">
-                Agreed Development Commitments
+              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
+                Development Commitments
               </h2>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                Target milestones negotiated with engineering management. Click any item to progress its status.
-              </p>
             </div>
           </div>
 
-          {/* Rubber Segmented Control Filter Tabs */}
-          <div className="flex items-center gap-3 self-start lg:self-center shrink-0">
+          {/* Rubber Segmented Control Filter Tabs & Add Action */}
+          <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-center shrink-0">
             <RubberSegmentedControl
               options={[
                 { value: 'all', label: 'All', count: allActions.length },
@@ -342,22 +310,31 @@ export const EmployeeDevelopment: React.FC = () => {
               onChange={(val) => setActionFilter(val as any)}
               size="sm"
             />
+
+            <button
+              type="button"
+              onClick={() => setShowAddModal(true)}
+              className="h-8.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Action</span>
+            </button>
           </div>
         </div>
 
         {/* Milestone Execution Summary Pill & Progress Track */}
         {allActions.length > 0 && (
           <div className="p-4 rounded-2xl bg-slate-50/80 dark:bg-white/[0.025] border border-slate-200/80 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2.5 font-mono">
-              <span className="font-bold text-slate-900 dark:text-white">
-                Execution Velocity:
+            <div className="flex items-center gap-2.5 font-sans">
+              <span className="font-semibold text-slate-900 dark:text-white">
+                Progress:
               </span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-50/90 text-indigo-700 dark:text-[#B7B1FF] font-semibold text-[11px] border border-indigo-200/90 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15">
-                {completedCount} of {allActions.length} Completed ({pctComplete}%)
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-semibold text-[11px] border border-emerald-200/80 dark:border-emerald-800/40">
+                {completedCount} of {allActions.length} ({pctComplete}%)
               </span>
               {inProgressCount > 0 && (
                 <span className="text-slate-500 dark:text-zinc-400 text-[11px] hidden md:inline">
-                  · {inProgressCount} active in progress
+                  · {inProgressCount} in progress
                 </span>
               )}
             </div>
@@ -366,12 +343,12 @@ export const EmployeeDevelopment: React.FC = () => {
             <div className="w-full sm:w-64 h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-white/[0.08] flex items-center p-0.5 gap-0.5">
               <div
                 style={{ width: `${(completedCount / allActions.length) * 100}%` }}
-                className="h-full rounded-full bg-indigo-600 dark:bg-[#8B7CFF] transition-all duration-500"
+                className="h-full rounded-full bg-emerald-600 dark:bg-emerald-500 transition-all duration-500"
                 title={`Completed: ${completedCount}`}
               />
               <div
                 style={{ width: `${(inProgressCount / allActions.length) * 100}%` }}
-                className="h-full rounded-full bg-indigo-500 dark:bg-[#8B7CFF] transition-all duration-500"
+                className="h-full rounded-full bg-indigo-600 dark:bg-indigo-500 transition-all duration-500"
                 title={`In Progress: ${inProgressCount}`}
               />
               <div
@@ -401,9 +378,9 @@ export const EmployeeDevelopment: React.FC = () => {
                   onClick={() => handleToggleStatus(action)}
                   className={`group relative rounded-2xl p-4.5 sm:p-5 border transition-all duration-200 cursor-pointer flex flex-col sm:flex-row sm:items-center justify-between gap-4 select-none ${
                     isCompleted
-                      ? 'bg-indigo-50/70 dark:bg-emerald-500/[0.08] border-indigo-200/90 dark:border-emerald-500/30 hover:border-slate-300 dark:hover:border-emerald-500/50 hover:bg-indigo-50 dark:hover:bg-emerald-500/[0.12] text-slate-800 dark:text-[#E6E9F2] shadow-2xs'
+                      ? 'bg-slate-50/80 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300'
                       : isInProgress
-                      ? 'bg-indigo-500/[0.04] dark:bg-[#8B7CFF]/[0.09] border-[#8B7CFF]/35 dark:border-[#8B7CFF]/35 hover:border-slate-300 hover:bg-indigo-500/[0.07] dark:hover:bg-[#8B7CFF]/[0.14] text-slate-900 dark:text-[#F0F3FA] shadow-2xs'
+                      ? 'bg-white dark:bg-zinc-900 border-indigo-200 dark:border-zinc-700 hover:border-indigo-300 dark:hover:border-zinc-600 text-slate-900 dark:text-white shadow-2xs'
                       : 'bg-white dark:bg-white/[0.02] border-slate-200/90 dark:border-white/[0.09] hover:border-slate-300 dark:hover:border-white/20 hover:bg-slate-50/80 dark:hover:bg-white/[0.04] text-slate-900 dark:text-white shadow-2xs'
                   }`}
                   role="button"
@@ -414,7 +391,7 @@ export const EmployeeDevelopment: React.FC = () => {
                       handleToggleStatus(action)
                     }
                   }}
-                  title="Click to cycle status (Not Started → In Progress → Completed)"
+                  title="Click to cycle status"
                 >
                   {/* Left Column: Interactive Checkbox / Glyph + Content */}
                   <div className="flex items-start sm:items-center gap-3.5 min-w-0">
@@ -422,16 +399,16 @@ export const EmployeeDevelopment: React.FC = () => {
                     <div
                       className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 transition-all duration-200 ${
                         isCompleted
-                          ? 'bg-indigo-600 text-white shadow-xs shadow-indigo-500/30 dark:bg-emerald-500 dark:shadow-emerald-500/30'
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
                           : isInProgress
-                          ? 'bg-indigo-500/20 text-[#8B7CFF] border border-[#8B7CFF]/40 shadow-xs'
+                          ? 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/40 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/50 shadow-xs'
                           : 'border-2 border-slate-300 dark:border-white/25 group-hover:border-slate-400 dark:group-hover:border-white/50 text-transparent'
                       }`}
                     >
                       {isCompleted ? (
                         <Check className="w-4 h-4 stroke-[3]" />
                       ) : isInProgress ? (
-                        <span className="w-2 h-2 rounded-full bg-[#8B7CFF] live-dot-pulse" />
+                        <div className="w-2 h-2 rounded-xs bg-indigo-600 dark:bg-indigo-400" />
                       ) : (
                         <Check className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-60 transition-opacity" />
                       )}
@@ -443,7 +420,7 @@ export const EmployeeDevelopment: React.FC = () => {
                         <span
                           className={`font-display font-bold text-sm sm:text-[15.5px] tracking-[-0.015em] transition-colors leading-snug ${
                             isCompleted
-                              ? 'line-through decoration-indigo-400/50 dark:decoration-emerald-400/40 text-slate-500 dark:text-zinc-400'
+                              ? 'line-through decoration-slate-400 text-slate-500 dark:text-zinc-400'
                               : 'text-slate-900 dark:text-white'
                           }`}
                         >
@@ -452,7 +429,7 @@ export const EmployeeDevelopment: React.FC = () => {
                       </div>
 
                       {/* Meta Pill Row */}
-                      <div className="flex items-center gap-2 flex-wrap text-xs font-mono">
+                      <div className="flex items-center gap-2 flex-wrap text-xs font-sans">
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/10 text-slate-600 dark:text-zinc-300 text-[11px] font-medium">
                           <Calendar className="w-3 h-3 text-slate-400 dark:text-zinc-400" />
                           <span>Target: {formatDate(action.targetDate)}</span>
@@ -463,13 +440,13 @@ export const EmployeeDevelopment: React.FC = () => {
                         </span>
 
                         {isCompleted && (
-                          <span className="text-[11px] font-medium text-indigo-600 dark:text-[#B7B1FF] hidden md:inline">
-                            · Verified on schedule
+                          <span className="text-[11px] font-medium text-emerald-700 dark:text-emerald-400 hidden md:inline">
+                            · Completed
                           </span>
                         )}
                         {isInProgress && (
-                          <span className="text-[11px] font-medium text-indigo-600 dark:text-[#8B7CFF] hidden md:inline">
-                            · Active Sprint Commitment
+                          <span className="text-[11px] font-medium text-indigo-700 dark:text-indigo-400 hidden md:inline">
+                            · In progress
                           </span>
                         )}
                       </div>
@@ -479,31 +456,28 @@ export const EmployeeDevelopment: React.FC = () => {
                   {/* Right Column: Status Capsule & Hover Action Cue */}
                   <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-200/60 dark:border-white/10">
                     <span
-                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase tracking-wider border shadow-2xs ${
+                      className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-semibold border shadow-2xs ${
                         isCompleted
-                          ? 'bg-indigo-50/90 text-indigo-700 dark:border-[#8B7CFF]/30 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF] border-indigo-200/90'
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50'
                           : isInProgress
-                          ? 'bg-indigo-500/15 text-indigo-700 dark:text-[#8B7CFF] border-indigo-500/35'
+                          ? 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700'
                           : 'bg-slate-100 dark:bg-white/[0.06] text-slate-600 dark:text-zinc-400 border-slate-200 dark:border-white/10'
                       }`}
                     >
                       {isCompleted ? (
                         <>
                           <Check className="w-3 h-3 stroke-[2.5]" />
-                          <span>COMPLETED</span>
+                          <span>Completed</span>
                         </>
                       ) : isInProgress ? (
-                        <>
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#8B7CFF] live-dot-pulse" />
-                          <span>IN PROGRESS</span>
-                        </>
+                        <span>In Progress</span>
                       ) : (
-                        <span>NOT STARTED</span>
+                        <span>Not Started</span>
                       )}
                     </span>
 
-                    <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 group-hover:text-slate-700 dark:group-hover:text-zinc-300 transition-colors flex items-center gap-1">
-                      <span>Click to toggle</span>
+                    <span className="text-[11px] font-sans text-slate-400 dark:text-zinc-500 group-hover:text-slate-700 dark:group-hover:text-zinc-300 transition-colors flex items-center gap-1">
+                      <span>Toggle</span>
                       <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
@@ -514,30 +488,24 @@ export const EmployeeDevelopment: React.FC = () => {
         </div>
       </div>
 
-      {/* SECTION 3: Curated Leadership & Technical Coursework (Executive Academy Overhaul) */}
+      {/* SECTION 3: Recommended Courses */}
       <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-[#8B7CFF] flex items-center justify-center shrink-0 shadow-2xs">
+            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0 shadow-2xs">
               <GraduationCap className="w-5 h-5" />
             </div>
             <div>
-              <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-[0.08em] font-bold text-[#8B7CFF]">
-                EXECUTIVE LEARNING & ACADEMY
-              </div>
-              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white mt-0.5">
-                Curated Leadership & Technical Coursework
+              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
+                Recommended Courses
               </h2>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                High-impact curricula curated for staff and principal engineering promotion trajectories
-              </p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">
-              <BookOpen className="w-3.5 h-3.5 text-[#8B7CFF]" />
-              <span>3 Curated Tracks · 26 Total Hours</span>
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">
+              <BookOpen className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+              <span>3 Tracks · 26 Hours</span>
             </span>
           </div>
         </div>
@@ -583,10 +551,10 @@ export const EmployeeDevelopment: React.FC = () => {
 
                 {/* Domain Pill & Module Count */}
                 <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-white/[0.06]">
-                  <span className="text-[10.5px] font-mono font-semibold px-2 py-0.5 rounded bg-indigo-50 dark:bg-[#8B7CFF]/10 text-indigo-700 dark:text-[#8B7CFF] border border-indigo-200/70 dark:border-[#8B7CFF]/20">
+                  <span className="text-[10.5px] font-sans font-medium px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-700">
                     {meta.tag}
                   </span>
-                  <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500">
+                  <span className="text-[11px] font-sans text-slate-400 dark:text-zinc-500">
                     {meta.modules}
                   </span>
                 </div>
@@ -597,25 +565,25 @@ export const EmployeeDevelopment: React.FC = () => {
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         isCompleted
-                          ? 'bg-indigo-600 dark:bg-[#8B7CFF]'
+                          ? 'bg-emerald-600 dark:bg-emerald-500'
                           : isEnrolled
-                          ? 'bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:to-[#4FE3C1]'
+                          ? 'bg-indigo-600 dark:bg-indigo-500'
                           : 'bg-slate-300 dark:bg-white/20'
                       }`}
                       style={{ width: `${meta.progress}%` }}
                     />
                   </div>
 
-                  <div className="flex items-center justify-between text-xs font-mono">
+                  <div className="flex items-center justify-between text-xs font-sans">
                     <span className="text-[11px] text-slate-500 dark:text-zinc-400">
                       Progress
                     </span>
                     <span
                       className={`text-[11px] font-bold ${
                         isCompleted
-                          ? 'text-indigo-600 dark:text-[#8B7CFF]'
+                          ? 'text-emerald-700 dark:text-emerald-400'
                           : isEnrolled
-                          ? 'text-indigo-600 dark:text-[#8B7CFF]'
+                          ? 'text-indigo-600 dark:text-indigo-400'
                           : 'text-slate-500 dark:text-zinc-400'
                       }`}
                     >
@@ -627,7 +595,7 @@ export const EmployeeDevelopment: React.FC = () => {
                 {/* Bottom Action Trigger */}
                 <div className="pt-2">
                   {isCompleted ? (
-                    <div className="w-full py-2 px-3 rounded-xl bg-indigo-50 border border-indigo-200/90 text-indigo-700 dark:bg-[#8B7CFF]/15 dark:text-[#B7B1FF] dark:border-[#8B7CFF]/30 font-mono text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs">
+                    <div className="w-full py-2 px-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50 font-sans text-xs font-semibold flex items-center justify-center gap-1.5 shadow-2xs">
                       <Award className="w-3.5 h-3.5" />
                       <span>Certified · View Credential</span>
                     </div>
@@ -641,7 +609,7 @@ export const EmployeeDevelopment: React.FC = () => {
                       className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-black dark:hover:bg-slate-100 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                     >
                       <PlayCircle className="w-3.5 h-3.5" />
-                      <span>Resume Curriculum</span>
+                      <span>Resume Track</span>
                       <ArrowRight className="w-3.5 h-3.5" />
                     </button>
                   ) : (
@@ -669,13 +637,12 @@ export const EmployeeDevelopment: React.FC = () => {
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         title="Add Growth Milestone"
-        subtitle="Agreed development commitment with engineering manager"
         maxWidth="md"
         overflowVisible={true}
       >
         <form onSubmit={handleAddAction} className="space-y-4 text-xs font-sans">
           <div>
-            <label className="font-semibold text-slate-700 dark:text-[#C5CEE0] block mb-1">
+            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
               Growth Milestone Title *
             </label>
             <input
@@ -683,8 +650,8 @@ export const EmployeeDevelopment: React.FC = () => {
               required
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              placeholder="e.g. Lead architecture guild review on micro-frontends"
-              className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-[#8B7CFF] bg-white dark:bg-[#18181b] text-slate-900 dark:text-[#F0F3FA] placeholder:text-slate-400 dark:placeholder:text-[#8D96AA] text-xs font-sans"
+              placeholder="e.g. Lead architecture review on micro-frontends"
+              className="w-full h-10 px-3 rounded-xl border border-slate-300 dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-[#18181b] text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-xs font-sans"
             />
           </div>
 
@@ -701,7 +668,7 @@ export const EmployeeDevelopment: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowAddModal(false)}
-              className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-[#8D96AA] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer text-xs font-medium"
+              className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer text-xs font-medium"
             >
               Cancel
             </button>

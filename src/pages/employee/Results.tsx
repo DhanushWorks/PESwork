@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { resultService } from '../../services'
-import { EvaluationResult, ReviewCycle } from '../../types'
+import { resultService, reviewService } from '../../services'
+import { EvaluationResult, ReviewCycle, ManagerReview, SelfReview, CycleStage } from '../../types'
 import { StageStepper } from '../../components/ui/StageStepper'
 import { RatingBadge } from '../../components/ui/Badge'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
-import { formatDate, formatDateTime } from '../../lib/formatters'
+import { formatDate, formatDateTime, STAGE_ORDER } from '../../lib/formatters'
 import {
   AlertTriangle,
   Award,
@@ -27,6 +27,8 @@ export const EmployeeResults: React.FC = () => {
   const [isReleased, setIsReleased] = useState(false)
   const [result, setResult] = useState<EvaluationResult | null>(null)
   const [history, setHistory] = useState<Array<{ cycle: ReviewCycle; result: EvaluationResult }>>([])
+  const [managerReview, setManagerReview] = useState<ManagerReview | null>(null)
+  const [selfReview, setSelfReview] = useState<SelfReview | null>(null)
 
   // Acknowledge & Dispute state
   const [showAcknowledgeConfirm, setShowAcknowledgeConfirm] = useState(false)
@@ -37,7 +39,13 @@ export const EmployeeResults: React.FC = () => {
   const fetchResults = async () => {
     setLoading(true)
     try {
-      const resView = await resultService.getMyResults(currentUser.id, activeCycle.id)
+      const [resView, mr, sr] = await Promise.all([
+        resultService.getMyResults(currentUser.id, activeCycle.id),
+        reviewService.getManagerReview(currentUser.id, activeCycle.id),
+        reviewService.getSelfReview(currentUser.id, activeCycle.id),
+      ])
+      setManagerReview(mr)
+      setSelfReview(sr)
       if (resView && resView.isReleased) {
         setIsReleased(true)
         setResult(resView.result)
@@ -100,26 +108,38 @@ export const EmployeeResults: React.FC = () => {
     }
   }
 
+  const isManagerReviewSubmitted = managerReview?.status === 'submitted'
+  const isSelfReviewSubmitted = selfReview?.status === 'submitted'
+
+  const effectiveStage: CycleStage = (() => {
+    if (activeCycle.stage === 'closed' && isReleased) return 'closed'
+    // Evaluation results only advance to 'released' if Admin has formally reviewed & granted permission:
+    if (isReleased) {
+      return 'released'
+    }
+    // If manager submitted evaluation, it remains strictly in 'calibration' until Admin grants permission:
+    if (isManagerReviewSubmitted) {
+      return 'calibration'
+    }
+    if (isSelfReviewSubmitted || selfReview) {
+      return 'manager_review'
+    }
+    const cycleStageIdx = STAGE_ORDER.indexOf(activeCycle.stage)
+    const selfReviewIdx = STAGE_ORDER.indexOf('self_review')
+    if (cycleStageIdx >= selfReviewIdx) {
+      return 'self_review'
+    }
+    return activeCycle.stage
+  })()
+
   if (loading) {
     return <div className="p-12 text-center text-xs text-slate-400">Loading evaluation results...</div>
   }
 
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
-      {/* Page Header (Matching Dashboard UI) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.035em] text-slate-900 dark:text-white leading-[1.15]">
-            Performance Results
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Official appraisal release, composite rating breakdown & governance acknowledgement
-          </p>
-        </div>
-      </div>
-
       {/* Cycle Stage Tracker */}
-      <StageStepper currentStage={activeCycle.stage} />
+      <StageStepper currentStage={effectiveStage} cycle={activeCycle} />
 
       {/* UNRELEASED STATE: Calm pending view */}
       {!isReleased ? (
@@ -132,10 +152,10 @@ export const EmployeeResults: React.FC = () => {
             <h2 className="text-xl font-bold text-slate-900 dark:text-[#F0F3FA]">
               Your results will appear after release
             </h2>
-            <p className="text-xs text-slate-500 dark:text-[#8D96AA] leading-relaxed">
+            <p className="text-xs text-slate-500 dark:text-zinc-300 leading-relaxed">
               The evaluation cycle is currently in the{' '}
               <strong className="text-slate-800 dark:text-[#F0F3FA] capitalize font-semibold">
-                {activeCycle.stage.replace('_', ' ')}
+                {effectiveStage.replace('_', ' ')}
               </strong>{' '}
               stage. People Managers and the People Operations Calibration Committee are finalizing
               ratings to ensure organizational parity.
@@ -144,17 +164,17 @@ export const EmployeeResults: React.FC = () => {
 
           <div className="pt-4 max-w-lg mx-auto bg-slate-50 dark:bg-white/[0.03] rounded-xl p-4 border border-slate-200 dark:border-white/[0.08] text-left text-xs space-y-2">
             <div className="flex items-center gap-2 font-semibold text-slate-800 dark:text-[#F0F3FA]">
-              <Sparkles className="w-4 h-4 text-[#8B7CFF]" />
+              <Sparkles className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
               <span>What happens next?</span>
             </div>
-            <ul className="list-disc list-inside text-slate-600 dark:text-[#8D96AA] space-y-1 text-[11px] pl-1 font-mono">
+            <ul className="list-disc list-inside text-slate-600 dark:text-zinc-300 space-y-1 text-[11px] pl-1 font-sans">
               <li>Manager appraisals are normalized across departmental distributions.</li>
               <li>Official release is projected on <strong className="text-slate-800 dark:text-[#F0F3FA]">{formatDate(activeCycle.deadlines.releaseDate)}</strong>.</li>
               <li>You will receive an in-app notification immediately once results become visible.</li>
             </ul>
           </div>
 
-          <div className="text-[11px] text-slate-400 dark:text-[#8D96AA]/70 font-mono">
+          <div className="text-[11px] text-slate-400 dark:text-zinc-300/70 font-sans">
             Preview tip: You can switch to the <strong className="text-slate-600 dark:text-[#C5CEE0]">Admin (Eleanor Vance)</strong> role to advance the cycle or simulate result release.
           </div>
         </div>
@@ -165,23 +185,23 @@ export const EmployeeResults: React.FC = () => {
           <div className="dark-glass-card conic-border-glow rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-white/[0.08]">
               <div className="space-y-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-indigo-700 bg-indigo-50 border-indigo-200/90 dark:text-[#B7B1FF] dark:bg-[#8B7CFF]/15 dark:border-[#8B7CFF]/30 px-3 py-1 rounded-full border font-mono">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-white bg-slate-900 border-transparent dark:text-slate-900 dark:bg-white px-3 py-1 rounded-full border font-sans">
                   Official Released Rating
                 </span>
                 <h2 className="text-3xl font-extrabold text-slate-900 dark:text-[#F0F3FA] tracking-tight mt-2">
                   {result?.finalRatingLabel}
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-[#8D96AA] font-mono">
+                <p className="text-xs text-slate-500 dark:text-zinc-300 font-sans">
                   {result?.ratingBand} · Final Calibrated Performance
                 </p>
               </div>
 
               <div className="text-left sm:text-right sm:border-l sm:border-slate-200 dark:sm:border-white/[0.08] sm:pl-6">
-                <div className="text-4xl font-black text-indigo-600 dark:text-[#B7B1FF] tracking-tight font-mono">
+                <div className="text-4xl font-extrabold text-slate-900 dark:text-white tracking-tight font-sans">
                   {result?.compositeScore.toFixed(2)}{' '}
-                  <span className="text-base font-normal text-slate-400 dark:text-[#8D96AA]">/ 5.0</span>
+                  <span className="text-base font-normal text-slate-400 dark:text-zinc-300">/ 5.0</span>
                 </div>
-                <div className="text-[11px] text-slate-400 dark:text-[#8D96AA] font-mono mt-0.5">
+                <div className="text-[11px] text-slate-400 dark:text-zinc-300 font-sans mt-0.5">
                   Weighted Composite Score
                 </div>
               </div>
@@ -192,43 +212,43 @@ export const EmployeeResults: React.FC = () => {
               <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-600 dark:text-[#C5CEE0]">Performance Goals</span>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#8D96AA] uppercase font-mono">Weight {activeCycle.weights.goals}%</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-300 uppercase font-sans">Weight {activeCycle.weights.goals}%</span>
                 </div>
-                <div className="text-xl font-bold font-mono text-slate-900 dark:text-[#F0F3FA] mt-2">
+                <div className="text-xl font-bold font-sans text-slate-900 dark:text-[#F0F3FA] mt-2">
                   {result?.goalsScore.toFixed(2)}{' '}
-                  <span className="text-xs font-normal text-slate-400 dark:text-[#8D96AA]">/ 5.0</span>
+                  <span className="text-xs font-normal text-slate-400 dark:text-zinc-300">/ 5.0</span>
                 </div>
               </div>
 
               <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-600 dark:text-[#C5CEE0]">Core Competencies</span>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#8D96AA] uppercase font-mono">Weight {activeCycle.weights.competencies}%</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-300 uppercase font-sans">Weight {activeCycle.weights.competencies}%</span>
                 </div>
-                <div className="text-xl font-bold font-mono text-slate-900 dark:text-[#F0F3FA] mt-2">
+                <div className="text-xl font-bold font-sans text-slate-900 dark:text-[#F0F3FA] mt-2">
                   {result?.competenciesScore.toFixed(2)}{' '}
-                  <span className="text-xs font-normal text-slate-400 dark:text-[#8D96AA]">/ 5.0</span>
+                  <span className="text-xs font-normal text-slate-400 dark:text-zinc-300">/ 5.0</span>
                 </div>
               </div>
 
               <div className="bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] rounded-xl p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-slate-600 dark:text-[#C5CEE0]">Company Values</span>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-[#8D96AA] uppercase font-mono">Weight {activeCycle.weights.values}%</span>
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-zinc-300 uppercase font-sans">Weight {activeCycle.weights.values}%</span>
                 </div>
-                <div className="text-xl font-bold font-mono text-slate-900 dark:text-[#F0F3FA] mt-2">
+                <div className="text-xl font-bold font-sans text-slate-900 dark:text-[#F0F3FA] mt-2">
                   {result?.valuesScore.toFixed(2)}{' '}
-                  <span className="text-xs font-normal text-slate-400 dark:text-[#8D96AA]">/ 5.0</span>
+                  <span className="text-xs font-normal text-slate-400 dark:text-zinc-300">/ 5.0</span>
                 </div>
               </div>
             </div>
 
             {/* Manager Comments */}
             <div className="space-y-2 pt-2">
-              <h3 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-mono">
+              <h3 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
                 Manager & Calibration Committee Narrative
               </h3>
-              <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-700 dark:text-[#C5CEE0] leading-relaxed whitespace-pre-line font-mono">
+              <div className="p-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.08] text-xs text-slate-700 dark:text-[#C5CEE0] leading-relaxed whitespace-pre-line font-sans">
                 {result?.managerComments}
               </div>
             </div>
@@ -236,14 +256,14 @@ export const EmployeeResults: React.FC = () => {
             {/* Agreed Actions & Next Steps */}
             {result?.agreedActions && result.agreedActions.length > 0 && (
               <div className="space-y-2">
-                <h3 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-mono">
+                <h3 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
                   Agreed Growth Focus & Next Steps
                 </h3>
                 <ul className="space-y-1.5 text-xs text-slate-700 dark:text-[#C5CEE0]">
                   {result.agreedActions.map((action, i) => (
-                    <li key={i} className="flex items-start gap-2 bg-indigo-50/70 dark:bg-[#8B7CFF]/10 p-2.5 rounded-lg border border-indigo-200/80 dark:border-[#8B7CFF]/20">
-                      <CheckCircle2 className="w-4 h-4 text-indigo-600 dark:text-[#8B7CFF] flex-shrink-0 mt-0.5" />
-                      <span className="text-slate-800 dark:text-[#E6E9F2] font-mono">{action}</span>
+                    <li key={i} className="flex items-start gap-2 bg-slate-50 dark:bg-white/[0.04] p-2.5 rounded-lg border border-slate-200 dark:border-white/10">
+                      <CheckCircle2 className="w-4 h-4 text-slate-700 dark:text-zinc-300 flex-shrink-0 mt-0.5" />
+                      <span className="text-slate-800 dark:text-[#E6E9F2] font-sans">{action}</span>
                     </li>
                   ))}
                 </ul>
@@ -254,18 +274,18 @@ export const EmployeeResults: React.FC = () => {
             <div className="pt-4 border-t border-slate-200 dark:border-white/[0.08] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div className="text-xs space-y-1">
                 {result?.acknowledged ? (
-                  <div className="flex items-center gap-2 text-indigo-700 dark:text-[#B7B1FF] font-semibold font-mono">
-                    <FileCheck className="w-4 h-4 text-indigo-600 dark:text-[#B7B1FF]" />
+                  <div className="flex items-center gap-2 text-slate-900 dark:text-white font-semibold font-sans">
+                    <FileCheck className="w-4 h-4 text-slate-700 dark:text-zinc-300" />
                     <span>Acknowledged on {formatDateTime(result.acknowledgedAt)}</span>
                   </div>
                 ) : (
-                  <div className="text-slate-500 dark:text-[#8D96AA] font-mono">
+                  <div className="text-slate-500 dark:text-zinc-300 font-sans">
                     Acknowledgement confirms you have viewed this appraisal outcome.
                   </div>
                 )}
 
                 {result?.disputeStatus === 'disputed' && (
-                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-medium text-[11px] font-mono">
+                  <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-400 font-medium text-[11px] font-sans">
                     ⚠️ Formal inquiry submitted: "{result.disputeReason}"
                   </div>
                 )}
@@ -276,7 +296,7 @@ export const EmployeeResults: React.FC = () => {
                   <button
                     type="button"
                     onClick={() => setShowDisputeModal(true)}
-                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[12px] border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-xs font-semibold transition-all cursor-pointer font-mono"
+                    className="inline-flex items-center gap-1.5 h-9 px-3 rounded-[12px] border border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/20 text-xs font-semibold transition-all cursor-pointer font-sans"
                   >
                     Submit Inquiry / Dispute
                   </button>
@@ -297,8 +317,8 @@ export const EmployeeResults: React.FC = () => {
           </div>
 
           {/* Acknowledgement Explainer Note */}
-          <div className="p-4 bg-slate-50 dark:bg-white/[0.03] rounded-xl border border-slate-200 dark:border-white/[0.08] text-[11px] text-slate-500 dark:text-[#8D96AA] flex items-start gap-2.5">
-            <Scale className="w-4 h-4 text-[#8B7CFF] flex-shrink-0 mt-0.5" />
+          <div className="p-4 bg-slate-50 dark:bg-white/[0.03] rounded-xl border border-slate-200 dark:border-white/[0.08] text-[11px] text-slate-500 dark:text-zinc-300 flex items-start gap-2.5">
+            <Scale className="w-4 h-4 text-slate-500 dark:text-zinc-400 flex-shrink-0 mt-0.5" />
             <p>
               Note: Formal acknowledgement indicates that you have received and discussed this performance evaluation outcome with your manager. It does not preclude you from submitting inquiries to People Operations.
             </p>
@@ -310,8 +330,8 @@ export const EmployeeResults: React.FC = () => {
       {history.length > 0 && (
         <div className="dark-glass-card rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-white/[0.08]">
-            <History className="w-4 h-4 text-[#8B7CFF]" />
-            <h3 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-mono">
+            <History className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
+            <h3 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
               Previous Cycle Evaluation History
             </h3>
           </div>
@@ -324,14 +344,14 @@ export const EmployeeResults: React.FC = () => {
               >
                 <div>
                   <div className="font-bold text-slate-900 dark:text-[#F0F3FA]">{cycle.name}</div>
-                  <div className="text-[11px] text-slate-500 dark:text-[#8D96AA] font-mono mt-0.5">
+                  <div className="text-[11px] text-slate-500 dark:text-zinc-300 font-sans mt-0.5">
                     {formatDate(cycle.startDate)} to {formatDate(cycle.endDate)}
                   </div>
                 </div>
 
                 <div className="flex items-center gap-4">
                   <RatingBadge score={histResult.compositeScore} />
-                  <span className="font-mono font-bold text-slate-800 dark:text-[#F0F3FA] text-sm">
+                  <span className="font-sans font-bold text-slate-800 dark:text-[#F0F3FA] text-sm">
                     {histResult.compositeScore.toFixed(2)} / 5.0
                   </span>
                 </div>
@@ -362,7 +382,7 @@ export const EmployeeResults: React.FC = () => {
         maxWidth="md"
       >
         <form onSubmit={handleDispute} className="space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-[#8D96AA]">
+          <p className="text-slate-600 dark:text-zinc-300">
             If you believe your evaluation ratings or component calculations do not reflect your delivered accomplishments, please provide a detailed explanation.
           </p>
 
@@ -376,7 +396,7 @@ export const EmployeeResults: React.FC = () => {
               value={disputeReason}
               onChange={(e) => setDisputeReason(e.target.value)}
               placeholder="Detail specific evidence, misaligned goal metrics, or feedback points to be reviewed..."
-              className="w-full p-3 rounded-lg border border-slate-300 dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-[#8B7CFF] bg-white dark:bg-[#18181b] text-slate-900 dark:text-[#F0F3FA]"
+              className="w-full p-3 rounded-lg border border-slate-300 dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-slate-400/30 dark:focus:ring-zinc-600/30 focus:border-slate-400 dark:focus:border-zinc-500 bg-white dark:bg-[#18181b] text-slate-900 dark:text-[#F0F3FA]"
             />
           </div>
 
@@ -384,7 +404,7 @@ export const EmployeeResults: React.FC = () => {
             <button
               type="button"
               onClick={() => setShowDisputeModal(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-white/12 text-slate-600 dark:text-[#8D96AA] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
             >
               Cancel
             </button>

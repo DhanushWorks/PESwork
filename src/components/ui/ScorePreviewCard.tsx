@@ -29,13 +29,13 @@ export const ScorePreviewCard: React.FC<ScorePreviewCardProps> = ({
     <div className="dark-glass-card conic-border-glow rounded-2xl p-5 space-y-4 shadow-sm">
       <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-indigo-50 border-indigo-200 dark:bg-[#8B7CFF]/10 text-indigo-600 dark:text-[#8B7CFF] border dark:border-[#8B7CFF]/20 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-indigo-50 border border-indigo-200/80 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 dark:border-indigo-800/50 flex items-center justify-center">
             <Calculator className="w-3.5 h-3.5" />
           </div>
           <h3 className="text-sm font-semibold text-slate-800 dark:text-[#F0F3FA]">{title}</h3>
         </div>
         <span
-          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono border ${band.badgeClass}`}
+          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold font-sans border ${band.badgeClass}`}
         >
           {band.label}
         </span>
@@ -43,15 +43,15 @@ export const ScorePreviewCard: React.FC<ScorePreviewCardProps> = ({
 
       <div className="flex items-baseline justify-between">
         <div>
-          <div className="text-3xl font-extrabold font-mono text-slate-900 dark:text-[#F0F3FA] tracking-tight">
+          <div className="text-3xl font-extrabold font-sans text-slate-900 dark:text-[#F0F3FA] tracking-tight">
             {compositeScore.toFixed(2)}{' '}
-            <span className="text-sm font-medium text-slate-400 dark:text-[#8D96AA]">/ 5.00</span>
+            <span className="text-sm font-semibold text-slate-600 dark:text-zinc-300">/ 5.00</span>
           </div>
-          <p className="text-xs text-slate-500 dark:text-[#8D96AA] mt-0.5 font-mono">
+          <p className="text-xs text-slate-700 dark:text-zinc-300 mt-0.5 font-sans font-medium">
             {band.band} · Weighted Composite Score
           </p>
         </div>
-        <div className="p-2.5 bg-indigo-50 border-indigo-200 dark:bg-[#8B7CFF]/10 border dark:border-[#8B7CFF]/20 rounded-xl text-indigo-600 dark:text-[#8B7CFF]">
+        <div className="p-2.5 bg-indigo-50 border border-indigo-200/80 dark:bg-indigo-950/40 dark:border-indigo-800/50 rounded-xl text-indigo-700 dark:text-indigo-300">
           <Award className="w-6 h-6" />
         </div>
       </div>
@@ -59,26 +59,26 @@ export const ScorePreviewCard: React.FC<ScorePreviewCardProps> = ({
       {/* Breakdown Cards */}
       <div className="grid grid-cols-3 gap-2 pt-1">
         <div className="bg-slate-50/80 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.08] rounded-xl p-2.5 text-center">
-          <div className="text-[11px] font-mono font-medium text-slate-500 dark:text-[#8D96AA]">Goals ({weights.goals}%)</div>
-          <div className="text-sm font-bold font-mono text-slate-800 dark:text-[#F0F3FA] mt-1">{goalsScore.toFixed(2)}</div>
-          <div className="text-[10px] font-mono text-indigo-700 dark:text-[#4FE3C1] font-semibold mt-0.5">+{goalsContribution} pts</div>
+          <div className="text-[11px] font-sans font-semibold text-slate-700 dark:text-zinc-200">Goals ({weights.goals}%)</div>
+          <div className="text-sm font-bold font-sans text-slate-800 dark:text-[#F0F3FA] mt-1">{goalsScore.toFixed(2)}</div>
+          <div className="text-[10px] font-sans text-emerald-700 dark:text-emerald-400 font-semibold mt-0.5">+{goalsContribution} pts</div>
         </div>
 
         <div className="bg-slate-50/80 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.08] rounded-xl p-2.5 text-center">
-          <div className="text-[11px] font-mono font-medium text-slate-500 dark:text-[#8D96AA]">Competencies ({weights.competencies}%)</div>
-          <div className="text-sm font-bold font-mono text-slate-800 dark:text-[#F0F3FA] mt-1">{competenciesScore.toFixed(2)}</div>
-          <div className="text-[10px] font-mono text-indigo-600 dark:text-[#8B7CFF] font-semibold mt-0.5">+{compContribution} pts</div>
+          <div className="text-[11px] font-sans font-semibold text-slate-700 dark:text-zinc-200">Competencies ({weights.competencies}%)</div>
+          <div className="text-sm font-bold font-sans text-slate-800 dark:text-[#F0F3FA] mt-1">{competenciesScore.toFixed(2)}</div>
+          <div className="text-[10px] font-sans text-indigo-700 dark:text-indigo-400 font-semibold mt-0.5">+{compContribution} pts</div>
         </div>
 
         <div className="bg-slate-50/80 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.08] rounded-xl p-2.5 text-center">
-          <div className="text-[11px] font-mono font-medium text-slate-500 dark:text-[#8D96AA]">Values ({weights.values}%)</div>
-          <div className="text-sm font-bold font-mono text-slate-800 dark:text-[#F0F3FA] mt-1">{valuesScore.toFixed(2)}</div>
-          <div className="text-[10px] font-mono text-amber-600 dark:text-[#FFB454] font-semibold mt-0.5">+{valuesContribution} pts</div>
+          <div className="text-[11px] font-sans font-semibold text-slate-700 dark:text-zinc-200">Values ({weights.values}%)</div>
+          <div className="text-sm font-bold font-sans text-slate-800 dark:text-[#F0F3FA] mt-1">{valuesScore.toFixed(2)}</div>
+          <div className="text-[10px] font-sans text-amber-700 dark:text-amber-400 font-semibold mt-0.5">+{valuesContribution} pts</div>
         </div>
       </div>
 
-      <p className="text-[11px] text-slate-400 dark:text-[#8D96AA] font-mono leading-tight">
-        Formula: <code className="bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded text-slate-700 dark:text-[#8B7CFF] border border-slate-200 dark:border-white/10">({goalsScore}×{weights.goals}% + {competenciesScore}×{weights.competencies}% + {valuesScore}×{weights.values}%) / 100</code>
+      <p className="text-[11px] text-slate-600 dark:text-zinc-300 font-sans leading-tight font-medium">
+        Formula: <code className="bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">({goalsScore}×{weights.goals}% + {competenciesScore}×{weights.competencies}% + {valuesScore}×{weights.values}%) / 100</code>
       </p>
     </div>
   )

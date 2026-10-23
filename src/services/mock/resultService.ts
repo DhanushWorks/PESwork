@@ -1,5 +1,6 @@
 import { EvaluationResult, ReviewCycle } from '../../types'
 import { cycleService } from './cycleService'
+import { matchesUser, matchesCycle } from '../../lib/workflow'
 import { storageService } from './storageService'
 
 export type EmployeeResultView =
@@ -19,22 +20,23 @@ export const resultService = {
     const cycle = await cycleService.getById(cycleId)
     if (!cycle) return null
 
-    // Strictly check if cycle is released or closed
-    const isReleased = cycle.stage === 'released' || cycle.stage === 'closed'
+    const { results, calibrations } = storageService.getState()
+    const cal = calibrations.find((c) =>
+      (c.cycleId === cycleId || matchesCycle(c.cycleId, cycleId)) &&
+      (c.employeeId === userId || matchesUser(c.employeeId, userId))
+    )
+    const result = results.find((r) =>
+      (r.employeeId === userId || matchesUser(r.employeeId, userId)) &&
+      (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
+    )
 
-    if (!isReleased) {
-      return {
-        isReleased: false,
-        cycle,
-        result: null,
-      }
-    }
+    // Result is strictly released to the employee ONLY if Admin gave permission or released:
+    const isPermitted =
+      !!result &&
+      cal?.adminApproved !== false &&
+      (cal?.adminApproved === true || cycle.stage === 'released' || cycle.stage === 'closed')
 
-    const result = storageService
-      .getState()
-      .results.find((r) => r.employeeId === userId && r.cycleId === cycleId)
-
-    if (!result) {
+    if (!isPermitted || !result) {
       return {
         isReleased: false,
         cycle,
@@ -55,7 +57,10 @@ export const resultService = {
 
     for (const c of cycles) {
       if (c.stage === 'released' || c.stage === 'closed') {
-        const r = results.find((res) => res.employeeId === userId && res.cycleId === c.id)
+        const r = results.find((res) =>
+          (res.employeeId === userId || matchesUser(res.employeeId, userId)) &&
+          (res.cycleId === c.id || matchesCycle(res.cycleId, c.id))
+        )
         if (r) {
           history.push({ cycle: c, result: r })
         }
@@ -91,8 +96,26 @@ export const resultService = {
         details: 'Employee formally acknowledged receipt of performance evaluation outcome.',
       }
 
+      const employee = state.users.find((u) => u.id === state.currentUserId)
+      const empName = employee?.name || 'Employee'
+      const ackNotif = updated?.managerId
+        ? [
+            {
+              id: `notif-ack-${resultId}-${Date.now()}`,
+              userId: updated.managerId,
+              title: 'Appraisal Acknowledged',
+              message: `${empName} formally acknowledged receipt of their performance appraisal outcome.`,
+              link: `/manager/reviews/${updated.employeeId}`,
+              read: false,
+              createdAt: new Date().toISOString(),
+              type: 'info' as const,
+            },
+          ]
+        : []
+
       return {
         results,
+        notifications: [...ackNotif, ...state.notifications],
         auditLogs: [audit, ...state.auditLogs],
       }
     })
@@ -132,8 +155,41 @@ export const resultService = {
         details: `Employee submitted formal dispute inquiry. Reason: "${reason}".`,
       }
 
+      const employee = state.users.find((u) => u.id === state.currentUserId)
+      const empName = employee?.name || 'Employee'
+      const cycle = state.cycles.find((c) => c.id === updated?.cycleId)
+
+      const mgrNotif = updated?.managerId
+        ? [
+            {
+              id: `notif-disp-mgr-${resultId}-${Date.now()}`,
+              userId: updated.managerId,
+              title: 'Evaluation Result Disputed',
+              message: `${empName} submitted an appraisal dispute for ${cycle?.name || 'cycle'}: "${reason}".`,
+              link: `/manager/reviews/${updated.employeeId}`,
+              read: false,
+              createdAt: new Date().toISOString(),
+              type: 'warning' as const,
+            },
+          ]
+        : []
+
+      const adminNotifs = state.users
+        .filter((u) => u.role === 'admin')
+        .map((admin) => ({
+          id: `notif-disp-adm-${resultId}-${admin.id}-${Date.now()}`,
+          userId: admin.id,
+          title: 'Evaluation Result Disputed',
+          message: `${empName} submitted a formal appraisal dispute for ${cycle?.name || 'cycle'}: "${reason}".`,
+          link: '/admin/calibration',
+          read: false,
+          createdAt: new Date().toISOString(),
+          type: 'warning' as const,
+        }))
+
       return {
         results,
+        notifications: [...mgrNotif, ...adminNotifs, ...state.notifications],
         auditLogs: [audit, ...state.auditLogs],
       }
     })

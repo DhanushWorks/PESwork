@@ -1,14 +1,19 @@
 import React, { useEffect, useState, useRef } from 'react'
-import { CycleStage } from '../../types'
-import { CYCLE_STAGE_DETAILS, STAGE_ORDER } from '../../lib/formatters'
+import { Link } from 'react-router-dom'
+import { CycleStage, ReviewCycle } from '../../types'
+import { CYCLE_STAGE_DETAILS, STAGE_ORDER, formatDate } from '../../lib/formatters'
 import { useInView } from '../../hooks/useInView'
-import { Check, Sparkles } from 'lucide-react'
+import { useApp } from '../../app/AppContext'
+import { ArrowRight, Calendar, Check, CheckSquare } from 'lucide-react'
 
 type StageStepperProps = {
   currentStage: CycleStage
   onStageSelect?: (stage: CycleStage) => void
   readOnly?: boolean
   replayOnHover?: boolean
+  isFinished?: boolean
+  cycle?: ReviewCycle | null
+  showCycleInfo?: boolean
 }
 
 export const StageStepper: React.FC<StageStepperProps> = ({
@@ -16,8 +21,16 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   onStageSelect,
   readOnly = true,
   replayOnHover = false,
+  isFinished = false,
+  cycle,
+  showCycleInfo = true,
 }) => {
+  const { activeCycle, currentUser } = useApp()
+  const effectiveCycle = cycle ?? activeCycle
+  const isActiveWorkspace = effectiveCycle?.id === activeCycle?.id
+
   const currentIndex = STAGE_ORDER.indexOf(currentStage)
+  const isCycleFinished = isFinished || currentStage === 'closed'
   const [containerRef, isInView] = useInView<HTMLDivElement>({ threshold: 0.15, triggerOnce: true })
   const [isAnimated, setIsAnimated] = useState(false)
   const [activeStepIndex, setActiveStepIndex] = useState(-1)
@@ -74,37 +87,74 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   return (
     <div
       ref={containerRef}
-      className="dark-glass-card p-5 sm:p-6 overflow-x-auto no-scrollbar group cursor-default transition-all"
+      className="dark-glass-card p-4 sm:p-5 overflow-x-auto no-scrollbar group cursor-default transition-all"
     >
       {/* Header Bar */}
-      <div className="flex items-center justify-between mb-5">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#8B7CFF]" />
-          <span className="text-[12px] font-bold tracking-[0.07em] uppercase text-[#172033] dark:text-[#F0F3FA]">
-            Review Cycle Progression
+      {showCycleInfo ? (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3.5 pb-2.5 border-b border-slate-100 dark:border-white/[0.06]">
+          {/* Left: Cycle Identity */}
+          <div className="min-w-0">
+            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white tracking-tight">
+              {effectiveCycle?.name || 'Enterprise Appraisal Workflow'}
+            </h2>
+          </div>
+
+          {/* Right: Date Badge & Contextual Actions */}
+          <div className="flex items-center gap-2.5 shrink-0 self-start sm:self-center flex-wrap sm:flex-nowrap">
+            {effectiveCycle?.startDate && effectiveCycle?.endDate && (
+              <span className="inline-flex items-center gap-1.5 text-xs text-slate-700 dark:text-zinc-200 font-sans bg-slate-100 dark:bg-zinc-800 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-zinc-700">
+                <Calendar className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400 shrink-0" />
+                <span>{formatDate(effectiveCycle.startDate)} – {formatDate(effectiveCycle.endDate)}</span>
+              </span>
+            )}
+
+            {currentUser?.role === 'admin' && effectiveCycle && (
+              <Link
+                to={`/admin/cycles/${effectiveCycle.id}`}
+                className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                title="Inspect or manage cycle settings"
+              >
+                <span>Cycle Settings</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+              </Link>
+            )}
+            {currentUser?.role === 'manager' && (
+              <Link
+                to="/manager/approvals"
+                className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                title="Review pending goal approvals"
+              >
+                <CheckSquare className="w-3.5 h-3.5 text-[#FFB454]" />
+                <span>Goal Approvals</span>
+                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+              </Link>
+            )}
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center justify-between gap-3 mb-3.5 pb-2 border-b border-slate-100 dark:border-white/[0.06]">
+          <span className="text-xs uppercase font-bold tracking-wider text-slate-700 dark:text-[#A5AEC2] font-sans">
+            Review Cycle Workflow Tracking
           </span>
         </div>
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold font-mono border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] text-slate-800 dark:text-[#EEF1F7]">
-          Stage {currentIndex + 1} of {STAGE_ORDER.length}
-        </span>
-      </div>
+      )}
 
       {/* Steps Track with Connected Progress Bar */}
       <div className="relative min-w-[760px] pb-1">
         {/* Base Connecting Line behind circles */}
         <div className="absolute top-[21px] left-[6.25%] w-[87.5%] h-[2.5px] bg-slate-200 dark:bg-white/[0.08] rounded-full pointer-events-none overflow-hidden">
-          {/* Active Gradient Filled Line with glowing particle head */}
+          {/* Active Filled Line */}
           <div
-            className="absolute left-0 top-0 bottom-0 bg-gradient-to-r from-indigo-600 via-[#7560ee] to-indigo-500 dark:from-[#8B7CFF] dark:via-[#7560ee] dark:to-[#4FE3C1] transition-all duration-1000 ease-out rounded-full"
+            className="absolute left-0 top-0 bottom-0 bg-slate-900 dark:bg-white transition-all duration-1000 ease-out rounded-full"
             style={{
               width: isAnimated ? `${targetPercentage}%` : '0%',
             }}
           >
             {/* Ambient traveling beam */}
-            <div className="absolute inset-y-0 w-28 bg-gradient-to-r from-transparent via-white/80 dark:via-white to-transparent animate-line-travel opacity-90" />
-            {/* Glowing particle head at the leading edge */}
+            <div className="absolute inset-y-0 w-28 bg-gradient-to-r from-transparent via-white/40 dark:via-zinc-400/40 to-transparent animate-line-travel opacity-75" />
+            {/* Particle head at the leading edge */}
             {isAnimated && (
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3.5 h-3.5 rounded-full bg-white shadow-[0_0_12px_#6366f1,0_0_4px_#ffffff] dark:shadow-[0_0_14px_#8B7CFF,0_0_4px_#4FE3C1]" />
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-slate-900 dark:bg-white shadow-xs" />
             )}
           </div>
         </div>
@@ -112,14 +162,15 @@ export const StageStepper: React.FC<StageStepperProps> = ({
         {/* Step Nodes Row */}
         <div className="relative flex justify-between">
           {STAGE_ORDER.map((stage, idx) => {
-            const isCompleted = idx < currentIndex
-            const isCurrent = idx === currentIndex
+            const isCompleted = isCycleFinished ? idx <= currentIndex : idx < currentIndex
+            const isCurrent = isCycleFinished ? false : idx === currentIndex
             const isLit = idx <= activeStepIndex
             const details = CYCLE_STAGE_DETAILS[stage]
 
             return (
               <div
                 key={stage}
+                title={!readOnly && onStageSelect ? `Switch stage to: ${details.label}` : details.label}
                 className={`flex-1 text-center relative select-none ${
                   !readOnly && onStageSelect ? 'cursor-pointer group' : ''
                 }`}
@@ -131,14 +182,14 @@ export const StageStepper: React.FC<StageStepperProps> = ({
                     className={`w-full h-full rounded-full grid place-items-center font-bold text-sm transition-all duration-300 ${
                       isCurrent
                         ? isLit
-                          ? 'bg-slate-900 dark:bg-[#18181b] text-white border-2 border-indigo-600 dark:border-[#8B7CFF] shadow-lg shadow-indigo-500/20 ring-4 ring-indigo-500/25 dark:ring-[#8B7CFF]/35 scale-105'
-                          : 'bg-white dark:bg-[#18181b] text-slate-400 dark:text-[#667085] border border-slate-200 dark:border-zinc-700/80'
+                          ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white ring-4 ring-slate-900/15 dark:ring-white/20 scale-105'
+                          : 'bg-white dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800'
                         : isCompleted
                         ? isLit
-                          ? 'bg-gradient-to-br from-indigo-600 to-indigo-700 dark:from-[#8B7CFF] dark:to-[#6147e8] text-white shadow-sm shadow-indigo-500/25 animate-step-pop'
-                          : 'bg-white dark:bg-[#18181b] text-slate-400 dark:text-[#667085] border border-slate-200 dark:border-zinc-700/80'
-                        : 'bg-white dark:bg-[#18181b] text-slate-400 dark:text-[#667085] border border-slate-200 dark:border-zinc-700/80'
-                    }`}
+                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                          : 'bg-white dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800'
+                        : 'bg-white dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800'
+                    } ${!readOnly && onStageSelect ? 'group-hover:scale-110 group-hover:ring-4 group-hover:ring-indigo-500/25 group-hover:border-indigo-500' : ''}`}
                   >
                     {isCompleted && isLit ? (
                       <Check className="w-4 h-4 stroke-[3]" />
@@ -146,25 +197,17 @@ export const StageStepper: React.FC<StageStepperProps> = ({
                       <span className="tabular-nums">{idx + 1}</span>
                     )}
                   </div>
-
-                  {/* Active Pulse Ring Indicator */}
-                  {isCurrent && isLit && (
-                    <>
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-500 dark:bg-[#4FE3C1] ring-2 ring-white dark:ring-[#18181b] animate-ping" />
-                      <span className="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-indigo-500 dark:bg-[#4FE3C1] ring-2 ring-white dark:ring-[#18181b]" />
-                    </>
-                  )}
                 </div>
 
                 {/* Step Label */}
                 <div
                   className={`text-xs transition-colors line-clamp-1 ${
-                    isCurrent
+                    isCurrent || (isCycleFinished && idx === currentIndex)
                       ? 'text-slate-950 dark:text-white font-bold'
                       : isCompleted && isLit
                       ? 'text-slate-700 dark:text-[#C9CEDB] font-medium'
                       : 'text-slate-400 dark:text-[#667085] font-normal'
-                  }`}
+                  } ${!readOnly && onStageSelect ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-400' : ''}`}
                 >
                   {details.label}
                 </div>

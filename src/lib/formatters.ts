@@ -3,6 +3,17 @@ import { CycleStage, GoalStatus } from '../types'
 export function formatDate(dateString?: string): string {
   if (!dateString) return '—'
   try {
+    // If format is YYYY-MM-DD, parse year, month, day in local time to avoid UTC day-shift
+    const cleanDate = dateString.split('T')[0]
+    const parts = cleanDate.split('-').map(Number)
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      const d = new Date(parts[0], parts[1] - 1, parts[2])
+      return d.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    }
     const d = new Date(dateString)
     return d.toLocaleDateString('en-US', {
       month: 'short',
@@ -37,19 +48,19 @@ export function formatScore(score: number): string {
 export function getGoalStatusBadge(status: GoalStatus): { label: string; className: string } {
   switch (status) {
     case 'approved':
-      return { label: 'Approved', className: 'bg-indigo-50 text-indigo-700 border-indigo-200/90 dark:bg-[#4FE3C1]/10 dark:text-[#4FE3C1] dark:border-[#4FE3C1]/35 font-mono text-[11px] font-semibold' }
+      return { label: 'Approved', className: 'bg-slate-900 text-white border-transparent dark:bg-white dark:text-slate-900 font-mono text-[11px] font-semibold' }
     case 'pending_approval':
-      return { label: 'Pending Approval', className: 'bg-amber-50 text-amber-700 border-amber-300 dark:bg-[#FFB454]/10 dark:text-[#FFB454] dark:border-[#FFB454]/30 font-mono text-[11px] font-semibold' }
+      return { label: 'Pending Approval', className: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 font-mono text-[11px] font-medium' }
     case 'draft':
-      return { label: 'Draft', className: 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-[#8D96AA] border-slate-200 dark:border-white/10 font-mono text-[11px]' }
+      return { label: 'Draft', className: 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-white/10 font-mono text-[11px]' }
     case 'returned':
-      return { label: 'Needs Revision', className: 'bg-rose-50 text-rose-700 border-rose-300 dark:bg-[#FFB454]/10 dark:text-[#FFB454] dark:border-[#FFB454]/40 font-mono text-[11px] font-semibold' }
+      return { label: 'Needs Revision', className: 'bg-slate-100 text-slate-700 border-slate-300 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 font-mono text-[11px] font-medium' }
     case 'completed':
-      return { label: 'Completed', className: 'bg-indigo-600 text-white border-transparent dark:bg-emerald-500/20 dark:text-[#4FE3C1] dark:border-emerald-500/30 font-semibold font-mono text-[11px]' }
+      return { label: 'Completed', className: 'bg-slate-900 text-white border-transparent dark:bg-zinc-800 dark:text-zinc-100 dark:border-zinc-700 font-medium font-mono text-[11px]' }
     case 'cancelled':
       return { label: 'Cancelled', className: 'bg-slate-100 dark:bg-white/[0.03] text-slate-500 dark:text-[#667085] border-slate-200 dark:border-white/10 font-mono text-[11px]' }
     default:
-      return { label: status, className: 'bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-[#8D96AA] border-slate-200 dark:border-white/10 font-mono text-[11px]' }
+      return { label: status, className: 'bg-slate-100 dark:bg-white/[0.05] text-slate-600 dark:text-zinc-300 border-slate-200 dark:border-white/10 font-mono text-[11px]' }
   }
 }
 
@@ -61,7 +72,7 @@ export const CYCLE_STAGE_DETAILS: Record<
     label: 'Cycle Draft',
     stepNumber: 1,
     description: 'Setting up cycle parameters, weights, and participant cohorts',
-    badgeClass: 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-[#8D96AA] border-slate-200 dark:border-white/10 font-mono text-[11px]',
+    badgeClass: 'bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border-slate-200 dark:border-white/10 font-mono text-[11px]',
   },
   goals_open: {
     label: 'Goals Open',
@@ -91,19 +102,19 @@ export const CYCLE_STAGE_DETAILS: Record<
     label: 'Calibration',
     stepNumber: 6,
     description: 'People Ops and leadership calibrate score distributions across departments',
-    badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-[#8B7CFF]/15 dark:text-[#8B7CFF] dark:border-[#8B7CFF]/35 font-mono text-[11px] font-semibold',
+    badgeClass: 'bg-slate-100 text-slate-800 border-slate-300 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700 font-mono text-[11px] font-medium',
   },
   released: {
     label: 'Results Released',
     stepNumber: 7,
     description: 'Employees view final evaluations, acknowledge outcomes, and plan growth',
-    badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200/90 dark:bg-[#4FE3C1]/10 dark:text-[#4FE3C1] dark:border-[#4FE3C1]/35 font-mono text-[11px] font-semibold',
+    badgeClass: 'bg-slate-900 text-white border-transparent dark:bg-white dark:text-slate-900 font-mono text-[11px] font-semibold',
   },
   closed: {
     label: 'Cycle Closed',
     stepNumber: 8,
     description: 'Cycle finalized and archived for historical reporting',
-    badgeClass: 'bg-slate-100 dark:bg-white/[0.03] text-slate-500 dark:text-[#667085] border-slate-200 dark:border-white/10 font-mono text-[11px]',
+    badgeClass: 'bg-slate-200/80 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border-slate-300 dark:border-zinc-700 font-mono text-[11px] font-semibold',
   },
 }
 

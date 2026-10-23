@@ -25,9 +25,30 @@ type AppContextType = {
   isLiveAuth: boolean
   signOut: () => Promise<void>
   refreshData: () => Promise<void>
-  resetDemoData: () => Promise<void>
+  dataMode: 'clean' | 'full'
+  resetDemoData: (mode?: 'clean' | 'full') => Promise<void>
+  revertToFullDemoData: () => Promise<void>
+  resetCleanWorkflow: () => Promise<void>
   markNotificationRead: (id: string) => Promise<void>
   markAllNotificationsRead: () => Promise<void>
+}
+
+export const EMPTY_CYCLE: ReviewCycle = {
+  id: '',
+  name: 'No Active Cycle',
+  stage: 'draft',
+  startDate: '',
+  endDate: '',
+  description: 'No appraisal cycle created yet.',
+  weights: { goals: 60, competencies: 30, values: 10 },
+  deadlines: {
+    goalsDue: '',
+    selfReviewDue: '',
+    managerReviewDue: '',
+    calibrationDue: '',
+    releaseDate: '',
+  },
+  participantIds: [],
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined)
@@ -46,13 +67,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const [activeCycle, setActiveCycle] = useState<ReviewCycle>(() => {
     const state = storageService.getState()
-    return state.cycles.find((c) => c.id === state.activeCycleId) || state.cycles[0]
+    return state.cycles.find((c) => c.id === state.activeCycleId) || state.cycles[0] || EMPTY_CYCLE
   })
 
   const [allUsers, setAllUsers] = useState<User[]>([])
   const [allCycles, setAllCycles] = useState<ReviewCycle[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLiveAuth, setIsLiveAuth] = useState(false)
+  const [dataMode, setDataMode] = useState<'clean' | 'full'>(() => storageService.getState().dataMode || 'clean')
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     try {
       const saved = localStorage.getItem('performiq_theme')
@@ -126,7 +148,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadAll = useCallback(async () => {
     const users = await peopleService.list()
     const cycles = await cycleService.list()
-    const currentActiveCycle = await cycleService.getActiveCycle()
+    const currentActiveCycle = (await cycleService.getActiveCycle()) || cycles[0] || EMPTY_CYCLE
     const state = storageService.getState()
 
     // 1. Inspect live Supabase session
@@ -149,6 +171,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setActiveCycle(currentActiveCycle)
     setCurrentUser(foundUser)
     setActiveWorkspaceRole(foundUser.role)
+    setDataMode(state.dataMode || 'clean')
 
     const notifs = await notificationService.list(foundUser.id)
     setNotifications(notifs)
@@ -181,6 +204,40 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   }, [])
 
+  // Real-time synchronization for In-App Notifications
+  useEffect(() => {
+    if (!currentUser?.id) return
+
+    let isMounted = true
+    const reloadNotifs = async () => {
+      try {
+        const notifs = await notificationService.list(currentUser.id)
+        if (isMounted) {
+          setNotifications(notifs)
+        }
+      } catch (err) {
+        console.warn('Notice reloading notifications:', err)
+      }
+    }
+
+    // 1. Storage subscription (instant updates across tabs and role actions)
+    const unsubStorage = storageService.subscribe(() => {
+      reloadNotifs()
+    })
+
+    // 2. Supabase Realtime channel subscription if configured
+    const unsubSupabase =
+      typeof (notificationService as any).subscribeToUserNotifications === 'function'
+        ? (notificationService as any).subscribeToUserNotifications(currentUser.id, reloadNotifs)
+        : () => {}
+
+    return () => {
+      isMounted = false
+      unsubStorage()
+      unsubSupabase()
+    }
+  }, [currentUser?.id])
+
   const switchUser = useCallback(
     async (userId: string) => {
       const targetUser = await peopleService.getById(userId)
@@ -209,10 +266,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     await loadAll()
   }, [loadAll])
 
-  const resetDemoData = useCallback(async () => {
-    storageService.resetDemoData()
+  const resetCleanWorkflow = useCallback(async () => {
+    storageService.resetCleanWorkflow()
+    setDataMode('clean')
     await loadAll()
   }, [loadAll])
+
+  const revertToFullDemoData = useCallback(async () => {
+    storageService.revertToFullDemoData()
+    setDataMode('full')
+    await loadAll()
+  }, [loadAll])
+
+  const resetDemoData = useCallback(async (mode?: 'clean' | 'full') => {
+    if (mode === 'full') {
+      await revertToFullDemoData()
+    } else {
+      await resetCleanWorkflow()
+    }
+  }, [revertToFullDemoData, resetCleanWorkflow])
 
   const markNotificationRead = useCallback(async (id: string) => {
     await notificationService.markRead(id)
@@ -255,7 +327,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       isLiveAuth,
       signOut,
       refreshData,
+      dataMode,
       resetDemoData,
+      revertToFullDemoData,
+      resetCleanWorkflow,
       markNotificationRead,
       markAllNotificationsRead,
     }),
@@ -295,4 +370,3 @@ export function useApp() {
   }
   return context
 }
-

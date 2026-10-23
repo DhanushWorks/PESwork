@@ -19,6 +19,7 @@ import {
   ArrowLeft,
   Award,
   CheckCircle2,
+  Eye,
   FileCheck,
   FileText,
   Lock,
@@ -29,11 +30,12 @@ import {
   Target,
   UserCheck,
 } from 'lucide-react'
+import { PdfViewerModal } from '../../components/ui/PdfViewerModal'
 
 export const ManagerReviewWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>()
   const navigate = useNavigate()
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, refreshData } = useApp()
   const { success, error } = useToast()
 
   const [employee, setEmployee] = useState<User | null>(null)
@@ -62,6 +64,21 @@ export const ManagerReviewWorkspace: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [saveStatus, setSaveStatus] = useState<string>('')
+
+  // Evidence PDF Viewer Modal State
+  const [activePdfModal, setActivePdfModal] = useState<{
+    isOpen: boolean
+    fileName: string
+    fileUrl?: string
+    goalTitle?: string
+    authorName?: string
+  }>({
+    isOpen: false,
+    fileName: '',
+    fileUrl: undefined,
+    goalTitle: '',
+    authorName: '',
+  })
 
   useEffect(() => {
     const fetchData = async () => {
@@ -151,6 +168,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
         recommendations,
       })
       setExistingReview(submitted)
+      await refreshData()
       setShowSubmitConfirm(false)
       success(
         'Manager evaluation submitted',
@@ -188,7 +206,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
           <button
             type="button"
             onClick={() => navigate('/manager')}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-[#8D96AA] dark:hover:text-[#F0F3FA] transition-colors mb-2 cursor-pointer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 dark:text-zinc-300 dark:hover:text-white transition-colors mb-2 cursor-pointer"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>Back to Team Roster</span>
@@ -206,16 +224,16 @@ export const ManagerReviewWorkspace: React.FC = () => {
                   {employee.name}
                 </h1>
                 {isSubmitted ? (
-                  <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border-indigo-200/90 dark:text-[#B7B1FF] dark:bg-[#8B7CFF]/15 px-2.5 py-0.5 rounded-full border dark:border-[#8B7CFF]/30 flex items-center gap-1 font-mono">
+                  <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border-indigo-200/90 dark:text-[#B7B1FF] dark:bg-[#8B7CFF]/15 px-2.5 py-0.5 rounded-full border dark:border-[#8B7CFF]/30 flex items-center gap-1 font-sans">
                     <FileCheck className="w-3.5 h-3.5" /> Evaluation Submitted
                   </span>
                 ) : (
-                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border-amber-200 dark:text-[#FFB454] dark:bg-[#FFB454]/10 px-2.5 py-0.5 rounded-full border dark:border-[#FFB454]/20 font-mono">
+                  <span className="text-[11px] font-semibold text-amber-800 bg-amber-50 border-amber-200 dark:text-[#FFB454] dark:bg-[#FFB454]/10 px-2.5 py-0.5 rounded-full border dark:border-[#FFB454]/20 font-sans">
                     Draft in Progress
                   </span>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 dark:text-[#8D96AA] mt-0.5">
+              <p className="text-xs sm:text-sm text-slate-700 dark:text-zinc-200 mt-0.5 font-medium">
                 {employee.designation} · {employee.department} · {activeCycle.name}
               </p>
             </div>
@@ -225,7 +243,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
         {/* Top Actions */}
         <div className="flex items-center gap-3">
           {saveStatus && (
-            <span className="text-[11px] text-slate-400 dark:text-[#8D96AA] font-mono hidden sm:inline">
+            <span className="text-[11px] text-slate-600 dark:text-zinc-300 font-sans hidden sm:inline font-medium">
               {saveStatus}
             </span>
           )}
@@ -235,17 +253,17 @@ export const ManagerReviewWorkspace: React.FC = () => {
               <button
                 type="button"
                 onClick={handleSaveDraft}
-                className="inline-flex items-center gap-1.5 h-11 px-4 rounded-[14px] border border-slate-200 dark:border-white/12 bg-white dark:bg-white/[0.04] text-slate-700 dark:text-[#E6E9F2] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-xs font-semibold shadow-xs transition-all cursor-pointer"
+                className="inline-flex items-center gap-1.5 h-8.5 px-3.5 rounded-xl border border-slate-300 dark:border-white/15 bg-white dark:bg-zinc-900/90 text-slate-800 dark:text-zinc-100 hover:bg-slate-50 dark:hover:bg-zinc-800 text-xs font-semibold shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all cursor-pointer"
               >
-                <Save className="w-4 h-4 text-slate-500 dark:text-[#8D96AA]" />
+                <Save className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-300" />
                 <span>Save Draft</span>
               </button>
               <button
                 type="button"
                 onClick={() => setShowSubmitConfirm(true)}
-                className="premium-glow-btn h-11 px-5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2"
+                className="h-8.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent"
               >
-                <Send className="w-4 h-4" />
+                <Send className="w-3.5 h-3.5" />
                 <span>Submit Evaluation</span>
               </button>
             </>
@@ -261,7 +279,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
               Review formally submitted on {formatDate(existingReview.submittedAt)} (Score:{' '}
               {existingReview.compositeScore.toFixed(2)}).
             </p>
-            <p className="text-slate-500 dark:text-[#8D96AA] mt-0.5">
+            <p className="text-slate-700 dark:text-zinc-200 mt-0.5 font-medium">
               This appraisal is locked. It is now queued for the People Ops Calibration committee.
             </p>
           </div>
@@ -272,29 +290,28 @@ export const ManagerReviewWorkspace: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: EVIDENCE & CONTEXT */}
         <div className="lg:col-span-5 space-y-6">
-          <div className="flex items-center gap-2 pb-2 border-b border-[#e8edf5] dark:border-white/[0.06]">
-            <Sparkles className="w-4 h-4 text-[#8B7CFF]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#172033] dark:text-[#8D96AA]">
+          <div className="pb-2 border-b border-slate-300 dark:border-zinc-700">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100">
               Evidence & Employee Reflection
             </h2>
           </div>
 
           {/* Goals & Logged Progress */}
           <div className="dark-glass-card rounded-2xl p-5 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8edf5] dark:border-white/[0.06]">
-              <span className="text-xs font-bold text-[#172033] dark:text-[#F0F3FA] uppercase tracking-wider flex items-center gap-1.5">
-                <Target className="w-4 h-4 text-[#8B7CFF]" />
+            <div className="flex items-center justify-between pb-3 border-b border-slate-300 dark:border-zinc-700">
+              <span className="text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                <Target className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                 Approved Goals ({goals.length})
               </span>
-              <span className="text-[11px] text-slate-400 dark:text-[#8D96AA] font-mono">Weight: {activeCycle.weights.goals}%</span>
+              <span className="text-[11px] text-slate-600 dark:text-zinc-300 font-sans font-medium">Weight: {activeCycle.weights.goals}%</span>
             </div>
 
-            <div className="space-y-4 divide-y divide-[#e8edf5] dark:divide-white/[0.06]">
+            <div className="space-y-4 divide-y divide-slate-300 dark:divide-zinc-700">
               {goals.map((g) => (
                 <div key={g.id} className="pt-3 first:pt-0 space-y-2 text-xs">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="font-semibold text-[#172033] dark:text-[#F0F3FA]">{g.title}</div>
-                    <span className="text-[11px] font-mono text-indigo-700 bg-indigo-50 border-indigo-200 dark:text-[#8B7CFF] dark:bg-[#8B7CFF]/10 px-2 py-0.5 rounded border dark:border-[#8B7CFF]/20 flex-shrink-0">
+                    <div className="font-semibold text-slate-900 dark:text-zinc-100">{g.title}</div>
+                    <span className="text-[11px] font-sans text-indigo-700 bg-indigo-50 border-indigo-200 dark:text-indigo-300 dark:bg-indigo-950/40 px-2 py-0.5 rounded border dark:border-indigo-800/40 flex-shrink-0">
                       {g.weight}% wt
                     </span>
                   </div>
@@ -305,14 +322,55 @@ export const ManagerReviewWorkspace: React.FC = () => {
                     variant={g.progress >= 90 ? 'indigo' : 'blue'}
                   />
                   {g.progressHistory.length > 0 && (
-                    <div className="text-[11px] text-[#52637c] dark:text-[#8D96AA] bg-[#f8fafc] dark:bg-white/[0.03] p-3 rounded-xl border border-[#c5d2e3] dark:border-white/[0.08] space-y-1">
-                      <div className="font-semibold text-[#172033] dark:text-[#F0F3FA]">Latest progress note:</div>
+                    <div className="text-[11px] text-slate-800 dark:text-zinc-200 bg-slate-50 dark:bg-white/[0.04] p-3 rounded-xl border border-slate-300 dark:border-white/10 space-y-1">
+                      <div className="font-semibold text-slate-900 dark:text-white">Latest progress note:</div>
                       <p className="italic">"{g.progressHistory[0].note}"</p>
-                      {g.progressHistory[0].evidenceFileName && (
-                        <div className="text-[10px] text-indigo-700 dark:text-[#B7B1FF] font-semibold font-mono">
-                          📄 {g.progressHistory[0].evidenceFileName}
-                        </div>
-                      )}
+                      {(() => {
+                        const targetEvidence = g.progressHistory.find((p) => p.evidenceFileName) || (g.evidenceFileName ? { evidenceFileName: g.evidenceFileName, evidenceUrl: g.evidenceUrl, evidenceFileSize: g.evidenceFileSize } : null)
+                        if (!targetEvidence?.evidenceFileName) return null
+                        return (
+                          <div className="pt-1">
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setActivePdfModal({
+                                  isOpen: true,
+                                  fileName: targetEvidence.evidenceFileName!,
+                                  fileUrl: targetEvidence.evidenceUrl,
+                                  goalTitle: g.title,
+                                  authorName: employee?.name || 'Deepak',
+                                })
+                              }
+                              className="w-full flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-indigo-200 dark:border-indigo-500/30 hover:border-indigo-500 dark:hover:border-indigo-400 hover:shadow-md transition-all group cursor-pointer text-left active:scale-[0.99] mt-1"
+                              title="Touch or click to open and review PDF document"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 flex items-center justify-center shrink-0 text-rose-600 dark:text-rose-400 font-sans font-bold text-[10px] shadow-2xs group-hover:scale-105 transition-transform">
+                                  PDF
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="text-xs font-semibold text-slate-900 dark:text-zinc-100 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 truncate flex items-center gap-1.5 transition-colors">
+                                    <span>{targetEvidence.evidenceFileName}</span>
+                                    <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200/60 dark:border-indigo-800/60 font-sans">
+                                      Verified
+                                    </span>
+                                  </div>
+                                  <div className="text-[10px] text-slate-400 dark:text-zinc-500 flex items-center gap-2 mt-0.5">
+                                    <span>{targetEvidence.evidenceFileSize || '1.4 MB'}</span>
+                                    <span>•</span>
+                                    <span className="text-indigo-600 dark:text-indigo-400 font-medium">Click to review PDF document</span>
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1 text-xs font-semibold text-indigo-600 dark:text-indigo-400 shrink-0 pl-2">
+                                <Eye className="w-3.5 h-3.5 group-hover:scale-110 transition-transform" />
+                                <span className="hidden sm:inline">Review PDF</span>
+                              </div>
+                            </button>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -322,7 +380,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
 
           {/* Self-Review Answers */}
           <div className="dark-glass-card rounded-2xl p-5 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8edf5] dark:border-white/[0.06]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-300 dark:border-zinc-700">
               <span className="text-xs font-bold text-[#172033] dark:text-[#F0F3FA] uppercase tracking-wider flex items-center gap-1.5">
                 <FileText className="w-4 h-4 text-purple-400" />
                 Submitted Self-Review
@@ -330,37 +388,37 @@ export const ManagerReviewWorkspace: React.FC = () => {
               {selfReview ? (
                 <RatingBadge score={selfReview.overallRating} />
               ) : (
-                <span className="text-[11px] text-[#FFB454] font-mono">Not Submitted</span>
+                <span className="text-[11px] text-[#FFB454] font-sans">Not Submitted</span>
               )}
             </div>
 
             {selfReview ? (
-              <div className="space-y-3.5 text-xs text-slate-700 dark:text-[#E6E9F2]">
+              <div className="space-y-3.5 text-xs text-slate-800 dark:text-zinc-100">
                 <div>
-                  <span className="font-bold text-[#172033] dark:text-[#F0F3FA] block mb-0.5">Overall Reflection</span>
-                  <p className="p-3.5 rounded-xl bg-[#f8fafc] dark:bg-white/[0.03] border border-[#c5d2e3] dark:border-white/[0.08] text-[#52637c] dark:text-[#8D96AA] leading-relaxed italic">
+                  <span className="font-bold text-slate-900 dark:text-zinc-100 block mb-0.5">Overall Reflection</span>
+                  <p className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 text-slate-800 dark:text-zinc-100 leading-relaxed italic">
                     "{selfReview.overallReflection}"
                   </p>
                 </div>
 
                 <div>
-                  <span className="font-bold text-[#172033] dark:text-[#F0F3FA] block mb-0.5">Top Accomplishments</span>
-                  <p className="p-3.5 rounded-xl bg-[#f8fafc] dark:bg-white/[0.03] border border-[#c5d2e3] dark:border-white/[0.08] text-[#52637c] dark:text-[#8D96AA] leading-relaxed whitespace-pre-line">
+                  <span className="font-bold text-slate-900 dark:text-zinc-100 block mb-0.5">Top Accomplishments</span>
+                  <p className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 text-slate-800 dark:text-zinc-100 leading-relaxed whitespace-pre-line">
                     {selfReview.achievements}
                   </p>
                 </div>
 
                 {selfReview.challenges && (
                   <div>
-                    <span className="font-bold text-[#172033] dark:text-[#F0F3FA] block mb-0.5">Challenges Overcome</span>
-                    <p className="p-3.5 rounded-xl bg-[#f8fafc] dark:bg-white/[0.03] border border-[#c5d2e3] dark:border-white/[0.08] text-[#52637c] dark:text-[#8D96AA] leading-relaxed">
+                    <span className="font-bold text-slate-900 dark:text-zinc-100 block mb-0.5">Challenges Overcome</span>
+                    <p className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 text-slate-800 dark:text-zinc-100 leading-relaxed">
                       {selfReview.challenges}
                     </p>
                   </div>
                 )}
               </div>
             ) : (
-              <p className="text-xs text-slate-400 dark:text-[#8D96AA] py-3 text-center font-mono">
+              <p className="text-xs text-slate-600 dark:text-zinc-300 py-3 text-center font-sans font-medium">
                 Employee has not yet submitted their self-review reflection.
               </p>
             )}
@@ -368,12 +426,12 @@ export const ManagerReviewWorkspace: React.FC = () => {
 
           {/* Peer Feedback / Aggregate (with >= 3 privacy rule) */}
           <div className="dark-glass-card rounded-2xl p-5 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
-            <div className="flex items-center justify-between pb-3 border-b border-[#e8edf5] dark:border-white/[0.06]">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-300 dark:border-zinc-700">
               <span className="text-xs font-bold text-[#172033] dark:text-[#F0F3FA] uppercase tracking-wider flex items-center gap-1.5">
                 <MessageSquareHeart className="w-4 h-4 text-rose-500" />
                 Peer Feedback Aggregate
               </span>
-              <span className="text-[11px] text-slate-400 dark:text-[#8D96AA] font-mono">
+              <span className="text-[11px] text-slate-600 dark:text-zinc-300 font-sans font-medium">
                 {peerFeedback.length} responses
               </span>
             </div>
@@ -381,18 +439,18 @@ export const ManagerReviewWorkspace: React.FC = () => {
             {peerFeedback.length >= 3 ? (
               <div className="space-y-3 text-xs">
                 {peerFeedback.map((fb) => (
-                  <div key={fb.id} className="p-3.5 rounded-xl bg-[#f8fafc] dark:bg-white/[0.03] border border-[#c5d2e3] dark:border-white/[0.08] space-y-1">
-                    <span className="font-semibold text-[#172033] dark:text-[#F0F3FA] text-[11px]">
+                  <div key={fb.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 space-y-1">
+                    <span className="font-semibold text-slate-900 dark:text-zinc-100 text-[11px]">
                       {fb.competency} · {fb.type === 'kudos' ? '🌟 Kudos' : '💡 Coaching'}
                     </span>
-                    <p className="italic text-[#52637c] dark:text-[#8D96AA] leading-snug">"{fb.message}"</p>
+                    <p className="italic text-slate-800 dark:text-zinc-200 leading-snug">"{fb.message}"</p>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-3.5 bg-[#f8fafc] dark:bg-white/[0.03] border border-[#c5d2e3] dark:border-white/[0.08] rounded-xl text-xs text-[#52637c] dark:text-[#8D96AA]">
-                <p className="font-semibold text-[#172033] dark:text-[#F0F3FA]">Peer Anonymity Threshold:</p>
-                <p className="text-[11px] mt-0.5 text-[#52637c] dark:text-[#8D96AA]">
+              <div className="p-3.5 bg-slate-50 dark:bg-white/[0.04] border border-slate-300 dark:border-white/10 rounded-xl text-xs text-slate-800 dark:text-zinc-200">
+                <p className="font-bold text-slate-900 dark:text-white">Peer Anonymity Threshold:</p>
+                <p className="text-[11px] mt-0.5 text-slate-700 dark:text-zinc-300">
                   A minimum of 3 peer reviews is required before aggregated comments are visible to protect colleague anonymity (Current: {peerFeedback.length} response{peerFeedback.length === 1 ? '' : 's'}).
                 </p>
               </div>
@@ -402,9 +460,9 @@ export const ManagerReviewWorkspace: React.FC = () => {
 
         {/* RIGHT COLUMN: FORMAL APPRAISAL & LIVE SCORING */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="flex items-center gap-2 pb-2 border-b border-[#e8edf5] dark:border-white/[0.06]">
-            <Award className="w-4 h-4 text-[#8B7CFF]" />
-            <h2 className="text-xs font-bold uppercase tracking-wider text-[#172033] dark:text-[#8D96AA]">
+          <div className="flex items-center gap-2 pb-2 border-b border-slate-300 dark:border-zinc-700">
+            <Award className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+            <h2 className="text-xs font-bold uppercase tracking-wider text-slate-900 dark:text-zinc-100">
               Manager Appraisal & Scoring
             </h2>
           </div>
@@ -419,7 +477,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
 
           {/* Evaluation Form Card */}
           <div className="dark-glass-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
-            <h3 className="text-[13px] font-bold text-[#172033] dark:text-[#F0F3FA] uppercase tracking-[0.07em] pb-3 border-b border-[#e8edf5] dark:border-white/[0.06]">
+            <h3 className="text-[13px] font-bold text-[#172033] dark:text-[#F0F3FA] uppercase tracking-[0.07em] pb-3 border-b border-slate-300 dark:border-zinc-700">
               Component Ratings (1.0 to 5.0)
             </h3>
 
@@ -457,9 +515,9 @@ export const ManagerReviewWorkspace: React.FC = () => {
             </div>
 
             {/* Narrative Comments */}
-            <div className="pt-4 border-t border-[#e8edf5] dark:border-white/[0.06] space-y-4 text-xs">
+            <div className="pt-4 border-t border-slate-300 dark:border-zinc-700 space-y-4 text-xs">
               <div>
-                <label className="font-semibold text-[13px] text-[#172033] dark:text-[#8D96AA] block mb-1.5">
+                <label className="font-bold text-[13px] text-slate-900 dark:text-zinc-100 block mb-1.5">
                   Overall Manager Summary & Narrative *
                 </label>
                 <textarea
@@ -469,12 +527,12 @@ export const ManagerReviewWorkspace: React.FC = () => {
                   value={overallComments}
                   onChange={(e) => setOverallComments(e.target.value)}
                   placeholder="Detail overall performance context, delivery impact, and leadership contributions..."
-                  className="w-full p-4 rounded-xl border border-[#c5d2e3] dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-[#7560ee] disabled:bg-slate-100 dark:disabled:bg-white/[0.02] disabled:text-slate-500 dark:disabled:text-[#8D96AA] bg-[#f8fafc] dark:bg-[#18181b] text-slate-800 dark:text-[#F0F3FA] text-[13px] leading-relaxed shadow-2xs"
+                  className="w-full p-4 rounded-xl border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 placeholder:text-slate-500 dark:placeholder:text-zinc-500 disabled:bg-slate-100 dark:disabled:bg-zinc-900/90 disabled:text-slate-900 dark:disabled:text-zinc-100 disabled:border-slate-300 dark:disabled:border-zinc-700 text-[13px] leading-relaxed shadow-2xs font-sans"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[13px] text-[#172033] dark:text-[#8D96AA] block mb-1.5">Key Strengths Demonstrated *</label>
+                <label className="font-bold text-[13px] text-slate-900 dark:text-zinc-100 block mb-1.5">Key Strengths Demonstrated *</label>
                 <textarea
                   rows={2}
                   required
@@ -482,12 +540,12 @@ export const ManagerReviewWorkspace: React.FC = () => {
                   value={strengths}
                   onChange={(e) => setStrengths(e.target.value)}
                   placeholder="What does this employee excel at? Where are they a role model?"
-                  className="w-full p-4 rounded-xl border border-[#c5d2e3] dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-[#7560ee] disabled:bg-slate-100 dark:disabled:bg-white/[0.02] disabled:text-slate-500 dark:disabled:text-[#8D96AA] bg-[#f8fafc] dark:bg-[#18181b] text-slate-800 dark:text-[#F0F3FA] text-[13px] leading-relaxed shadow-2xs"
+                  className="w-full p-4 rounded-xl border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 placeholder:text-slate-500 dark:placeholder:text-zinc-500 disabled:bg-slate-100 dark:disabled:bg-zinc-900/90 disabled:text-slate-900 dark:disabled:text-zinc-100 disabled:border-slate-300 dark:disabled:border-zinc-700 text-[13px] leading-relaxed shadow-2xs font-sans"
                 />
               </div>
 
               <div>
-                <label className="font-semibold text-[13px] text-[#172033] dark:text-[#8D96AA] block mb-1.5">
+                <label className="font-bold text-[13px] text-slate-900 dark:text-zinc-100 block mb-1.5">
                   Development Opportunities & Growth Areas
                 </label>
                 <textarea
@@ -496,13 +554,13 @@ export const ManagerReviewWorkspace: React.FC = () => {
                   value={growthAreas}
                   onChange={(e) => setGrowthAreas(e.target.value)}
                   placeholder="Constructive advice on where they should stretch in the next cycle..."
-                  className="w-full p-4 rounded-xl border border-[#c5d2e3] dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-[#7560ee] disabled:bg-slate-100 dark:disabled:bg-white/[0.02] disabled:text-slate-500 dark:disabled:text-[#8D96AA] bg-[#f8fafc] dark:bg-[#18181b] text-slate-800 dark:text-[#F0F3FA] text-[13px] leading-relaxed shadow-2xs"
+                  className="w-full p-4 rounded-xl border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 placeholder:text-slate-500 dark:placeholder:text-zinc-500 disabled:bg-slate-100 dark:disabled:bg-zinc-900/90 disabled:text-slate-900 dark:disabled:text-zinc-100 disabled:border-slate-300 dark:disabled:border-zinc-700 text-[13px] leading-relaxed shadow-2xs font-sans"
                 />
               </div>
             </div>
 
             {/* Recommendations Checkboxes */}
-            <div className="pt-4 border-t border-[#e8edf5] dark:border-white/[0.06] space-y-3 text-xs">
+            <div className="pt-4 border-t border-slate-300 dark:border-zinc-700 space-y-3 text-xs">
               <span className="font-bold text-[#172033] dark:text-[#F0F3FA] block uppercase tracking-[0.07em] text-[11px]">
                 Compensation & Growth Recommendations
               </span>
@@ -608,6 +666,16 @@ export const ManagerReviewWorkspace: React.FC = () => {
         confirmText="Confirm & Submit Review"
         variant="primary"
         isLoading={isSubmitting}
+      />
+
+      {/* PDF Evidence Document Viewer Modal */}
+      <PdfViewerModal
+        isOpen={activePdfModal.isOpen}
+        onClose={() => setActivePdfModal((prev) => ({ ...prev, isOpen: false }))}
+        fileName={activePdfModal.fileName}
+        fileUrl={activePdfModal.fileUrl}
+        goalTitle={activePdfModal.goalTitle}
+        authorName={activePdfModal.authorName}
       />
     </div>
   )

@@ -1,4 +1,5 @@
 import { User } from '../../types'
+import { matchesUser } from '../../lib/workflow'
 import { storageService } from './storageService'
 
 export const peopleService = {
@@ -7,12 +8,14 @@ export const peopleService = {
   },
 
   async getById(id: string): Promise<User | null> {
-    const user = storageService.getState().users.find((u) => u.id === id)
+    const user = storageService.getState().users.find((u) => u.id === id || matchesUser(u.id, id))
     return user ? { ...user } : null
   },
 
   async getDirectReports(managerId: string): Promise<User[]> {
-    return storageService.getState().users.filter((u) => u.managerId === managerId)
+    return storageService
+      .getState()
+      .users.filter((u) => u.managerId === managerId || matchesUser(u.managerId, managerId))
   },
 
   async create(user: Omit<User, 'id'>): Promise<User> {
@@ -28,7 +31,7 @@ export const peopleService = {
     let updated: User | null = null
     storageService.updateState((state) => {
       const users = state.users.map((u) => {
-        if (u.id === id) {
+        if (u.id === id || matchesUser(u.id, id)) {
           updated = { ...u, ...updates }
           return updated
         }
@@ -46,4 +49,3 @@ export const peopleService = {
     return this.update(id, { active: !current.active })
   },
 }
-

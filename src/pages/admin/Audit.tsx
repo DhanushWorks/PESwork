@@ -4,7 +4,6 @@ import { AuditLog, User } from '../../types'
 import { formatDateTime } from '../../lib/formatters'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import { CustomDropdown } from '../../components/ui/CustomDropdown'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import {
@@ -34,6 +33,7 @@ import {
   Database,
   CheckCircle,
   AlertTriangle,
+  Search,
 } from 'lucide-react'
 
 // Synthetic cryptographic hash generator for audit demonstration
@@ -47,6 +47,197 @@ const generateBlockHash = (id: string, timestamp: string): string => {
   }
   const hex = Math.abs(hash).toString(16).padStart(8, '0')
   return `0x${hex}f92b4c81a2e73d10`
+}
+
+// Action Badge styling & human-readable formatting (AWS / Enterprise grade)
+interface ActionMeta {
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  style: string
+  iconColor: string
+}
+
+const ACTION_CONFIG: Record<string, ActionMeta> = {
+  // Approvals & Confirmations (Subtle Enterprise Emerald)
+  CALIBRATION_ADMIN_APPROVED: {
+    label: 'Calibration Approved',
+    icon: CheckCircle2,
+    style: 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  GOAL_APPROVED: {
+    label: 'Goal Approved',
+    icon: CheckCircle2,
+    style: 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  CYCLE_RESULTS_RELEASED: {
+    label: 'Results Released',
+    icon: CheckCircle2,
+    style: 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+  RESULT_ACKNOWLEDGED: {
+    label: 'Result Acknowledged',
+    icon: CheckCircle2,
+    style: 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+  },
+
+  // Calibration / Adjustments (Subtle Slate/Zinc)
+  CALIBRATION_ADJUSTED: {
+    label: 'Calibration Adjusted',
+    icon: Sliders,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  SCORE_CALIBRATED: {
+    label: 'Score Calibrated',
+    icon: Sliders,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+
+  // Reviews & Submissions (Subtle Slate/Zinc)
+  MANAGER_REVIEW_SUBMITTED: {
+    label: 'Manager Review',
+    icon: FileText,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  SELF_REVIEW_SUBMITTED: {
+    label: 'Self Review',
+    icon: FileText,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  GOALS_SUBMITTED: {
+    label: 'Goals Submitted',
+    icon: FileText,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+
+  // Lifecycle & Stage Progressions (Subtle Slate/Zinc)
+  CYCLE_ADVANCED: {
+    label: 'Stage Advanced',
+    icon: ArrowRightCircle,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  STAGE_ADVANCED: {
+    label: 'Stage Advanced',
+    icon: ArrowRightCircle,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  CYCLE_CREATED: {
+    label: 'Cycle Created',
+    icon: ArrowRightCircle,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  PARTICIPANT_ENROLLED_IN_CYCLE: {
+    label: 'Participant Enrolled',
+    icon: ArrowRightCircle,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+  PARTICIPANTS_BULK_ENROLLED: {
+    label: 'Bulk Enrolled',
+    icon: ArrowRightCircle,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  },
+
+  // Warnings / Revisions (Subtle Enterprise Amber)
+  GOAL_RETURNED: {
+    label: 'Goal Returned',
+    icon: AlertTriangle,
+    style: 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+  RESULT_DISPUTED: {
+    label: 'Result Disputed',
+    icon: AlertTriangle,
+    style: 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+  },
+
+  // Destructive / Revocations (Subtle Enterprise Rose)
+  CYCLE_DELETED: {
+    label: 'Cycle Deleted',
+    icon: AlertTriangle,
+    style: 'bg-rose-50 text-rose-800 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+  },
+  CALIBRATION_PERMISSION_REVOKED: {
+    label: 'Permission Revoked',
+    icon: AlertTriangle,
+    style: 'bg-rose-50 text-rose-800 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+  },
+  PARTICIPANT_REMOVED_FROM_CYCLE: {
+    label: 'Participant Removed',
+    icon: AlertTriangle,
+    style: 'bg-rose-50 text-rose-800 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
+    iconColor: 'text-rose-600 dark:text-rose-400',
+  },
+}
+
+const getActionMeta = (action: string): ActionMeta => {
+  if (ACTION_CONFIG[action]) {
+    return ACTION_CONFIG[action]
+  }
+
+  // Fallback: format raw UPPER_SNAKE_CASE to clean Title Case
+  const cleanLabel = action
+    .replace(/_/g, ' ')
+    .toLowerCase()
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+
+  if (action.includes('APPROV') || action.includes('RELEASE')) {
+    return {
+      label: cleanLabel,
+      icon: CheckCircle2,
+      style: 'bg-emerald-50 text-emerald-800 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50',
+      iconColor: 'text-emerald-600 dark:text-emerald-400',
+    }
+  }
+
+  if (action.includes('DELETE') || action.includes('REVOK') || action.includes('REMOVE')) {
+    return {
+      label: cleanLabel,
+      icon: AlertTriangle,
+      style: 'bg-rose-50 text-rose-800 border-rose-200/80 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50',
+      iconColor: 'text-rose-600 dark:text-rose-400',
+    }
+  }
+
+  if (action.includes('RETURN') || action.includes('DISPUT')) {
+    return {
+      label: cleanLabel,
+      icon: AlertTriangle,
+      style: 'bg-amber-50 text-amber-800 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50',
+      iconColor: 'text-amber-600 dark:text-amber-400',
+    }
+  }
+
+  if (action.includes('STAGE') || action.includes('CYCLE')) {
+    return {
+      label: cleanLabel,
+      icon: ArrowRightCircle,
+      style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+      iconColor: 'text-slate-600 dark:text-zinc-400',
+    }
+  }
+
+  return {
+    label: cleanLabel,
+    icon: Activity,
+    style: 'bg-slate-100 text-slate-800 border-slate-200 dark:bg-zinc-800/80 dark:text-zinc-200 dark:border-zinc-700',
+    iconColor: 'text-slate-600 dark:text-zinc-400',
+  }
 }
 
 export const AdminAudit: React.FC = () => {
@@ -96,9 +287,11 @@ export const AdminAudit: React.FC = () => {
   const filteredLogs = useMemo(() => {
     return logs
       .filter((l) => {
+        const actionLabel = getActionMeta(l.action).label.toLowerCase()
         const matchesSearch =
           l.actorName.toLowerCase().includes(search.toLowerCase()) ||
           l.action.toLowerCase().includes(search.toLowerCase()) ||
+          actionLabel.includes(search.toLowerCase()) ||
           l.details.toLowerCase().includes(search.toLowerCase()) ||
           l.entity.toLowerCase().includes(search.toLowerCase()) ||
           l.id.toLowerCase().includes(search.toLowerCase())
@@ -204,36 +397,17 @@ export const AdminAudit: React.FC = () => {
     success('Payload Copied', 'JSON cryptographic record copied to clipboard.')
   }
 
-  // Action Badge styling helper
+  // Action Badge styling helper (Enterprise / AWS grade)
   const renderActionBadge = (action: string) => {
-    if (action.includes('CALIBRATION')) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide uppercase bg-purple-500/10 text-purple-700 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/30 shadow-xs">
-          <Sliders className="w-3 h-3 text-purple-600 dark:text-purple-400" />
-          {action}
-        </span>
-      )
-    }
-    if (action.includes('STAGE') || action.includes('CYCLE')) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide uppercase bg-indigo-50 text-indigo-700 dark:bg-emerald-500/10 dark:text-emerald-300 border border-indigo-200/90 dark:border-emerald-500/30 shadow-xs">
-          <ArrowRightCircle className="w-3 h-3 text-indigo-600 dark:text-emerald-400" />
-          {action}
-        </span>
-      )
-    }
-    if (action.includes('APPROV')) {
-      return (
-        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide uppercase bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 dark:border-amber-500/30 shadow-xs">
-          <CheckCircle2 className="w-3 h-3 text-amber-600 dark:text-amber-400" />
-          {action}
-        </span>
-      )
-    }
+    const meta = getActionMeta(action)
+    const Icon = meta.icon
+
     return (
-      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-[11px] font-semibold tracking-wide uppercase bg-blue-500/10 text-blue-700 dark:text-blue-300 border border-blue-500/20 dark:border-blue-500/30 shadow-xs">
-        <FileText className="w-3 h-3 text-blue-600 dark:text-blue-400" />
-        {action}
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium border shadow-2xs whitespace-nowrap ${meta.style}`}
+      >
+        <Icon className={`w-3.5 h-3.5 ${meta.iconColor}`} />
+        <span>{meta.label}</span>
       </span>
     )
   }
@@ -253,9 +427,9 @@ export const AdminAudit: React.FC = () => {
         <div className="space-y-1">
           <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
             {parts[0]}
-            <span className="inline-flex items-center gap-1 mx-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-white/[0.08] text-slate-900 dark:text-white font-mono text-[11px] font-bold border border-slate-200 dark:border-white/10">
+            <span className="inline-flex items-center gap-1 mx-1 px-1.5 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 font-sans text-xs font-semibold border border-slate-200 dark:border-zinc-700">
               {fromScore} → {toScore}
-              <span className="text-indigo-600 dark:text-[#4FE3C1] text-[10px] ml-0.5">
+              <span className="text-emerald-700 dark:text-emerald-400 text-[11px] ml-0.5 font-medium">
                 (+{delta})
               </span>
             </span>
@@ -273,203 +447,98 @@ export const AdminAudit: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Forensic Audit & Compliance Ledger
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Immutable cryptographic ledger, administrative traceability & cycle governance
-          </p>
+    <div className="space-y-3.5 w-full pb-3 animate-fade-in font-sans">
+      {/* Search & Action Controls Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        {/* Normal Search Input */}
+        <div className="relative w-full sm:w-64 md:w-72 flex items-center shrink-0">
+          <Search className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search audit records or actors..."
+            className="w-full h-9 pl-9 pr-8 rounded-xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition-all font-sans shadow-2xs"
+          />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+              aria-label="Clear search"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
 
-        {/* Action Controls */}
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        {/* Action Buttons & Filters */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          {/* Actor Filter Custom Dropdown */}
+          <CustomDropdown
+            value={selectedActor}
+            onChange={setSelectedActor}
+            align="right"
+            triggerClassName="h-9 px-3 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all"
+            options={[
+              { value: 'all', label: `All Actors (${uniqueActors.length})` },
+              ...uniqueActors.map((a) => ({
+                value: a.id,
+                label: a.name,
+              })),
+            ]}
+          />
+
+          {/* Sort Toggle */}
+          <button
+            type="button"
+            onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+            className="h-9 px-3 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+            title="Toggle chronological ordering"
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
+            <span className="font-sans">{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
+          </button>
+
+          {/* Verify Integrity */}
           <button
             type="button"
             onClick={handleVerifyLedger}
             disabled={isVerifying}
-            className="inline-flex items-center gap-2 h-10 sm:h-11 px-4 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-white/[0.08] hover:border-slate-300 dark:hover:border-white/20 transition-all font-medium text-xs sm:text-sm cursor-pointer shadow-2xs disabled:opacity-60"
-            title="Perform cryptographic hash check on all ledger blocks"
+            className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
+            title="Verify cryptographic integrity of ledger"
           >
-            <ShieldCheck className={`w-4 h-4 text-indigo-600 dark:text-[#4FE3C1] ${isVerifying ? 'animate-spin' : ''}`} />
-            <span>{isVerifying ? 'Verifying Chain...' : 'Verify Integrity'}</span>
+            <ShieldCheck className={`w-3.5 h-3.5 opacity-80 ${isVerifying ? 'animate-spin' : ''}`} />
+            <span>{isVerifying ? 'Verifying...' : 'Verify'}</span>
           </button>
 
+          {/* Export CSV */}
           <button
             type="button"
             onClick={handleExportCSV}
-            className="h-10 sm:h-11 px-4 sm:px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-black font-semibold text-xs sm:text-sm cursor-pointer inline-flex items-center gap-2 shadow-xs transition-all border border-transparent dark:border-white/10"
+            className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 border border-transparent"
             title="Download audit records as CSV"
           >
-            <Download className="w-4 h-4" />
+            <Download className="w-3.5 h-3.5" />
             <span>Export CSV</span>
           </button>
 
+          {/* Refresh */}
           <button
             type="button"
             onClick={fetchLogs}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl flex items-center justify-center border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/[0.08] hover:border-slate-300 dark:hover:border-white/20 transition-all cursor-pointer shadow-2xs"
+            className="w-9 h-9 rounded-xl flex items-center justify-center bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer"
             title="Refresh event log"
           >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600 dark:text-[#4FE3C1]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin opacity-80' : ''}`} />
           </button>
         </div>
       </div>
 
-      {/* 4 Executive KPI Stat Cards (White in Whitemode, Obsidian Black in Darkmode) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {/* Total Events */}
-        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-5.5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md hover:border-slate-300 dark:hover:border-zinc-600 transition-all flex flex-col justify-between space-y-4 group relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Total Logged Events
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-              <History className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline justify-between gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
-              {counts.total}
-            </span>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-mono font-medium bg-indigo-50 text-indigo-700 border border-indigo-200/90 dark:bg-emerald-500/15 dark:text-[#4FE3C1] dark:border-emerald-500/30">
-              <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 dark:text-[#4FE3C1]" /> 100% Intact
-            </span>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-400">
-            <span>Cryptographic status</span>
-            <span className="text-slate-700 dark:text-zinc-300">Verified {lastVerifiedAt}</span>
-          </div>
-        </div>
-
-        {/* Stage & Lifecycle Advances */}
-        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-5.5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md hover:border-slate-300 dark:hover:border-zinc-600 transition-all flex flex-col justify-between space-y-4 group relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Cycle Transitions
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-              <ArrowRightCircle className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
-              {counts.stages}
-            </span>
-            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
-              stages advanced
-            </span>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-400">
-            <span>Active cycle</span>
-            <span className="text-slate-700 dark:text-zinc-300">H1-2026 Cycle</span>
-          </div>
-        </div>
-
-        {/* Calibration Overrides */}
-        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-5.5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md hover:border-slate-300 dark:hover:border-zinc-600 transition-all flex flex-col justify-between space-y-4 group relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Calibration Overrides
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-              <Sliders className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
-              {counts.calibration}
-            </span>
-            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
-              adjustments
-            </span>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-400">
-            <span>Governance review</span>
-            <span className="text-slate-700 dark:text-zinc-300">Audited with rationale</span>
-          </div>
-        </div>
-
-        {/* Governance & Reviews */}
-        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-5.5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md hover:border-slate-300 dark:hover:border-zinc-600 transition-all flex flex-col justify-between space-y-4 group relative overflow-hidden">
-          <div className="flex items-center justify-between">
-            <span className="text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
-              Approvals & Reviews
-            </span>
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-white/[0.06] border border-slate-200 dark:border-white/10 flex items-center justify-center text-slate-700 dark:text-zinc-300 group-hover:text-slate-900 dark:group-hover:text-white transition-colors">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight tabular-nums">
-              {counts.approvals}
-            </span>
-            <span className="text-xs font-medium text-slate-500 dark:text-zinc-400">
-              submissions
-            </span>
-          </div>
-          <div className="pt-2.5 border-t border-slate-100 dark:border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-500 dark:text-zinc-400">
-            <span>Verification seal</span>
-            <span className="text-slate-700 dark:text-zinc-300">Signed & timestamped</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Search, Filter Tabs & Controls Toolbar */}
-      <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md space-y-3.5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          {/* Animated Search Bar with 270px x 48px Experience */}
-          <div className="w-full sm:w-auto">
-            <AnimatedSearchBar
-              value={search}
-              onChangeValue={(val) => setSearch(val)}
-              placeholder="Filter by actor, action, score, or block ID..."
-              animatedPlaceholders={[
-                'Filter by actor or admin...',
-                'Search action or event...',
-                'Filter by score adjustment...',
-                'Search SHA-256 block ID...',
-              ]}
-              variant="pill"
-              sizeVariant="default"
-              containerClassName="w-full sm:w-[320px] focus-within:sm:w-[360px]"
-            />
-          </div>
-
-          {/* Actor Selector & Sort Controls */}
-          <div className="flex items-center gap-2.5 self-end sm:self-auto shrink-0">
-            {/* Actor Filter Custom Dropdown */}
-            <CustomDropdown
-              value={selectedActor}
-              onChange={setSelectedActor}
-              align="right"
-              options={[
-                { value: 'all', label: `All Actors (${uniqueActors.length})` },
-                ...uniqueActors.map((a) => ({
-                  value: a.id,
-                  label: a.name,
-                })),
-              ]}
-            />
-
-            {/* Sort Toggle */}
-            <button
-              type="button"
-              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-              className="h-10 px-3.5 rounded-xl text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border border-white/10 transition-all cursor-pointer flex items-center gap-2 shadow-2xs"
-              title="Toggle chronological ordering"
-            >
-              <Clock className="w-3.5 h-3.5 text-zinc-400" />
-              <span className="font-mono">{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Filter Pill Tabs */}
-        <div className="overflow-x-auto no-scrollbar pt-1 border-t border-white/[0.08]">
+      {/* Main Luxury Audit Table Card */}
+      <div className="rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md overflow-hidden">
+        {/* Category Navigation Segment Bar placed directly on the Audit Recorded Card */}
+        <div className="p-3 sm:px-4 sm:py-3.5 border-b border-slate-200 dark:border-white/[0.08] overflow-x-auto no-scrollbar bg-slate-50/60 dark:bg-zinc-900/40">
           <RubberSegmentedControl
             options={[
               { value: 'all', label: 'All Records', count: counts.total },
@@ -497,14 +566,11 @@ export const AdminAudit: React.FC = () => {
             size="sm"
           />
         </div>
-      </div>
 
-      {/* Main Luxury Audit Table Card */}
-      <div className="rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md overflow-hidden">
         <div className="overflow-x-auto no-scrollbar">
           <table className="w-full text-left text-xs border-collapse">
             <thead>
-              <tr className="bg-slate-50 dark:bg-white/[0.02] border-b border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-zinc-400 uppercase tracking-wider text-[11px] font-mono">
+              <tr className="bg-slate-100/80 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/[0.12] text-slate-900 dark:text-white uppercase tracking-wider text-xs font-bold font-sans">
                 <th className="py-3.5 px-4 whitespace-nowrap">Block & Time</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Actor</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Action Type</th>
@@ -516,20 +582,20 @@ export const AdminAudit: React.FC = () => {
             <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] text-slate-800 dark:text-zinc-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16 text-slate-400 dark:text-[#8D96AA]">
+                  <td colSpan={6} className="text-center py-16 text-slate-600 dark:text-zinc-300">
                     <div className="flex flex-col items-center justify-center gap-2">
-                      <RefreshCw className="w-6 h-6 animate-spin text-indigo-600 dark:text-[#4FE3C1]" />
-                      <span className="text-xs font-semibold font-mono">Decrypting compliance ledger...</span>
+                      <RefreshCw className="w-5 h-5 animate-spin text-slate-600 dark:text-zinc-400" />
+                      <span className="text-xs font-semibold font-sans">Decrypting compliance ledger...</span>
                     </div>
                   </td>
                 </tr>
               ) : filteredLogs.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="text-center py-16 text-slate-400 dark:text-[#8D96AA]">
+                  <td colSpan={6} className="text-center py-16 text-slate-600 dark:text-zinc-300">
                     <div className="flex flex-col items-center justify-center gap-1.5">
-                      <Shield className="w-8 h-8 text-slate-300 dark:text-[#8D96AA]/40 mb-1" />
-                      <p className="text-sm font-bold text-slate-700 dark:text-[#F0F3FA]">No matching audit events</p>
-                      <p className="text-xs text-slate-400 dark:text-[#8D96AA]">Try adjusting your search criteria or actor filter</p>
+                      <Shield className="w-8 h-8 text-slate-400 dark:text-zinc-500 mb-1" />
+                      <p className="text-sm font-bold text-slate-800 dark:text-white">No matching audit events</p>
+                      <p className="text-xs text-slate-600 dark:text-zinc-300 font-medium">Try adjusting your search criteria or actor filter</p>
                     </div>
                   </td>
                 </tr>
@@ -540,21 +606,21 @@ export const AdminAudit: React.FC = () => {
 
                   return (
                     <tr
-                      key={log.id}
+                      key={`${log.id}-${index}`}
                       onClick={() => setInspectLog(log)}
                       className="hover:bg-slate-50/80 dark:hover:bg-white/[0.04] transition-colors group cursor-pointer"
                     >
                       {/* Timestamp & Block Reference */}
                       <td className="py-4 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-2">
-                          <span className="font-mono text-[10px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-white/[0.08] px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/[0.08]">
+                          <span className="font-sans text-[10px] font-bold text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-white/[0.08] px-2 py-0.5 rounded-md border border-slate-200 dark:border-white/[0.08]">
                             #{String(blockNumber).padStart(3, '0')}
                           </span>
                           <div>
-                            <p className="font-mono text-xs font-medium text-slate-900 dark:text-white">
+                            <p className="font-sans text-xs font-medium text-slate-900 dark:text-white">
                               {formatDateTime(log.timestamp)}
                             </p>
-                            <p className="font-mono text-[10px] text-slate-400 dark:text-zinc-400">
+                            <p className="font-sans text-[10px] text-slate-400 dark:text-zinc-400">
                               {generateBlockHash(log.id, log.timestamp).slice(0, 10)}...
                             </p>
                           </div>
@@ -593,7 +659,7 @@ export const AdminAudit: React.FC = () => {
 
                       {/* Entity Target */}
                       <td className="py-4 px-4 whitespace-nowrap">
-                        <span className="font-mono text-[11px] font-medium text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-white/[0.06] px-2 py-0.5 rounded border border-slate-200 dark:border-white/10">
+                        <span className="font-sans text-[11px] font-medium text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-white/[0.06] px-2 py-0.5 rounded border border-slate-200 dark:border-white/10">
                           {log.entity}
                         </span>
                       </td>
@@ -611,7 +677,7 @@ export const AdminAudit: React.FC = () => {
                             e.stopPropagation()
                             setInspectLog(log)
                           }}
-                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] border border-slate-200/80 dark:border-transparent dark:hover:border-white/10 transition-all inline-flex items-center gap-1 cursor-pointer font-mono"
+                          className="px-2.5 py-1 rounded-lg text-[11px] font-semibold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] border border-slate-200/80 dark:border-transparent dark:hover:border-white/10 transition-all inline-flex items-center gap-1 cursor-pointer font-sans"
                         >
                           <Eye className="w-3.5 h-3.5" />
                           <span>Inspect</span>
@@ -627,12 +693,12 @@ export const AdminAudit: React.FC = () => {
 
         {/* Footer Statistics Bar */}
         <div className="p-3.5 px-4 bg-slate-50 dark:bg-white/[0.02] border-t border-slate-200 dark:border-white/[0.08] flex flex-wrap items-center justify-between text-xs text-slate-500 dark:text-zinc-400">
-          <span className="font-mono text-[11px]">
+          <span className="text-[11px] font-sans text-emerald-700 dark:text-emerald-400 flex items-center gap-1 font-medium">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> SHA-256 Consensus: Valid
+          </span>
+          <span className="font-sans text-[11px]">
             Showing <strong className="text-slate-900 dark:text-white">{filteredLogs.length}</strong> of{' '}
             <strong className="text-slate-900 dark:text-white">{logs.length}</strong> cryptographically verified events
-          </span>
-          <span className="text-[11px] font-mono text-indigo-600 dark:text-[#4FE3C1] flex items-center gap-1">
-            <CheckCircle2 className="w-3.5 h-3.5 text-indigo-600 dark:text-[#4FE3C1]" /> SHA-256 Consensus: Valid
           </span>
         </div>
       </div>
@@ -653,17 +719,17 @@ export const AdminAudit: React.FC = () => {
             {/* Modal Header */}
             <div className="p-5 border-b border-slate-200 dark:border-zinc-700/80 flex items-center justify-between bg-slate-50 dark:bg-zinc-900 menu-inner-card">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-[#8B7CFF]/10 text-[#8B7CFF] border border-[#8B7CFF]/20 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 flex items-center justify-center">
                   <Key className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900 dark:text-[#F0F3FA] flex items-center gap-2">
-                    Cryptographic Block Inspector
-                    <span className="font-mono text-[10px] text-indigo-700 bg-indigo-50 border border-indigo-200/90 dark:text-[#4FE3C1] dark:bg-[#4FE3C1]/10 px-2 py-0.5 rounded-full dark:border-[#4FE3C1]/20 font-bold">
-                      VERIFIED IMMUTABLE
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    Audit Event Inspector
+                    <span className="font-sans text-[10px] text-emerald-800 bg-emerald-50 border border-emerald-200/80 dark:text-emerald-300 dark:bg-emerald-950/40 dark:border-emerald-800/50 px-2.5 py-0.5 rounded-md font-medium">
+                      Verified
                     </span>
                   </h3>
-                  <p className="text-[11px] text-slate-500 dark:text-[#8D96AA] font-mono">
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans">
                     ID: {inspectLog.id} • {formatDateTime(inspectLog.timestamp)}
                   </p>
                 </div>
@@ -682,18 +748,18 @@ export const AdminAudit: React.FC = () => {
               {/* Event Provenance Grid */}
               <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/70 dark:border-white/10">
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-[#8D96AA]">
+                  <span className="text-[10px] font-sans uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-bold">
                     Authorized Actor
                   </span>
                   <p className="font-bold text-slate-900 dark:text-[#F0F3FA] text-xs mt-0.5">
                     {inspectLog.actorName}
                   </p>
-                  <span className="font-mono text-[10px] text-slate-500 dark:text-[#8D96AA]">
+                  <span className="font-sans text-[10px] text-slate-600 dark:text-zinc-400 font-medium">
                     ID: {inspectLog.actorId}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-[#8D96AA]">
+                  <span className="text-[10px] font-sans uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-bold">
                     Action Type
                   </span>
                   <div className="mt-1">
@@ -701,18 +767,18 @@ export const AdminAudit: React.FC = () => {
                   </div>
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-[#8D96AA]">
+                  <span className="text-[10px] font-sans uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-bold">
                     Target Entity
                   </span>
-                  <p className="font-mono text-xs font-bold text-slate-800 dark:text-[#F0F3FA] mt-0.5">
+                  <p className="font-sans text-xs font-bold text-slate-800 dark:text-[#F0F3FA] mt-0.5">
                     {inspectLog.entity} ({inspectLog.entityId})
                   </p>
                 </div>
                 <div>
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-[#8D96AA]">
+                  <span className="text-[10px] font-sans uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-bold">
                     Audit Signature Hash
                   </span>
-                  <p className="font-mono text-[11px] text-[#8B7CFF] font-bold mt-0.5 truncate">
+                  <p className="font-mono text-[11px] text-slate-700 dark:text-zinc-300 font-medium mt-0.5 truncate">
                     {generateBlockHash(inspectLog.id, inspectLog.timestamp)}
                   </p>
                 </div>
@@ -720,7 +786,7 @@ export const AdminAudit: React.FC = () => {
 
               {/* Event Detail Summary */}
               <div>
-                <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-[#8D96AA]">
+                <span className="text-[10px] font-sans uppercase tracking-wider text-slate-700 dark:text-zinc-300 font-bold">
                   Event Rationale & Description
                 </span>
                 <div className="mt-1.5 p-3 rounded-xl bg-white dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/10">
@@ -731,20 +797,20 @@ export const AdminAudit: React.FC = () => {
               {/* Raw Signed JSON Payload */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-[#8D96AA] flex items-center gap-1.5">
-                    <FileCode className="w-3.5 h-3.5 text-[#8B7CFF]" />
-                    Signed Raw Payload (JSON)
+                  <span className="text-[10px] font-sans uppercase tracking-wider text-slate-500 dark:text-zinc-400 flex items-center gap-1.5 font-medium">
+                    <FileCode className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
+                    Signed Payload (JSON)
                   </span>
                   <button
                     type="button"
                     onClick={() => handleCopyPayload(inspectLog)}
-                    className="text-[11px] font-mono font-semibold text-[#8B7CFF] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-xs font-sans font-medium text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-zinc-200 flex items-center gap-1.5 cursor-pointer transition-colors"
                   >
-                    {hasCopiedPayload ? <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-[#4FE3C1]" /> : <Copy className="w-3.5 h-3.5" />}
-                    {hasCopiedPayload ? 'Copied!' : 'Copy JSON'}
+                    {hasCopiedPayload ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {hasCopiedPayload ? 'Copied' : 'Copy JSON'}
                   </button>
                 </div>
-                <pre className="p-3.5 rounded-xl bg-[#06080D] text-[#8B7CFF] font-mono text-[11px] leading-relaxed overflow-x-auto no-scrollbar border border-white/10">
+                <pre className="p-3.5 rounded-xl bg-slate-900 text-slate-200 dark:bg-zinc-950 dark:text-zinc-200 font-mono text-[11px] leading-relaxed overflow-x-auto no-scrollbar border border-slate-800 dark:border-zinc-800">
                   {JSON.stringify(
                     {
                       id: inspectLog.id,
@@ -776,9 +842,9 @@ export const AdminAudit: React.FC = () => {
 
             {/* Modal Footer */}
             <div className="p-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50/60 dark:bg-white/[0.02]">
-              <span className="text-[11px] text-slate-400 dark:text-[#8D96AA] font-mono flex items-center gap-1">
-                <Lock className="w-3 h-3 text-indigo-600 dark:text-[#4FE3C1]" />
-                Guaranteed append-only by PerformIQ Kernel
+              <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans flex items-center gap-1 font-medium">
+                <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
+                Guaranteed append-only audit record
               </span>
               <button
                 type="button"

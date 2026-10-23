@@ -20,7 +20,7 @@ import {
   TrendingUp,
   Users,
   X,
-  Menu,
+  PanelLeft,
   Compass,
   FolderArchive,
   ClipboardList,
@@ -44,7 +44,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const { currentUser, activeWorkspaceRole, switchWorkspaceRole, activeCycle } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
-
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
@@ -102,59 +101,78 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
       {/* Sidebar: White in White Mode and Executive Deep Obsidian in Dark Mode */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-white/95 dark:bg-[#000000]/95 backdrop-blur-md text-slate-800 dark:text-zinc-200 flex flex-col border-r border-[#d6deea] dark:border-white/[0.08] transition-[width,transform] duration-300 ease-in-out lg:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 z-40 bg-white/95 dark:bg-[#000000]/95 backdrop-blur-md text-slate-800 dark:text-zinc-200 flex flex-col border-r border-[#d6deea] dark:border-white/[0.08] transition-[width,transform] duration-200 ease-in-out lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${isCollapsed ? 'lg:w-12 overflow-visible' : 'lg:w-60'} w-60 shadow-xl dark:shadow-2xl`}
+        } ${isCollapsed ? 'lg:w-12 lg:overflow-visible' : 'lg:w-60'} w-64 sm:w-72 shadow-2xl`}
       >
-        {/* Top Header Bar with Menu Button - Exact h-12 aligning with header bottom border */}
-        <div className="h-12 flex items-center px-2 border-b border-[#d6deea] dark:border-white/[0.08] flex-shrink-0 relative">
+        {/* Top Header Bar with Company Name & Logo (Left) and Close Button (Mobile) / Collapse Button (Desktop) */}
+        <div
+          className={`h-12 flex items-center border-b border-[#d6deea] dark:border-white/[0.08] shrink-0 relative transition-all duration-200 ${
+            isCollapsed ? 'justify-between px-3.5 lg:justify-center lg:px-2' : 'justify-between px-3.5'
+          }`}
+        >
+          {/* Company Name and Logo on Left - Always visible on mobile drawer; on desktop visible when expanded */}
+          <Link
+            to={`/${currentUser.role}`}
+            className={`items-center gap-2 font-semibold text-base sm:text-lg tracking-tight text-slate-900 dark:text-white hover:opacity-85 transition-opacity select-none truncate ${
+              isCollapsed ? 'flex lg:hidden' : 'flex'
+            }`}
+            title="PerformIQ Dashboard"
+          >
+            <img
+              src="/logo.png"
+              alt="PerformIQ Logo"
+              className="w-5 h-5 object-contain dark:hidden shrink-0"
+            />
+            <img
+              src="/logo-white.png"
+              alt="PerformIQ Logo"
+              className="w-5 h-5 object-contain hidden dark:block shrink-0"
+            />
+            <span className="truncate">PerformIQ</span>
+          </Link>
+
+          {/* Desktop Collapse Button - only rendered on desktop (lg:flex) */}
           <button
             type="button"
-            onClick={() => {
-              if (window.innerWidth >= 1024) {
-                onToggleCollapse()
-              } else {
-                onClose()
-              }
-            }}
-            onMouseEnter={() => isCollapsed && setActiveTooltip('Toggle Menu')}
+            onClick={onToggleCollapse}
+            onMouseEnter={() => isCollapsed && setActiveTooltip('Toggle Sidebar')}
             onMouseLeave={() => isCollapsed && setActiveTooltip(null)}
-            onFocus={() => isCollapsed && setActiveTooltip('Toggle Menu')}
+            onFocus={() => isCollapsed && setActiveTooltip('Toggle Sidebar')}
             onBlur={() => isCollapsed && setActiveTooltip(null)}
-            onTouchStart={() => isCollapsed && setActiveTooltip('Toggle Menu')}
-            className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08] active:scale-95 rounded-lg transition-all duration-200 cursor-pointer flex-shrink-0 group"
+            className="hidden lg:flex w-8 h-8 items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.08] active:scale-95 rounded-lg transition-all duration-200 cursor-pointer shrink-0 group"
             title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             aria-label="Toggle navigation sidebar"
           >
-            <Menu className="w-4.5 h-4.5 text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white transition-colors" />
+            <PanelLeft className="w-4.5 h-4.5 text-slate-500 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-white transition-colors" />
             {isCollapsed && (
               <div
-                className={`absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
-                  activeTooltip === 'Toggle Menu'
+                className={`hidden lg:block absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
+                  activeTooltip === 'Toggle Sidebar'
                     ? 'opacity-100 translate-x-1'
                     : 'opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-focus-visible:opacity-100 group-focus-visible:translate-x-1'
                 }`}
               >
-                Toggle Menu
+                Expand sidebar
               </div>
             )}
           </button>
 
-          {/* Mobile close button on far right when drawer is open */}
+          {/* Mobile Close Button - clean, even, far right on mobile drawer */}
           <button
             type="button"
             onClick={onClose}
-            className="lg:hidden ml-auto p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white rounded-lg dark:hover:bg-white/[0.08] transition-colors cursor-pointer"
+            className="flex lg:hidden w-8 h-8 items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white rounded-lg dark:hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0"
             aria-label="Close sidebar"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4.5 h-4.5" />
           </button>
         </div>
 
         {/* Navigation Items - Consistent px-2 container so icons never jump horizontally */}
         <nav
-          className={`flex-1 pt-2 pb-1 px-2 ${
-            isCollapsed ? 'overflow-visible' : 'overflow-y-auto overflow-x-hidden'
+          className={`flex-1 pt-2 pb-1 px-2 overflow-y-auto overflow-x-hidden ${
+            isCollapsed ? 'lg:overflow-visible' : 'lg:overflow-y-auto'
           }`}
           onMouseLeave={() => setHoveredIndex(null)}
         >
@@ -213,7 +231,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   }}
                   onTouchStart={() => isCollapsed && setActiveTooltip(item.label)}
                   className={`relative z-10 flex items-center h-9 px-0 rounded-xl text-xs font-medium cursor-pointer transition-all duration-200 ease-out select-none group active:scale-[0.98] ${
-                    isCollapsed ? 'overflow-visible' : 'overflow-hidden'
+                    isCollapsed ? 'lg:overflow-visible overflow-hidden' : 'overflow-hidden'
                   } ${
                     isCurrentActive
                       ? 'text-slate-900 dark:text-white font-semibold'
@@ -231,25 +249,25 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                     />
                   </div>
 
-                  {/* Smooth expanding/collapsing label */}
+                  {/* Smooth expanding/collapsing label - Always fully visible on mobile drawer */}
                   <span
-                    className={`whitespace-nowrap transition-all duration-300 ease-in-out font-medium overflow-hidden ${
+                    className={`whitespace-nowrap transition-all duration-200 ease-in-out font-medium overflow-hidden ${
                       isCollapsed
-                        ? 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'
-                        : `opacity-100 max-w-40 translate-x-0 ml-2 ${
-                            isCurrentActive
-                              ? 'text-slate-900 dark:text-white font-semibold'
-                              : 'text-slate-600 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-slate-100 group-hover:translate-x-0.5'
-                          }`
+                        ? 'opacity-100 max-w-full translate-x-0 ml-2.5 lg:opacity-0 lg:max-w-0 lg:-translate-x-2 lg:pointer-events-none'
+                        : 'opacity-100 max-w-full translate-x-0 ml-2.5'
+                    } ${
+                      isCurrentActive
+                        ? 'text-slate-900 dark:text-white font-semibold'
+                        : 'text-slate-600 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-slate-100 group-hover:translate-x-0.5'
                     }`}
                   >
                     {item.label}
                   </span>
 
-                  {/* Floating smooth tooltip pill when collapsed */}
+                  {/* Floating smooth tooltip pill when collapsed - desktop only */}
                   {isCollapsed && (
                     <div
-                      className={`absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
+                      className={`hidden lg:block absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
                         activeTooltip === item.label
                           ? 'opacity-100 translate-x-1'
                           : 'opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-focus-visible:opacity-100 group-focus-visible:translate-x-1'
@@ -276,7 +294,7 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             onTouchStart={() => isCollapsed && setActiveTooltip('Settings')}
             className={({ isActive }) =>
               `relative w-full flex items-center h-9 px-0 rounded-xl text-xs font-medium cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] group select-none ${
-                isCollapsed ? 'overflow-visible' : 'overflow-hidden'
+                isCollapsed ? 'lg:overflow-visible overflow-hidden' : 'overflow-hidden'
               } ${
                 isActive
                   ? 'bg-slate-900/[0.06] text-slate-900 dark:bg-white/[0.08] dark:text-white font-semibold border border-slate-900/[0.08] dark:border-white/[0.1] shadow-2xs'
@@ -297,23 +315,23 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
                   />
                 </div>
                 <span
-                  className={`whitespace-nowrap transition-all duration-300 ease-in-out font-medium overflow-hidden ${
+                  className={`whitespace-nowrap transition-all duration-200 ease-in-out font-medium overflow-hidden ${
                     isCollapsed
-                      ? 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'
-                      : `opacity-100 max-w-40 translate-x-0 ml-2 ${
-                          isActive
-                            ? 'text-slate-900 dark:text-white font-semibold'
-                            : 'text-slate-600 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-slate-100 group-hover:translate-x-0.5'
-                        }`
+                      ? 'opacity-100 max-w-full translate-x-0 ml-2.5 lg:opacity-0 lg:max-w-0 lg:-translate-x-2 lg:pointer-events-none'
+                      : 'opacity-100 max-w-full translate-x-0 ml-2.5'
+                  } ${
+                    isActive
+                      ? 'text-slate-900 dark:text-white font-semibold'
+                      : 'text-slate-600 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-slate-100 group-hover:translate-x-0.5'
                   }`}
                 >
                   Settings
                 </span>
 
-                {/* Floating tooltip when collapsed */}
+                {/* Floating tooltip when collapsed - desktop only */}
                 {isCollapsed && (
                   <div
-                    className={`absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
+                    className={`hidden lg:block absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
                       activeTooltip === 'Settings'
                         ? 'opacity-100 translate-x-1'
                         : 'opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-focus-visible:opacity-100 group-focus-visible:translate-x-1'

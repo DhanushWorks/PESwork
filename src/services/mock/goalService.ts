@@ -1,12 +1,14 @@
 import { Goal, GoalStatus, ProgressLog } from '../../types'
 import { validateGoalSet } from '../../lib/validation'
+import { matchesUser, matchesCycle } from '../../lib/workflow'
 import { storageService } from './storageService'
+import { mockNotificationService } from './notificationService'
 
 export const goalService = {
   async listForUser(userId: string, cycleId?: string): Promise<Goal[]> {
     const goals = storageService.getState().goals.filter((g) => {
-      const matchUser = g.userId === userId
-      const matchCycle = cycleId ? g.cycleId === cycleId : true
+      const matchUser = g.userId === userId || matchesUser(g.userId, userId)
+      const matchCycle = cycleId ? (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId)) : true
       return matchUser && matchCycle
     })
     return goals.map((g) => ({ ...g }))
@@ -37,7 +39,7 @@ export const goalService = {
     } else {
       // Create new draft
       const newGoal: Goal = {
-        id: `goal-${Date.now()}`,
+        id: `goal-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
         userId: goalData.userId,
         cycleId: goalData.cycleId,
         title: goalData.title,
@@ -104,6 +106,22 @@ export const goalService = {
       }
     })
 
+    // In-app notification: Notify assigned manager that goals were submitted
+    const state = storageService.getState()
+    const employee = state.users.find((u) => u.id === userId)
+    const cycle = state.cycles.find((c) => c.id === cycleId)
+    const managerId = employee?.managerId
+    if (managerId) {
+      await mockNotificationService.create({
+        id: `notif-goals-sub-${userId}-${cycleId}-${Date.now()}`,
+        userId: managerId,
+        title: 'Goals Submitted for Approval',
+        message: `${employee?.name || 'Employee'} submitted their performance goals for ${cycle?.name || 'review cycle'}. Review and approve their strategic targets.`,
+        link: '/manager/approvals',
+        type: 'action',
+      })
+    }
+
     return { success: true }
   },
 
@@ -150,25 +168,84 @@ export const goalService = {
       }
     })
 
+    // In-app notification: Notify employee of goal approval or return
+    const state = storageService.getState()
+    const employee = state.users.find((u) => u.id === goal.userId)
+    const manager = state.users.find((u) => u.id === employee?.managerId)
+    const approver = state.users.find((u) => u.id === state.currentUserId)
+    const approverName =
+      approver && approver.id !== goal.userId && (approver.role === 'manager' || approver.role === 'admin')
+        ? approver.name
+        : manager?.name || 'Manager'
+
+    if (decision === 'approved') {
+      await mockNotificationService.create({
+        id: `notif-goal-app-${goalId}-${Date.now()}`,
+        userId: goal.userId,
+        title: 'Goal Approved',
+        message: `Your manager ${approverName} approved your goal "${goal.title}". Target is now active.`,
+        link: '/employee/goals',
+        type: 'success',
+      })
+    } else {
+      await mockNotificationService.create({
+        id: `notif-goal-ret-${goalId}-${Date.now()}`,
+        userId: goal.userId,
+        title: 'Goal Returned for Revision',
+        message: `Your goal "${goal.title}" was returned by ${approverName} with note: "${reason}". Please revise and resubmit.`,
+        link: '/employee/goals',
+        type: 'warning',
+      })
+    }
+
     return updated!
+  },
+
+  async uploadEvidence(
+    file: File,
+    _userId: string,
+    _goalId: string
+  ): Promise<{ fileName: string; fileUrl: string; fileSize: string }> {
+    const sizeFormatted =
+      file.size > 1024 * 1024
+        ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
+        : `${Math.round(file.size / 1024)} KB`
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const finalUrl = `${reader.result as string}#name=${encodeURIComponent(file.name)}`
+        resolve({
+          fileName: file.name,
+          fileUrl: finalUrl,
+          fileSize: sizeFormatted,
+        })
+      }
+      reader.onerror = () => reject(new Error('Failed to read file from local device.'))
+      reader.readAsDataURL(file)
+    })
   },
 
   async addProgress(
     goalId: string,
     percentage: number,
     note: string,
-    evidenceFileName?: string
+    evidenceFileName?: string,
+    evidenceUrl?: string,
+    evidenceFileSize?: string
   ): Promise<Goal> {
     const boundedPct = Math.max(0, Math.min(100, Math.round(percentage)))
     const goal = await this.getById(goalId)
     if (!goal) throw new Error(`Goal ${goalId} not found`)
 
     const newLog: ProgressLog = {
-      id: `prog-${Date.now()}`,
+      id: `prog-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
       date: new Date().toISOString().split('T')[0],
       percentage: boundedPct,
       note: note || 'Progress update recorded.',
       evidenceFileName,
+      evidenceUrl,
+      evidenceFileSize,
     }
 
     let updated: Goal | null = null
@@ -179,7 +256,50 @@ export const goalService = {
             ...g,
             progress: boundedPct,
             status: boundedPct === 100 ? 'completed' : g.status,
+            evidenceFileName: evidenceFileName || g.evidenceFileName,
+            evidenceUrl: evidenceUrl || g.evidenceUrl,
+            evidenceFileSize: evidenceFileSize || g.evidenceFileSize,
             progressHistory: [newLog, ...(g.progressHistory || [])],
+            updatedAt: new Date().toISOString(),
+          }
+          return updated
+        }
+        return g
+      })
+      return { goals }
+    })
+
+    return updated!
+  },
+
+  async removeEvidence(goalId: string, updateId?: string): Promise<Goal> {
+    const goal = await this.getById(goalId)
+    if (!goal) throw new Error(`Goal ${goalId} not found`)
+
+    let updated: Goal | null = null
+    storageService.updateState((state) => {
+      const goals = state.goals.map((g) => {
+        if (g.id === goalId) {
+          const updatedHistory = (g.progressHistory || []).map((p) => {
+            if (!updateId || p.id === updateId) {
+              return {
+                ...p,
+                evidenceFileName: undefined,
+                evidenceUrl: undefined,
+                evidenceFileSize: undefined,
+              }
+            }
+            return p
+          })
+
+          const latestEvidence = updatedHistory.find((p) => p.evidenceFileName || p.evidenceUrl)
+
+          updated = {
+            ...g,
+            evidenceFileName: latestEvidence?.evidenceFileName,
+            evidenceUrl: latestEvidence?.evidenceUrl,
+            evidenceFileSize: latestEvidence?.evidenceFileSize,
+            progressHistory: updatedHistory,
             updatedAt: new Date().toISOString(),
           }
           return updated

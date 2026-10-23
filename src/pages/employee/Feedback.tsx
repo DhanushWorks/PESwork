@@ -9,7 +9,6 @@ import { EmptyState } from '../../components/ui/EmptyState'
 import { CustomDropdown } from '../../components/ui/CustomDropdown'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { formatDate } from '../../lib/formatters'
-import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import {
   Heart,
   MessageSquare,
@@ -167,34 +166,8 @@ export const EmployeeFeedback: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Page Header (Matching Dashboard UI) */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div className="space-y-1.5">
-          <h1 className="text-2xl sm:text-3xl lg:text-[34px] font-extrabold tracking-[-0.035em] text-slate-900 dark:text-white leading-[1.15]">
-            Peer Feedback & Kudos
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
-            Real-time recognition, 3D recognition flips & constructive growth notes
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => {
-            if (eligibleRecipients.length > 0 && !recipientId) {
-              setRecipientId(eligibleRecipients[0].id)
-            }
-            setShowModal(true)
-          }}
-          className="premium-glow-btn h-11 px-5 text-xs font-semibold cursor-pointer inline-flex items-center gap-2 whitespace-nowrap self-start sm:self-auto shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Give Feedback</span>
-        </button>
-      </div>
-
-      {/* Tabs & Search Bar Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-1">
+      {/* Tabs & Action Bar Toolbar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <RubberSegmentedControl
           options={[
             {
@@ -212,28 +185,29 @@ export const EmployeeFeedback: React.FC = () => {
           ]}
           value={activeTab}
           onChange={(val) => setActiveTab(val as 'received' | 'sent')}
-          size="md"
+          size="sm"
+          className="h-8.5"
         />
 
-        {/* Animated Search Bar with 270px x 48px Experience */}
-        <AnimatedSearchBar
-          value={searchQuery}
-          onChangeValue={setSearchQuery}
-          placeholder="Search feedback..."
-          animatedPlaceholders={[
-            'Search feedback messages...',
-            'Filter by competency...',
-            'Search kudos & coaching...',
-            'Filter by teammate...',
-          ]}
-          variant="pill"
-          sizeVariant="default"
-        />
+        {/* Sleek, Compact Give Feedback Button (Matching Height & Pill Shape) */}
+        <button
+          type="button"
+          onClick={() => {
+            if (eligibleRecipients.length > 0 && !recipientId) {
+              setRecipientId(eligibleRecipients[0].id)
+            }
+            setShowModal(true)
+          }}
+          className="h-8.5 px-3.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-slate-100 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all shrink-0 self-end sm:self-auto"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Give Feedback</span>
+        </button>
       </div>
 
       {/* Content */}
       {loading ? (
-        <div className="p-12 text-center text-xs text-slate-400 font-mono">Loading feedback...</div>
+        <div className="p-12 text-center text-xs text-slate-400 font-sans">Loading feedback...</div>
       ) : items.length === 0 ? (
         <EmptyState
           title={activeTab === 'received' ? 'No feedback received yet' : 'No feedback sent yet'}
@@ -293,7 +267,7 @@ export const EmployeeFeedback: React.FC = () => {
                                   ? author?.name || 'A Colleague'
                                   : `To: ${recipient?.name || 'A Colleague'}`}
                               </div>
-                              <div className="text-[11px] text-slate-500 dark:text-[#8D96AA] truncate font-mono">
+                              <div className="text-[11px] text-slate-600 dark:text-zinc-300 truncate font-sans font-medium">
                                 {activeTab === 'received'
                                   ? author?.designation
                                   : recipient?.designation}
@@ -312,7 +286,7 @@ export const EmployeeFeedback: React.FC = () => {
                               {isKudos ? <Heart className="w-3 h-3 text-rose-500 fill-rose-500" /> : <TrendingUp className="w-3 h-3 text-indigo-500" />}
                               {isKudos ? 'Kudos Recognition' : 'Constructive Coaching'}
                             </span>
-                            <span className="text-[11px] text-slate-400 font-mono hidden sm:inline">
+                            <span className="text-[11px] text-slate-400 font-sans hidden sm:inline">
                               {formatDate(fb.createdAt)}
                             </span>
                           </div>
@@ -329,11 +303,11 @@ export const EmployeeFeedback: React.FC = () => {
                           {/* Competency & Quote Meta Row */}
                           <div className="flex items-center justify-between gap-2 mb-2">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold">
+                              <span className="text-[10px] font-sans uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold">
                                 Competency
                               </span>
                               <span
-                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-mono border ${
+                                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold font-sans border ${
                                   isKudos
                                     ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/25'
                                     : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25'
@@ -364,7 +338,7 @@ export const EmployeeFeedback: React.FC = () => {
 
                       {/* Interactive Card Action Footer */}
                       <div className="flex items-center justify-between pt-2.5 border-t border-slate-100 dark:border-zinc-800/60 text-xs">
-                        <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-mono">
+                        <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-sans">
                           Ref #{fb.id.slice(-4).toUpperCase()}
                         </span>
 
@@ -372,7 +346,7 @@ export const EmployeeFeedback: React.FC = () => {
                           <button
                             type="button"
                             onClick={(e) => toggleFlip(fb.id, e)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-all shadow-2xs cursor-pointer active:scale-95 font-mono"
+                            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-all shadow-2xs cursor-pointer active:scale-95 font-sans"
                             title="Touch to flip card"
                           >
                             <RotateCw className="w-3 h-3" />
@@ -385,7 +359,7 @@ export const EmployeeFeedback: React.FC = () => {
                               e.stopPropagation()
                               setSelectedFeedback(fb)
                             }}
-                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition-colors py-0.5 px-1 cursor-pointer font-mono"
+                            className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition-colors py-0.5 px-1 cursor-pointer font-sans"
                             title="Open full recognition modal"
                           >
                             <span>Open Modal</span>
@@ -407,7 +381,7 @@ export const EmployeeFeedback: React.FC = () => {
                           isKudos ? 'border-rose-100 dark:border-zinc-800' : 'border-slate-100 dark:border-zinc-800'
                         }`}>
                           <div className="flex items-center gap-2 min-w-0">
-                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider font-mono ${
+                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold uppercase tracking-wider font-sans ${
                               isKudos
                                 ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/50'
                                 : 'bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
@@ -424,7 +398,7 @@ export const EmployeeFeedback: React.FC = () => {
                                 </>
                               )}
                             </span>
-                            <span className="text-[11px] font-mono text-slate-500 dark:text-[#8D96AA] shrink-0">
+                            <span className="text-[11px] font-sans text-slate-600 dark:text-zinc-300 shrink-0 font-medium">
                               Ref #{fb.id.slice(-4).toUpperCase()}
                             </span>
                           </div>
@@ -433,7 +407,7 @@ export const EmployeeFeedback: React.FC = () => {
                             <button
                               type="button"
                               onClick={(e) => toggleFlip(fb.id, e)}
-                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-all cursor-pointer active:scale-95 font-mono shadow-xs"
+                              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.06] dark:hover:bg-white/[0.12] text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition-all cursor-pointer active:scale-95 font-sans shadow-xs"
                               title="Flip card back to front"
                             >
                               <RotateCw className="w-3 h-3" />
@@ -451,7 +425,7 @@ export const EmployeeFeedback: React.FC = () => {
                               className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20 shadow-xs shrink-0"
                             />
                             <div className="min-w-0 flex-1">
-                              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-400 dark:text-[#8D96AA] font-mono">
+                              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-300 font-sans">
                                 Recognized By
                               </div>
                               <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -467,7 +441,7 @@ export const EmployeeFeedback: React.FC = () => {
                               className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20 shadow-xs shrink-0"
                             />
                             <div className="min-w-0 flex-1">
-                              <div className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 dark:text-[#4FE3C1] font-mono">
+                              <div className="text-[9px] font-bold uppercase tracking-wider text-slate-600 dark:text-zinc-300 font-sans">
                                 Honoring
                               </div>
                               <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
@@ -479,11 +453,11 @@ export const EmployeeFeedback: React.FC = () => {
 
                         {/* Pillar and Date Row */}
                         <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-100 dark:border-white/[0.08]">
-                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-[#F0F3FA] font-medium truncate font-mono text-[11px]">
+                          <div className="flex items-center gap-1.5 text-slate-700 dark:text-[#F0F3FA] font-medium truncate font-sans text-[11px]">
                             <Award className="w-3.5 h-3.5 text-[#FFB454] shrink-0" />
                             <span className="truncate">Pillar: {fb.competency}</span>
                           </div>
-                          <span className="text-[11px] font-mono text-slate-400 dark:text-[#8D96AA] shrink-0">
+                          <span className="text-[11px] font-sans text-slate-600 dark:text-zinc-300 shrink-0 font-medium">
                             {formatDate(fb.createdAt)}
                           </span>
                         </div>
@@ -550,7 +524,7 @@ export const EmployeeFeedback: React.FC = () => {
                             e.stopPropagation()
                             setSelectedFeedback(fb)
                           }}
-                          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition-colors py-0.5 px-1 cursor-pointer font-mono shrink-0 ml-auto"
+                          className="inline-flex items-center gap-1 text-xs font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white transition-colors py-0.5 px-1 cursor-pointer font-sans shrink-0 ml-auto"
                           title="Open full recognition modal"
                         >
                           <span>Open Modal</span>
@@ -701,12 +675,12 @@ export const EmployeeFeedback: React.FC = () => {
                       )}
                     </span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700">
-                      <ShieldCheck className="w-3 h-3 text-indigo-600 dark:text-[#4FE3C1]" />
+                      <ShieldCheck className="w-3 h-3 text-slate-500 dark:text-zinc-400" />
                       <span>{selectedFeedback.isPublic ? 'Public Team Recognition' : 'Direct Colleague Feedback'}</span>
                     </span>
                   </div>
 
-                  <span className="text-[11px] font-mono text-slate-400 dark:text-zinc-500 flex items-center gap-1 shrink-0">
+                  <span className="text-[11px] font-sans text-slate-400 dark:text-zinc-500 flex items-center gap-1 shrink-0">
                     <Calendar className="w-3 h-3" />
                     {formatDate(selectedFeedback.createdAt)}
                   </span>
@@ -773,11 +747,11 @@ export const EmployeeFeedback: React.FC = () => {
                 >
                   <div className="flex items-center justify-between gap-2 mb-2.5">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-[10px] font-mono uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold">
+                      <span className="text-[10px] font-sans uppercase tracking-wider text-slate-400 dark:text-zinc-500 font-semibold">
                         Competency
                       </span>
                       <span
-                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold font-mono border ${
+                        className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold font-sans border ${
                           selectedFeedback.type === 'kudos'
                             ? 'bg-rose-500/10 text-rose-600 dark:text-rose-300 border-rose-500/25'
                             : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 border-indigo-500/25'
@@ -852,8 +826,8 @@ export const EmployeeFeedback: React.FC = () => {
                   >
                     {copied ? (
                       <>
-                        <Check className="w-3.5 h-3.5 text-indigo-600 dark:text-[#4FE3C1]" />
-                        <span className="text-indigo-600 dark:text-[#4FE3C1] font-semibold">Link Copied!</span>
+                        <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">Link Copied</span>
                       </>
                     ) : (
                       <>
