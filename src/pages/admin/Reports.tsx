@@ -61,7 +61,13 @@ export const AdminReports: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true
-    fetchData()
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchData().finally(() => {
+      clearTimeout(safetyTimer)
+    })
 
     // Real-time synchronization when workflow state, goals, or calibrations update
     const unsubscribe = storageService.subscribe(() => {
@@ -72,6 +78,7 @@ export const AdminReports: React.FC = () => {
 
     return () => {
       isMounted = false
+      clearTimeout(safetyTimer)
       unsubscribe()
     }
   }, [fetchData])
