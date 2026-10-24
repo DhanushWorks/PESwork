@@ -1,4 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react'
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { isSupabaseConfigured, isSupabaseOnline } from '../lib/supabase'
 import { Notification, ReviewCycle, Role, User } from '../types'
 import {
   cycleService,
@@ -145,15 +146,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     })
   }, [])
 
+  const loadSeqRef = useRef(0)
+
   const loadAll = useCallback(async () => {
+    const seq = ++loadSeqRef.current
+
     const users = await peopleService.list()
     const cycles = await cycleService.list()
     const currentActiveCycle = (await cycleService.getActiveCycle()) || cycles[0] || EMPTY_CYCLE
     const state = storageService.getState()
 
-    // 1. Inspect live Supabase session
-    const { session, user: authUser } = await supabaseAuthService.getSession()
-    let foundUser: User
+    // 1. Inspect live Supabase session ONLY if Supabase is online
+    let session = null
+    let authUser = null
+    if (isSupabaseConfigured && isSupabaseOnline()) {
+      try {
+        const res = await supabaseAuthService.getSession()
+        session = res.session
+        authUser = res.user
+      } catch {}
+    }
+
+    // Invalidate stale async load if a switchUser or newer load occurred
+    if (seq !== loadSeqRef.current) {
+      return
+    }
+
+    const activeUserId = state.currentUserId
+    let foundUser: User | undefined
 
     if (session && authUser) {
       setIsLiveAuth(true)
@@ -163,26 +183,53 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     } else {
       setIsLiveAuth(false)
-      foundUser = users.find((u) => u.id === state.currentUserId) || users[0]
+      // 1. First check if activeUserId matches any fetched user
+      foundUser = users.find((u) => u.id === activeUserId)
+      // 2. If not found in fetched users, check local storageState users (includes custom created users!)
+      if (!foundUser) {
+        foundUser = state.users.find((u) => u.id === activeUserId)
+      }
+      // 3. If still not found, preserve the currently active user if valid
+      if (!foundUser && currentUser && currentUser.id) {
+        foundUser = currentUser
+      }
+      // 4. As absolute last resort only, fallback to the first user
+      if (!foundUser) {
+        foundUser = users[0] || state.users[0]
+      }
     }
 
     setAllUsers(users)
     setAllCycles(cycles)
     setActiveCycle(currentActiveCycle)
-    setCurrentUser(foundUser)
-    setActiveWorkspaceRole(foundUser.role)
+    setCurrentUser((prev) => {
+      if (prev && prev.id === foundUser!.id && prev.role === foundUser!.role) {
+        return prev
+      }
+      return foundUser!
+    })
+    setActiveWorkspaceRole((prev) => {
+      if (prev === foundUser!.role) return prev
+      return foundUser!.role
+    })
     setDataMode(state.dataMode || 'clean')
 
-    const notifs = await notificationService.list(foundUser.id)
-    setNotifications(notifs)
-  }, [])
+    if (foundUser?.id) {
+      const notifs = await notificationService.list(foundUser.id)
+      if (seq === loadSeqRef.current) {
+        setNotifications(notifs)
+      }
+    }
+  }, [currentUser])
 
   useEffect(() => {
     loadAll()
   }, [loadAll])
 
-  // Listen to Supabase Auth state transitions in real time
+  // Listen to Supabase Auth state transitions in real time (only when Supabase is online)
   useEffect(() => {
+    if (!isSupabaseOnline()) return
+
     const subscription = supabaseAuthService.onAuthStateChange(async (session, authUser) => {
       if (session && authUser) {
         setIsLiveAuth(true)
@@ -240,6 +287,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const switchUser = useCallback(
     async (userId: string) => {
+      // Invalidate any background loadAll
+      loadSeqRef.current++
+
       const targetUser = await peopleService.getById(userId)
       if (!targetUser) return
 

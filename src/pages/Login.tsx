@@ -3,7 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../app/AppContext'
 import { useToast } from '../components/ui/Toast'
 import { peopleService, supabaseAuthService } from '../services'
-import { isSupabaseConfigured } from '../lib/supabase'
+import { isSupabaseConfigured, isSupabaseOnline } from '../lib/supabase'
 import { Role } from '../types'
 import {
   AlertCircle,
@@ -154,12 +154,12 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       const normalized = trimmedEmail.toLowerCase()
 
       // 1. Try Supabase Auth first if real password is provided AND Supabase is configured
-      if (isSupabaseConfigured && password && password !== '••••••••') {
+      if (isSupabaseConfigured && isSupabaseOnline() && password && password !== '••••••••') {
         const { user: authUser, session, error: authError } = await supabaseAuthService.signIn(normalized, password)
         if (authUser && session) {
           success('Welcome back!', `Logged in via Supabase as ${authUser.name}`)
-          await refreshData()
           await switchUser(authUser.id)
+          await refreshData()
           navigate(`/${authUser.role}`)
           return
         }
@@ -270,13 +270,6 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors)
-      if (newErrors.fullName) {
-        document.getElementById('signup-name')?.focus()
-      } else if (newErrors.email) {
-        document.getElementById('signup-email')?.focus()
-      } else if (newErrors.password) {
-        document.getElementById('signup-password')?.focus()
-      }
       return
     }
 
@@ -292,120 +285,48 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
 
       const normalizedEmail = email.trim().toLowerCase()
 
-      // 1. If Supabase is configured, register with live Supabase Auth
-      if (isSupabaseConfigured) {
-        const { user: authUser, session, error: authErr } = await supabaseAuthService.signUp({
-          email: normalizedEmail,
-          password,
-          name: fullName.trim(),
-          role,
-          department,
-          designation: designation.trim() || defaultTitle,
-        })
-
-        const isRateLimit = authErr && authErr.toLowerCase().includes('rate limit')
-        const isAlreadyRegistered = authErr && authErr.toLowerCase().includes('already registered')
-
-        if (isAlreadyRegistered) {
-          info('Account exists', 'This email is already registered. Switching to sign-in screen.')
-          setMode('signin')
-          return
-        }
-
-        if (isRateLimit) {
-          // Create user locally so the user is NEVER blocked by Supabase's free SMTP quota
-          const newUser = await peopleService.create({
-            name: fullName.trim(),
+      // 1. If Supabase is configured and reachable online, attempt live Supabase Auth
+      if (isSupabaseConfigured && isSupabaseOnline()) {
+        try {
+          const { user: authUser, session, error: authErr } = await supabaseAuthService.signUp({
             email: normalizedEmail,
+            password,
+            name: fullName.trim(),
             role,
             department,
             designation: designation.trim() || defaultTitle,
-            active: true,
-            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-            joinedDate: new Date().toISOString().split('T')[0],
-            avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
           })
 
-          await refreshData()
-          await switchUser(newUser.id)
-          info(
-            'Account Activated!',
-            'Logged in seamlessly so you can continue!'
-          )
-          navigate(`/${newUser.role}`)
-          return
-        }
+          if (authErr && authErr.toLowerCase().includes('already registered')) {
+            info('Account exists', 'This email is already registered. Switching to sign-in screen.')
+            setMode('signin')
+            return
+          }
 
-                const isConnectionError =
-          authErr &&
-          (authErr.toLowerCase().includes('failed to fetch') ||
-           authErr.toLowerCase().includes('fetch failed') ||
-           authErr.toLowerCase().includes('network') ||
-           authErr.toLowerCase().includes('connection') ||
-           authErr.toLowerCase().includes('timeout') ||
-           authErr.toLowerCase().includes('load failed') ||
-           authErr.toLowerCase().includes('enotfound'));
-
-        if (isConnectionError) {
-          console.warn('Supabase cloud host unreachable (' + authErr + '), creating user locally in active workspace.');
-          const newUser = await peopleService.create({
-            name: fullName.trim(),
-            email: normalizedEmail,
-            role,
-            department,
-            designation: designation.trim() || defaultTitle,
-            active: true,
-            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-            joinedDate: new Date().toISOString().split('T')[0],
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          });
-
-          await refreshData();
-          await switchUser(newUser.id);
-          success(
-            'Account Created & Ready!',
-            `Welcome ${fullName}! You are signed in as ${role}.`
-          );
-          navigate(`/${role}`);
-          return;
-        }
-
-        if (authErr && !authErr.toLowerCase().includes('not configured')) {
-          error('Registration Error', authErr);
-          return;
-        }
-
-        if (session && authUser) {
-          await peopleService.create({
-            name: fullName.trim(),
-            email: normalizedEmail,
-            role,
-            department,
-            designation: designation.trim() || defaultTitle,
-            active: true,
-            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-            joinedDate: new Date().toISOString().split('T')[0],
-            avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
-          })
-          await refreshData()
-          await switchUser(authUser.id)
-          success(
-            'Account Registered & Connected!',
-            `Welcome ${fullName}! You are signed in as ${role}.`
-          )
-          navigate(`/${role}`)
-          return
-        } else if (!authErr) {
-          info(
-            'Registration Successful!',
-            `Verification email sent to ${normalizedEmail}. Please confirm your email in your inbox before signing in, or disable "Confirm email" in your Supabase Dashboard.`
-          )
-          setMode('signin')
-          return
+          if (session && authUser) {
+            const newUser = await peopleService.create({
+              name: fullName.trim(),
+              email: normalizedEmail,
+              role,
+              department,
+              designation: designation.trim() || defaultTitle,
+              active: true,
+              employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+              joinedDate: new Date().toISOString().split('T')[0],
+              avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            })
+            await switchUser(newUser.id)
+            await refreshData()
+            success('Account Registered & Connected!', `Welcome ${fullName}! You are signed in as ${role}.`)
+            navigate(`/${role}`)
+            return
+          }
+        } catch (supaErr) {
+          console.warn('Supabase Auth error, seamlessly falling back to local workspace:', supaErr)
         }
       }
 
-      // 2. Seamless local creation (offline / fallback when Supabase is not configured)
+      // 2. Instant Local Account Provisioning (0ms wait, zero delay)
       const existingUser = allUsers.find((u) => u.email.toLowerCase() === normalizedEmail)
       if (existingUser) {
         info('Account exists', 'This email is already registered. Switching to sign-in screen.')
@@ -422,60 +343,16 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
         active: true,
         employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
         joinedDate: new Date().toISOString().split('T')[0],
-        avatar: `https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80`,
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
       })
 
-      await refreshData()
+      // Lock in user session immediately BEFORE refresh to prevent any race condition
       await switchUser(newUser.id)
-      success(
-        'Account Registered!',
-        `Welcome ${newUser.name}! Your account has been initialized.`
-      )
-      navigate(`/${newUser.role}`)
+      await refreshData()
+      success('Account Created & Ready!', `Welcome ${fullName}! You are signed in as ${role}.`)
+      navigate(`/${role}`)
     } catch (err: any) {
-      const errMsg = err?.message || String(err) || '';
-      const isConnectionError =
-        errMsg.toLowerCase().includes('failed to fetch') ||
-        errMsg.toLowerCase().includes('fetch failed') ||
-        errMsg.toLowerCase().includes('network') ||
-        errMsg.toLowerCase().includes('connection') ||
-        errMsg.toLowerCase().includes('timeout') ||
-        errMsg.toLowerCase().includes('load failed') ||
-        errMsg.toLowerCase().includes('enotfound');
-
-      if (isConnectionError) {
-        try {
-          const defaultTitle =
-            role === 'admin'
-              ? 'People Operations Specialist'
-              : role === 'manager'
-              ? 'Engineering Team Lead'
-              : 'Software Engineer';
-          const newUser = await peopleService.create({
-            name: fullName.trim(),
-            email: email.trim().toLowerCase(),
-            role,
-            department,
-            designation: designation.trim() || defaultTitle,
-            active: true,
-            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-            joinedDate: new Date().toISOString().split('T')[0],
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          });
-          await refreshData();
-          await switchUser(newUser.id);
-          success(
-            'Account Created & Ready!',
-            `Welcome ${fullName}! You are signed in as ${role}.`
-          );
-          navigate(`/${role}`);
-          return;
-        } catch {
-          error('Registration failed', errMsg || 'Unable to complete sign-up.');
-        }
-      } else {
-        error('Registration failed', errMsg || 'Unable to complete sign-up.');
-      }
+      error('Registration failed', err?.message || 'Unable to complete sign-up.')
     } finally {
       setIsLoading(false)
     }

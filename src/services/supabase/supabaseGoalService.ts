@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { Goal, GoalStatus, ProgressLog } from '../../types'
 import { goalService as mockGoalService } from '../mock/goalService'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
@@ -54,7 +54,7 @@ function parseEvidenceUrl(url?: string): { url?: string; fileName?: string } {
 
 export const supabaseGoalService = {
   async listForUser(userId: string, cycleId?: string): Promise<Goal[]> {
-    if (!isSupabaseConfigured) return mockGoalService.listForUser(userId, cycleId)
+    if (!isSupabaseReady()) return mockGoalService.listForUser(userId, cycleId)
 
     try {
       let query = supabase.from('goals').select('*').eq('user_id', userId)
@@ -139,7 +139,9 @@ export const supabaseGoalService = {
   },
 
   async getById(goalId: string): Promise<Goal | null> {
-    if (!isSupabaseConfigured) return mockGoalService.getById(goalId)
+    if (!isSupabaseReady()) return mockGoalService.getById(goalId)
+
+    try {
 
     const { data, error } = await supabase.from('goals').select('*').eq('id', goalId).single()
     if (error || !data) {
@@ -193,10 +195,14 @@ export const supabaseGoalService = {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }
+  } catch (err) {
+      markSupabaseOffline(err)
+      return mockGoalService.getById(goalId)
+    }
   },
 
   async save(goalData: Partial<Goal> & { userId: string; cycleId: string; title: string }): Promise<Goal> {
-    if (!isSupabaseConfigured) return mockGoalService.save(goalData)
+    if (!isSupabaseReady()) return mockGoalService.save(goalData)
 
     const tenantId = await getTenantId(goalData.userId)
 

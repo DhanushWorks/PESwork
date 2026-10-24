@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseOnline } from '../../lib/supabase'
 import { User, Role } from '../../types'
 
 export interface SignUpParams {
@@ -15,8 +15,8 @@ export const supabaseAuthService = {
    * Register a new user with Supabase Auth
    */
   async signUp(params: SignUpParams): Promise<{ user: User | null; session: any; error?: string }> {
-    if (!isSupabaseConfigured) {
-      return { user: null, session: null, error: 'Supabase is not configured' }
+    if (!isSupabaseConfigured || !isSupabaseOnline()) {
+      return { user: null, session: null, error: 'Supabase is offline' }
     }
 
     try {
@@ -65,8 +65,8 @@ export const supabaseAuthService = {
    * Sign in with Supabase Auth email/password
    */
   async signIn(email: string, password: string): Promise<{ user: User | null; session: any; error?: string }> {
-    if (!isSupabaseConfigured) {
-      return { user: null, session: null, error: 'Supabase is not configured' }
+    if (!isSupabaseConfigured || !isSupabaseOnline()) {
+      return { user: null, session: null, error: 'Supabase is offline' }
     }
 
     try {
@@ -131,7 +131,7 @@ export const supabaseAuthService = {
    * Get current session and user profile
    */
   async getSession(): Promise<{ session: any; user: User | null }> {
-    if (!isSupabaseConfigured) return { session: null, user: null }
+    if (!isSupabaseConfigured || !isSupabaseOnline()) return { session: null, user: null }
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error || !session?.user) return { session: null, user: null }
@@ -195,7 +195,7 @@ export const supabaseAuthService = {
    * Listen to auth state transitions
    */
   onAuthStateChange(callback: (session: any, user: User | null) => void) {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !isSupabaseOnline()) {
       return { unsubscribe: () => {} }
     }
 
