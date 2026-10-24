@@ -56,7 +56,8 @@ export const supabaseGoalService = {
   async listForUser(userId: string, cycleId?: string): Promise<Goal[]> {
     if (!isSupabaseConfigured) return mockGoalService.listForUser(userId, cycleId)
 
-    let query = supabase.from('goals').select('*').eq('user_id', userId)
+    try {
+      let query = supabase.from('goals').select('*').eq('user_id', userId)
     if (cycleId) {
       query = query.eq('cycle_id', cycleId)
     }
@@ -132,6 +133,9 @@ export const supabaseGoalService = {
     const extraMockGoals = mockGoals.filter((mg) => !existingTitles.has(mg.title.toLowerCase().trim()))
 
     return [...dbGoals, ...extraMockGoals]
+    } catch {
+      return mockGoalService.listForUser(userId, cycleId)
+    }
   },
 
   async getById(goalId: string): Promise<Goal | null> {

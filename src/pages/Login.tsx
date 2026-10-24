@@ -174,10 +174,23 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
           }
 
           // If not a demo user email and not a config error, alert user
-          const isDemoEmail = allUsers.some((u) => u.email.toLowerCase() === normalized)
-          if (!isDemoEmail && !authError.toLowerCase().includes('not configured')) {
-            error('Sign in failed', authError)
-            return
+          const isConnectionError =
+            authError.toLowerCase().includes('failed to fetch') ||
+            authError.toLowerCase().includes('fetch failed') ||
+            authError.toLowerCase().includes('network') ||
+            authError.toLowerCase().includes('connection') ||
+            authError.toLowerCase().includes('timeout') ||
+            authError.toLowerCase().includes('load failed') ||
+            authError.toLowerCase().includes('enotfound');
+
+          if (!isConnectionError) {
+            const isDemoEmail = allUsers.some((u) => u.email.toLowerCase() === normalized);
+            if (!isDemoEmail && !authError.toLowerCase().includes('not configured')) {
+              error('Sign in failed', authError);
+              return;
+            }
+          } else {
+            console.warn('Supabase host unreachable (' + authError + '), falling back to local credentials.');
           }
         }
       }
@@ -323,9 +336,43 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
           return
         }
 
+                const isConnectionError =
+          authErr &&
+          (authErr.toLowerCase().includes('failed to fetch') ||
+           authErr.toLowerCase().includes('fetch failed') ||
+           authErr.toLowerCase().includes('network') ||
+           authErr.toLowerCase().includes('connection') ||
+           authErr.toLowerCase().includes('timeout') ||
+           authErr.toLowerCase().includes('load failed') ||
+           authErr.toLowerCase().includes('enotfound'));
+
+        if (isConnectionError) {
+          console.warn('Supabase cloud host unreachable (' + authErr + '), creating user locally in active workspace.');
+          const newUser = await peopleService.create({
+            name: fullName.trim(),
+            email: normalizedEmail,
+            role,
+            department,
+            designation: designation.trim() || defaultTitle,
+            active: true,
+            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            joinedDate: new Date().toISOString().split('T')[0],
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          });
+
+          await refreshData();
+          await switchUser(newUser.id);
+          success(
+            'Account Created & Ready!',
+            `Welcome ${fullName}! You are signed in as ${role}.`
+          );
+          navigate(`/${role}`);
+          return;
+        }
+
         if (authErr && !authErr.toLowerCase().includes('not configured')) {
-          error('Registration Error', authErr)
-          return
+          error('Registration Error', authErr);
+          return;
         }
 
         if (session && authUser) {
@@ -386,7 +433,49 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       )
       navigate(`/${newUser.role}`)
     } catch (err: any) {
-      error('Registration failed', err.message || 'Unable to complete sign-up.')
+      const errMsg = err?.message || String(err) || '';
+      const isConnectionError =
+        errMsg.toLowerCase().includes('failed to fetch') ||
+        errMsg.toLowerCase().includes('fetch failed') ||
+        errMsg.toLowerCase().includes('network') ||
+        errMsg.toLowerCase().includes('connection') ||
+        errMsg.toLowerCase().includes('timeout') ||
+        errMsg.toLowerCase().includes('load failed') ||
+        errMsg.toLowerCase().includes('enotfound');
+
+      if (isConnectionError) {
+        try {
+          const defaultTitle =
+            role === 'admin'
+              ? 'People Operations Specialist'
+              : role === 'manager'
+              ? 'Engineering Team Lead'
+              : 'Software Engineer';
+          const newUser = await peopleService.create({
+            name: fullName.trim(),
+            email: email.trim().toLowerCase(),
+            role,
+            department,
+            designation: designation.trim() || defaultTitle,
+            active: true,
+            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            joinedDate: new Date().toISOString().split('T')[0],
+            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          });
+          await refreshData();
+          await switchUser(newUser.id);
+          success(
+            'Account Created & Ready!',
+            `Welcome ${fullName}! You are signed in as ${role}.`
+          );
+          navigate(`/${role}`);
+          return;
+        } catch {
+          error('Registration failed', errMsg || 'Unable to complete sign-up.');
+        }
+      } else {
+        error('Registration failed', errMsg || 'Unable to complete sign-up.');
+      }
     } finally {
       setIsLoading(false)
     }
