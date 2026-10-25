@@ -10,6 +10,9 @@ type ModalProps = {
   children: React.ReactNode
   maxWidth?: 'sm' | 'md' | 'lg' | 'xl' | '2xl'
   overflowVisible?: boolean
+  footer?: React.ReactNode
+  onSubmit?: (e: React.FormEvent<HTMLFormElement>) => void
+  formId?: string
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -20,6 +23,9 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   maxWidth = 'lg',
   overflowVisible = false,
+  footer,
+  onSubmit,
+  formId,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null)
 
@@ -49,9 +55,29 @@ export const Modal: React.FC<ModalProps> = ({
     '2xl': 'max-w-2xl',
   }[maxWidth]
 
+  const modalBody = (
+    <>
+      {/* Scrollable Content Body */}
+      <div
+        className={`p-4 sm:p-6 flex-1 min-h-0 text-slate-900 dark:text-zinc-100 ${
+          overflowVisible ? 'overflow-visible' : 'overflow-y-auto overscroll-contain'
+        }`}
+      >
+        {children}
+      </div>
+
+      {/* Fixed Footer at bottom */}
+      {footer && (
+        <div className="shrink-0 border-t border-slate-100 dark:border-zinc-800/80 px-5 sm:px-6 py-3.5 bg-slate-50/90 dark:bg-[#18181b]/95 backdrop-blur-xs flex items-center justify-end gap-2.5 z-10">
+          {footer}
+        </div>
+      )}
+    </>
+  )
+
   return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md transition-all animate-in fade-in duration-200 overflow-y-auto"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md transition-all animate-in fade-in duration-200 overflow-hidden"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose()
       }}
@@ -61,9 +87,9 @@ export const Modal: React.FC<ModalProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className={`w-full ${widthClasses} bg-white dark:bg-[#18181b] menu-solid-bg modal-surface rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 transform transition-all animate-in zoom-in-95 duration-150 flex flex-col max-h-[min(90vh,calc(100vh-2rem))] my-auto overflow-hidden`}
+        className={`w-full ${widthClasses} bg-white dark:bg-[#18181b] menu-solid-bg modal-surface rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 transform transition-all animate-in zoom-in-95 duration-150 flex flex-col max-h-[calc(100dvh-2rem)] sm:max-h-[min(90vh,calc(100vh-2rem))] my-auto overflow-hidden`}
       >
-        {/* Header */}
+        {/* Fixed Header */}
         <div className="flex items-start justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-zinc-700/80 shrink-0">
           <div>
             <h2 id="modal-title" className="text-base sm:text-lg font-semibold text-slate-900 dark:text-zinc-100 tracking-tight">
@@ -81,10 +107,20 @@ export const Modal: React.FC<ModalProps> = ({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="p-4 sm:p-6 flex-1 min-h-0 text-slate-900 dark:text-zinc-100 overflow-y-auto overscroll-contain">
-          {children}
-        </div>
+        {/* Content & Footer Area */}
+        {onSubmit ? (
+          <form
+            id={formId}
+            onSubmit={onSubmit}
+            className="flex flex-col flex-1 min-h-0 overflow-hidden"
+          >
+            {modalBody}
+          </form>
+        ) : (
+          <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+            {modalBody}
+          </div>
+        )}
       </div>
     </div>,
     document.body
@@ -124,10 +160,13 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   }
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title} maxWidth="md">
-      <div className="space-y-4">
-        <p className="text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">{message}</p>
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-zinc-800">
+    <Modal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      maxWidth="md"
+      footer={
+        <>
           <button
             type="button"
             disabled={isLoading}
@@ -144,8 +183,10 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           >
             {isLoading ? 'Processing...' : confirmText}
           </button>
-        </div>
-      </div>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600 dark:text-zinc-300 leading-relaxed">{message}</p>
     </Modal>
   )
 }

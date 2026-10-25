@@ -5,6 +5,7 @@ import { goalService, peopleService } from '../../services'
 import { Goal, User } from '../../types'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate } from '../../lib/formatters'
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import {
@@ -19,7 +20,7 @@ import {
 } from 'lucide-react'
 
 export const ManagerApprovals: React.FC = () => {
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, refreshData } = useApp()
   const { success, error } = useToast()
 
   const [pendingGoals, setPendingGoals] = useState<Array<{ goal: Goal; employee: User }>>([])
@@ -54,14 +55,27 @@ export const ManagerApprovals: React.FC = () => {
   }
 
   useEffect(() => {
-    fetchPendingGoals()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchPendingGoals().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [currentUser.id, activeCycle.id])
 
   const handleApprove = async (goalId: string, goalTitle: string) => {
     try {
       await goalService.decide(goalId, 'approved')
       success('Goal approved', `Approved "${goalTitle}". Target is now active.`)
-      fetchPendingGoals()
+      await fetchPendingGoals()
+      await refreshData()
     } catch (err: any) {
       error('Approval failed', err.message)
     }
@@ -69,13 +83,33 @@ export const ManagerApprovals: React.FC = () => {
 
   const handleApproveAll = async () => {
     setIsProcessing(true)
+    let approvedCount = 0
+    const errors: string[] = []
+
     try {
       for (const item of pendingGoals) {
-        await goalService.decide(item.goal.id, 'approved')
+        try {
+          await goalService.decide(item.goal.id, 'approved')
+          approvedCount++
+        } catch (itemErr: any) {
+          errors.push(itemErr.message || `Failed to approve "${item.goal.title}"`)
+        }
       }
-      success('All goals approved', `Approved ${pendingGoals.length} pending goals for your team.`)
+
+      if (approvedCount > 0) {
+        success(
+          'All goals approved',
+          `Successfully approved ${approvedCount} pending goal${approvedCount === 1 ? '' : 's'} for your team.`
+        )
+      }
+
+      if (errors.length > 0) {
+        error('Some goals could not be approved', errors.join('; '))
+      }
+
       setShowApproveAllConfirm(false)
-      fetchPendingGoals()
+      await fetchPendingGoals()
+      await refreshData()
     } catch (err: any) {
       error('Batch approval failed', err.message)
     } finally {
@@ -101,7 +135,8 @@ export const ManagerApprovals: React.FC = () => {
       setShowReturnModal(false)
       setSelectedGoal(null)
       setReturnReason('')
-      fetchPendingGoals()
+      await fetchPendingGoals()
+      await refreshData()
     } catch (err: any) {
       error('Return failed', err.message)
     } finally {
@@ -151,7 +186,7 @@ export const ManagerApprovals: React.FC = () => {
       )}
 
       {loading ? (
-        <div className="p-12 text-center text-xs text-slate-400 font-sans">Loading pending goals...</div>
+        <LoadingState message="Loading pending goals..." variant="card" />
       ) : pendingGoals.length === 0 ? (
         <EmptyState
           icon={<CheckCircle2 className="w-8 h-8 text-indigo-600 dark:text-[#4FE3C1]" />}
@@ -255,14 +290,33 @@ export const ManagerApprovals: React.FC = () => {
         title="Return Goal for Revision"
         subtitle={selectedGoal?.title}
         maxWidth="md"
+        onSubmit={handleReturn}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowReturnModal(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-xs font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-semibold transition-colors shadow-xs text-xs cursor-pointer disabled:opacity-60"
+            >
+              {isProcessing ? 'Returning...' : 'Return to Employee'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleReturn} className="space-y-4 text-xs">
-          <p className="text-slate-600">
+        <div className="space-y-4 text-xs font-sans">
+          <p className="text-slate-600 dark:text-zinc-300 leading-relaxed">
             Please provide specific, actionable feedback on what the employee should adjust (e.g., metric precision, target threshold, or weight allocation).
           </p>
 
           <div>
-            <label className="font-semibold text-slate-700 block mb-1">
+            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
               Revision Feedback & Manager Comments *
             </label>
             <textarea
@@ -271,27 +325,10 @@ export const ManagerApprovals: React.FC = () => {
               value={returnReason}
               onChange={(e) => setReturnReason(e.target.value)}
               placeholder="e.g. Please define an explicit P95 latency threshold and specify measurement telemetry..."
-              className="w-full p-3 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
+              className="w-full p-3 rounded-xl border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100 font-sans text-xs"
             />
           </div>
-
-          <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowReturnModal(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="px-4 py-2 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold transition-colors shadow-xs"
-            >
-              {isProcessing ? 'Returning...' : 'Return to Employee'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Approve All Confirmation */}

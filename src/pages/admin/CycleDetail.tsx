@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import { cycleService, storageService } from '../../services'
+import { LoadingState } from '../../components/ui/LoadingState'
 import {
   ReviewCycle,
   User,
@@ -23,7 +24,7 @@ import { DatePicker } from '../../components/ui/DatePicker'
 import { CYCLE_STAGE_DETAILS, STAGE_ORDER, formatDate } from '../../lib/formatters'
 import { generateDeterministicDeadlines, validateCycleDatesAndDeadlines } from '../../lib/deadlines'
 import { validateCycleWeights } from '../../lib/validation'
-import { getAdminWorkflowState } from '../../lib/workflow'
+import { getAdminWorkflowState, matchesUser, matchesCycle } from '../../lib/workflow'
 import {
   AlertCircle,
   AlertTriangle,
@@ -118,7 +119,10 @@ export const AdminCycleDetail: React.FC = () => {
   const isAdmin = currentUser.role === 'admin'
 
   const fetchCycleData = async () => {
-    if (!cycleId) return
+    if (!cycleId) {
+      setLoading(false)
+      return
+    }
     try {
       const data = await cycleService.getById(cycleId)
       setCycle(data)
@@ -128,12 +132,14 @@ export const AdminCycleDetail: React.FC = () => {
 
         // Load all evaluation records for this cycle to accurately compute synchronized workflow state
         const state = storageService.getState()
-        setGoals((state.goals || []).filter((g) => g.cycleId === data.id))
-        setSelfReviews((state.selfReviews || []).filter((s) => s.cycleId === data.id))
-        setManagerReviews((state.managerReviews || []).filter((m) => m.cycleId === data.id))
-        setCalibrations((state.calibrations || []).filter((c) => c.cycleId === data.id))
-        setResults((state.results || []).filter((r) => r.cycleId === data.id))
+        setGoals((state.goals || []).filter((g) => g.cycleId === data.id || matchesCycle(g.cycleId, data.id)))
+        setSelfReviews((state.selfReviews || []).filter((s) => s.cycleId === data.id || matchesCycle(s.cycleId, data.id)))
+        setManagerReviews((state.managerReviews || []).filter((m) => m.cycleId === data.id || matchesCycle(m.cycleId, data.id)))
+        setCalibrations((state.calibrations || []).filter((c) => c.cycleId === data.id || matchesCycle(c.cycleId, data.id)))
+        setResults((state.results || []).filter((r) => r.cycleId === data.id || matchesCycle(r.cycleId, data.id)))
       }
+    } catch (err) {
+      console.warn('Notice loading cycle data:', err)
     } finally {
       setLoading(false)
     }
@@ -141,7 +147,13 @@ export const AdminCycleDetail: React.FC = () => {
 
   useEffect(() => {
     let isMounted = true
-    fetchCycleData()
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchCycleData().finally(() => {
+      clearTimeout(safetyTimer)
+    })
 
     // Real-time synchronization when workflow state updates
     const unsubscribe = storageService.subscribe(() => {
@@ -152,12 +164,13 @@ export const AdminCycleDetail: React.FC = () => {
 
     return () => {
       isMounted = false
+      clearTimeout(safetyTimer)
       unsubscribe()
     }
   }, [cycleId])
 
   if (loading) {
-    return <div className="p-12 text-center text-xs text-slate-400 font-sans">Loading cycle details...</div>
+    return <LoadingState message="Loading review cycle details & roster..." variant="page" />
   }
 
   if (!cycle) {
@@ -405,7 +418,7 @@ export const AdminCycleDetail: React.FC = () => {
 
   // Enroll single participant handler (Admin only)
   const handleEnrollParticipant = async (userToEnroll: User) => {
-    if (!cycle || !isAdmin) return
+    if (!cycle || !isAdmin || userToEnroll.role === 'admin') return
     setIsEnrolling(true)
     try {
       const updatedCycle = await cycleService.addParticipant(
@@ -495,9 +508,12 @@ export const AdminCycleDetail: React.FC = () => {
     return true
   })
 
-  // Unenrolled users available to be enrolled
-  const unenrolledUsers = allUsers.filter(
-    (u) => !enrolledUsers.some((eu) => eu.id === u.id)
+  // Filter eligible staff for appraisal cohort: strictly exclude administrators
+  const eligibleStaff = allUsers.filter((u) => u.role !== 'admin')
+
+  // Unenrolled users available to be enrolled (eligible non-admin staff only)
+  const unenrolledUsers = eligibleStaff.filter(
+    (u) => !enrolledUsers.some((eu) => eu.id === u.id || matchesUser(eu.id, u.id))
   )
 
   const filteredUnenrolled = unenrolledUsers.filter((u) => {
@@ -511,7 +527,7 @@ export const AdminCycleDetail: React.FC = () => {
     )
   })
 
-  const departments = Array.from(new Set(allUsers.map((u) => u.department))).filter(Boolean)
+  const departments = Array.from(new Set(eligibleStaff.map((u) => u.department))).filter(Boolean)
   const totalEditWeights = Number(editGoalsWeight) + Number(editCompWeight) + Number(editValuesWeight)
 
   return (
@@ -961,6 +977,15 @@ export const AdminCycleDetail: React.FC = () => {
         title="Manage Review Cycle Participants"
         subtitle={`Explicitly assigned employees for ${cycle.name} (${enrolledUsers.length} total enrolled)`}
         maxWidth="2xl"
+        footer={
+          <button
+            type="button"
+            onClick={() => setShowCohortModal(false)}
+            className="h-10 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-black dark:hover:bg-slate-100 text-xs font-semibold cursor-pointer transition-all"
+          >
+            Done
+          </button>
+        }
       >
         <div className="space-y-5 font-sans">
           {/* Search & Department Filter Bar */}
@@ -1176,15 +1201,6 @@ export const AdminCycleDetail: React.FC = () => {
             </div>
           )}
 
-          <div className="pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setShowCohortModal(false)}
-              className="h-10 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:text-black dark:hover:bg-slate-100 text-xs font-semibold cursor-pointer transition-all"
-            >
-              Done
-            </button>
-          </div>
         </div>
       </Modal>
 
@@ -1197,8 +1213,28 @@ export const AdminCycleDetail: React.FC = () => {
         title={`Edit "${cycle.name}"`}
         subtitle="Update cycle information, deterministic deadlines, and formula weights"
         maxWidth="2xl"
+        onSubmit={handleSaveCycleEdits}
+        footer={
+          <>
+            <button
+              type="button"
+              disabled={isSavingCycle}
+              onClick={() => setShowEditCycleModal(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSavingCycle}
+              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
+            >
+              {isSavingCycle ? 'Saving...' : 'Save Cycle Changes'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSaveCycleEdits} className="space-y-4 text-xs font-sans">
+        <div className="space-y-4 text-xs font-sans">
           <div>
             <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Cycle Name *</label>
             <input
@@ -1325,8 +1361,9 @@ export const AdminCycleDetail: React.FC = () => {
                   min="0"
                   max="100"
                   required
+                  placeholder="e.g. 50"
                   value={editGoalsWeight}
-                  onChange={(e) => setEditGoalsWeight(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setEditGoalsWeight(e.target.value === '' ? '' as any : parseInt(e.target.value) || 0)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -1338,8 +1375,9 @@ export const AdminCycleDetail: React.FC = () => {
                   min="0"
                   max="100"
                   required
+                  placeholder="e.g. 30"
                   value={editCompWeight}
-                  onChange={(e) => setEditCompWeight(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setEditCompWeight(e.target.value === '' ? '' as any : parseInt(e.target.value) || 0)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -1351,32 +1389,16 @@ export const AdminCycleDetail: React.FC = () => {
                   min="0"
                   max="100"
                   required
+                  placeholder="e.g. 20"
                   value={editValuesWeight}
-                  onChange={(e) => setEditValuesWeight(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setEditValuesWeight(e.target.value === '' ? '' as any : parseInt(e.target.value) || 0)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-slate-200/90 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-5">
-            <button
-              type="button"
-              disabled={isSavingCycle}
-              onClick={() => setShowEditCycleModal(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSavingCycle}
-              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
-            >
-              {isSavingCycle ? 'Saving...' : 'Save Cycle Changes'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Remove Participant Confirmation Dialog (With explicit audit history notice) */}

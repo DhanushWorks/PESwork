@@ -167,6 +167,7 @@ export type EvaluationResult = {
   disputeStatus: 'none' | 'disputed' | 'resolved'
   disputeReason?: string
   disputeSubmittedAt?: string
+  status?: 'pending' | 'released' | 'acknowledged' | 'disputed' | string
 }
 
 export type FeedbackItem = {

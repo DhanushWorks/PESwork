@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { CalibrationRecord, Goal, ManagerReview, SelfReview, User } from '../../types'
 import { getRatingBand } from '../../lib/scoring'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
@@ -51,7 +51,7 @@ function parseEvidenceMeta(url?: string): { url?: string; fileName?: string } {
 
 export const supabaseCalibrationService = {
   async listForCycle(cycleId: string): Promise<CalibrationItem[]> {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseReady()) {
       return mockCalibrationService.listForCycle(cycleId)
     }
 
@@ -70,8 +70,12 @@ export const supabaseCalibrationService = {
         .select('*')
         .eq('cycle_id', cycleId)
 
-      if (reviewsErr || !reviewsData || reviewsData.length === 0) {
-        return mockCalibrationService.listForCycle(cycleId)
+      if (reviewsErr) {
+        console.warn('Notice in supabaseCalibrationService.listForCycle:', reviewsErr.message)
+        return []
+      }
+      if (!reviewsData || reviewsData.length === 0) {
+        return []
       }
 
       // 3. Fetch profiles for employees & managers
@@ -368,6 +372,7 @@ export const supabaseCalibrationService = {
         }
       })
     } catch (err) {
+      markSupabaseOffline(err)
       console.warn('supabaseCalibrationService.listForCycle fallback to mock:', err)
       return mockCalibrationService.listForCycle(cycleId)
     }
@@ -423,6 +428,15 @@ export const supabaseCalibrationService = {
           })
           .eq('cycle_id', cycleId)
           .eq('user_id', employeeId)
+
+        // Advance cycle to Stage 7 (released) when admin grants permission
+        await supabase
+          .from('review_cycles')
+          .update({
+            stage: 'released',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', cycleId)
 
         // Also notify employee
         await notificationService.create({

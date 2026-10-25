@@ -9,6 +9,7 @@ import { useToast } from '../../components/ui/Toast'
 import { ConfirmDialog } from '../../components/ui/Modal'
 import { ArrowLeft, Calendar, FileText, CheckCircle2, History, Eye, Trash2 } from 'lucide-react'
 import { PdfViewerModal } from '../../components/ui/PdfViewerModal'
+import { LoadingState } from '../../components/ui/LoadingState'
 
 export const GoalDetail: React.FC = () => {
   const { goalId } = useParams<{ goalId: string }>()
@@ -42,25 +43,73 @@ export const GoalDetail: React.FC = () => {
   })
 
   useEffect(() => {
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
     const fetchGoal = async () => {
-      if (!goalId) return
+      if (!goalId) {
+        if (isMounted) setLoading(false)
+        return
+      }
       setLoading(true)
-      const data = await goalService.getById(goalId)
-      setGoal(data)
-      setLoading(false)
+      try {
+        const data = await goalService.getById(goalId)
+        if (isMounted) setGoal(data)
+      } catch (err) {
+        console.warn('Error fetching goal details:', err)
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+          clearTimeout(safetyTimer)
+        }
+      }
     }
+
     fetchGoal()
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [goalId])
 
   const handleConfirmDelete = async () => {
     if (!goal) return
     setDeleteConfirm((prev) => ({ ...prev, isDeleting: true }))
     try {
-      const updated = await goalService.removeEvidence(goal.id, deleteConfirm.updateId)
-      setGoal(updated)
-      success('Evidence removed', `Removed "${deleteConfirm.fileName}" from goal checkpoints.`)
+      const targetUpdateId = deleteConfirm.updateId
+      const targetFileName = deleteConfirm.fileName
+
+      const updated = await goalService.removeEvidence(goal.id, targetUpdateId)
+
+      setGoal((prev) => {
+        if (!prev) return updated
+        const updatedHistory = (updated.progressHistory || prev.progressHistory || []).map((p) => {
+          if (!targetUpdateId || p.id === targetUpdateId || p.evidenceFileName === targetFileName) {
+            return {
+              ...p,
+              evidenceFileName: undefined,
+              evidenceUrl: undefined,
+              evidenceFileSize: undefined,
+            }
+          }
+          return p
+        })
+        const latestEv = updatedHistory.find((p) => p.evidenceFileName || p.evidenceUrl)
+        return {
+          ...updated,
+          evidenceFileName: latestEv?.evidenceFileName,
+          evidenceUrl: latestEv?.evidenceUrl,
+          evidenceFileSize: latestEv?.evidenceFileSize,
+          progressHistory: updatedHistory,
+        }
+      })
+
+      success('Evidence removed', `Removed "${targetFileName}" from goal checkpoints.`)
       setDeleteConfirm({ isOpen: false, updateId: undefined, fileName: '', isDeleting: false })
-      if (activePdfModal.fileName === deleteConfirm.fileName) {
+      if (activePdfModal.fileName === targetFileName) {
         setActivePdfModal((prev) => ({ ...prev, isOpen: false }))
       }
     } catch (err: any) {
@@ -70,7 +119,7 @@ export const GoalDetail: React.FC = () => {
   }
 
   if (loading) {
-    return <div className="p-12 text-center text-xs text-slate-400">Loading goal details...</div>
+    return <LoadingState message="Loading goal details..." variant="page" />
   }
 
   if (!goal) {

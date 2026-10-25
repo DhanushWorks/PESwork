@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { isSupabaseConfigured, isSupabaseOnline } from '../lib/supabase'
 import { Notification, ReviewCycle, Role, User } from '../types'
+import { matchesUser, matchesCycle } from '../lib/workflow'
 import {
   cycleService,
   notificationService,
@@ -57,12 +58,17 @@ const AppContext = createContext<AppContextType | undefined>(undefined)
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User>(() => {
     const state = storageService.getState()
-    return state.users.find((u) => u.id === state.currentUserId) || state.users[0]
+    return (
+      state.users.find((u) => u.id === state.currentUserId || matchesUser(u.id, state.currentUserId)) ||
+      state.users[0]
+    )
   })
 
   const [activeWorkspaceRole, setActiveWorkspaceRole] = useState<Role>(() => {
     const state = storageService.getState()
-    const user = state.users.find((u) => u.id === state.currentUserId) || state.users[0]
+    const user =
+      state.users.find((u) => u.id === state.currentUserId || matchesUser(u.id, state.currentUserId)) ||
+      state.users[0]
     return user.role
   })
 
@@ -149,76 +155,80 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const loadSeqRef = useRef(0)
 
   const loadAll = useCallback(async () => {
-    const seq = ++loadSeqRef.current
+    try {
+      const seq = ++loadSeqRef.current
 
-    const users = await peopleService.list()
-    const cycles = await cycleService.list()
-    const currentActiveCycle = (await cycleService.getActiveCycle()) || cycles[0] || EMPTY_CYCLE
-    const state = storageService.getState()
+      const users = await peopleService.list()
+      const cycles = await cycleService.list()
+      const currentActiveCycle = (await cycleService.getActiveCycle()) || cycles[0] || EMPTY_CYCLE
+      const state = storageService.getState()
 
-    // 1. Inspect live Supabase session ONLY if Supabase is online
-    let session = null
-    let authUser = null
-    if (isSupabaseConfigured && isSupabaseOnline()) {
-      try {
-        const res = await supabaseAuthService.getSession()
-        session = res.session
-        authUser = res.user
-      } catch {}
-    }
-
-    // Invalidate stale async load if a switchUser or newer load occurred
-    if (seq !== loadSeqRef.current) {
-      return
-    }
-
-    const activeUserId = state.currentUserId
-    let foundUser: User | undefined
-
-    if (session && authUser) {
-      setIsLiveAuth(true)
-      foundUser = authUser
-      if (!users.some((u) => u.id === authUser.id)) {
-        users.unshift(authUser)
+      // 1. Inspect live Supabase session ONLY if Supabase is online
+      let session = null
+      let authUser = null
+      if (isSupabaseConfigured && isSupabaseOnline()) {
+        try {
+          const res = await supabaseAuthService.getSession()
+          session = res.session
+          authUser = res.user
+        } catch {}
       }
-    } else {
-      setIsLiveAuth(false)
-      // 1. First check if activeUserId matches any fetched user
-      foundUser = users.find((u) => u.id === activeUserId)
-      // 2. If not found in fetched users, check local storageState users (includes custom created users!)
-      if (!foundUser) {
-        foundUser = state.users.find((u) => u.id === activeUserId)
-      }
-      // 3. If still not found, preserve the currently active user if valid
-      if (!foundUser && currentUser && currentUser.id) {
-        foundUser = currentUser
-      }
-      // 4. As absolute last resort only, fallback to the first user
-      if (!foundUser) {
-        foundUser = users[0] || state.users[0]
-      }
-    }
 
-    setAllUsers(users)
-    setAllCycles(cycles)
-    setActiveCycle(currentActiveCycle)
-    setCurrentUser((prev) => {
-      if (prev && prev.id === foundUser!.id && prev.role === foundUser!.role) {
-        return prev
+      // Invalidate stale async load if a switchUser or newer load occurred
+      if (seq !== loadSeqRef.current) {
+        return
       }
-      return foundUser!
-    })
-    setActiveWorkspaceRole((prev) => {
-      if (prev === foundUser!.role) return prev
-      return foundUser!.role
-    })
-    setDataMode(state.dataMode || 'clean')
 
-    if (foundUser?.id) {
-      const notifs = await notificationService.list(foundUser.id)
-      if (seq === loadSeqRef.current) {
-        setNotifications(notifs)
+      const activeUserId = state.currentUserId
+      let foundUser: User | undefined
+
+      if (session && authUser) {
+        setIsLiveAuth(true)
+        foundUser = authUser
+        if (!users.some((u) => u.id === authUser.id)) {
+          users.unshift(authUser)
+        }
+      } else {
+        setIsLiveAuth(false)
+        // 1. First check if activeUserId matches any fetched user
+        foundUser = users.find((u) => u.id === activeUserId || matchesUser(u.id, activeUserId))
+        // 2. If not found in fetched users, check local storageState users (includes custom created users!)
+        if (!foundUser) {
+          foundUser = state.users.find((u) => u.id === activeUserId || matchesUser(u.id, activeUserId))
+        }
+        // 3. If still not found, preserve the currently active user if valid
+        if (!foundUser && currentUser && currentUser.id) {
+          foundUser = currentUser
+        }
+        // 4. As absolute last resort only, fallback to the first user
+        if (!foundUser) {
+          foundUser = users[0] || state.users[0]
+        }
       }
+
+      setAllUsers(users)
+      setAllCycles(cycles)
+      setActiveCycle(currentActiveCycle)
+      setCurrentUser((prev) => {
+        if (prev && prev.id === foundUser!.id && prev.role === foundUser!.role) {
+          return prev
+        }
+        return foundUser!
+      })
+      setActiveWorkspaceRole((prev) => {
+        if (prev === foundUser!.role) return prev
+        return foundUser!.role
+      })
+      setDataMode(state.dataMode || 'clean')
+
+      if (foundUser?.id) {
+        const notifs = await notificationService.list(foundUser.id)
+        if (seq === loadSeqRef.current) {
+          setNotifications(notifs)
+        }
+      }
+    } catch (err) {
+      console.warn('Notice in AppContext.loadAll:', err)
     }
   }, [currentUser])
 
@@ -270,6 +280,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     // 1. Storage subscription (instant updates across tabs and role actions)
     const unsubStorage = storageService.subscribe(() => {
       reloadNotifs()
+      const state = storageService.getState()
+      if (state.cycles && state.cycles.length > 0) {
+        setAllCycles(state.cycles)
+        const current = state.cycles.find((c) => c.id === state.activeCycleId || matchesCycle(c.id, state.activeCycleId)) || state.cycles[0]
+        if (current) {
+          setActiveCycle((prev) => {
+            if (prev.id === current.id && prev.stage === current.stage && prev.name === current.name) return prev
+            return current
+          })
+        }
+      }
     })
 
     // 2. Supabase Realtime channel subscription if configured
@@ -419,4 +440,8 @@ export function useApp() {
     throw new Error('useApp must be used within an AppProvider')
   }
   return context
+}
+
+export function useOptionalApp() {
+  return useContext(AppContext)
 }

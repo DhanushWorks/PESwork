@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { EvaluationResult, ReviewCycle } from '../../types'
 import { resultService as mockResultService, EmployeeResultView } from '../mock/resultService'
 import { supabaseCycleService as cycleService } from './supabaseCycleService'
@@ -12,7 +12,7 @@ export const supabaseResultService = {
    * Fetch evaluation result for the authenticated employee with privacy barrier
    */
   async getMyResults(userId: string, cycleId: string): Promise<EmployeeResultView | null> {
-    if (!isSupabaseConfigured) return mockResultService.getMyResults(userId, cycleId)
+    if (!isSupabaseReady()) return mockResultService.getMyResults(userId, cycleId)
 
     try {
       const cycle = await cycleService.getById(cycleId)
@@ -89,7 +89,7 @@ export const supabaseResultService = {
    * Fetch past completed / released cycle outcomes
    */
   async getHistoricalResults(userId: string): Promise<Array<{ cycle: ReviewCycle; result: EvaluationResult }>> {
-    if (!isSupabaseConfigured) return mockResultService.getHistoricalResults(userId)
+    if (!isSupabaseReady()) return mockResultService.getHistoricalResults(userId)
 
     try {
       const { data: resultsData, error } = await supabase
@@ -133,6 +133,7 @@ export const supabaseResultService = {
           disputeStatus: row.status === 'disputed' ? 'disputed' : 'none',
           disputeReason: row.dispute_reason || undefined,
           disputeSubmittedAt: row.disputed_at || undefined,
+          status: row.status || 'pending',
         }
 
         history.push({ cycle, result })
@@ -227,7 +228,7 @@ export const supabaseResultService = {
    * Retrieve all evaluation results for a cycle
    */
   async getAllResults(cycleId: string): Promise<EvaluationResult[]> {
-    if (!isSupabaseConfigured) return mockResultService.getAllResults(cycleId)
+    if (!isSupabaseReady()) return mockResultService.getAllResults(cycleId)
 
     try {
       const { data, error } = await supabase
@@ -235,8 +236,13 @@ export const supabaseResultService = {
         .select('*')
         .eq('cycle_id', cycleId)
 
-      if (error || !data || data.length === 0) {
-        return mockResultService.getAllResults(cycleId)
+      if (error) {
+        console.warn('Notice in supabaseResultService.getAllResults:', error.message)
+        return []
+      }
+
+      if (!data || data.length === 0) {
+        return []
       }
 
       return data.map((row) => {
@@ -265,7 +271,7 @@ export const supabaseResultService = {
         }
       })
     } catch {
-      return mockResultService.getAllResults(cycleId)
+      return []
     }
   },
 }

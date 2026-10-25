@@ -9,6 +9,7 @@ import { ProgressBar } from '../../components/ui/MetricCard'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
 import { DatePicker } from '../../components/ui/DatePicker'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { formatDate } from '../../lib/formatters'
 import { validateGoalSet } from '../../lib/validation'
@@ -150,13 +151,13 @@ export const EmployeeGoals: React.FC = () => {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Goal Form Fields
+  // Goal Form Fields (Default to empty so user enters values manually)
   const [formTitle, setFormTitle] = useState('')
   const [formDescription, setFormDescription] = useState('')
   const [formMetric, setFormMetric] = useState('')
-  const [formTarget, setFormTarget] = useState(100)
-  const [formUnit, setFormUnit] = useState('%')
-  const [formWeight, setFormWeight] = useState(25)
+  const [formTarget, setFormTarget] = useState<number | string>('')
+  const [formUnit, setFormUnit] = useState('')
+  const [formWeight, setFormWeight] = useState<number | string>('')
   const [formDueDate, setFormDueDate] = useState('')
 
   const fetchGoals = async () => {
@@ -164,13 +165,27 @@ export const EmployeeGoals: React.FC = () => {
     try {
       const list = await goalService.listForUser(currentUser.id, activeCycle.id)
       setGoals(list)
+    } catch (err) {
+      console.warn('Notice fetching goals:', err)
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchGoals()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchGoals().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [currentUser.id, activeCycle.id])
 
   const totalWeight = goals
@@ -184,10 +199,10 @@ export const EmployeeGoals: React.FC = () => {
     setFormTitle('')
     setFormDescription('')
     setFormMetric('')
-    setFormTarget(100)
-    setFormUnit('%')
-    setFormWeight(25)
-    setFormDueDate(activeCycle.deadlines.goalsDue || '2026-11-30')
+    setFormTarget('')
+    setFormUnit('')
+    setFormWeight('')
+    setFormDueDate('')
     setShowGoalModal(true)
   }
 
@@ -197,7 +212,7 @@ export const EmployeeGoals: React.FC = () => {
     setFormDescription(goal.description)
     setFormMetric(goal.metric)
     setFormTarget(goal.target)
-    setFormUnit(goal.unit)
+    setFormUnit(goal.unit || '%')
     setFormWeight(goal.weight)
     setFormDueDate(goal.dueDate)
     setShowGoalModal(true)
@@ -209,17 +224,33 @@ export const EmployeeGoals: React.FC = () => {
       error('Title required', 'Please provide a clear title for the performance goal.')
       return
     }
+    if (!formMetric.trim()) {
+      error('Metric required', 'Please specify a target metric.')
+      return
+    }
+    if (formTarget === '' || isNaN(Number(formTarget))) {
+      error('Target value required', 'Please enter a target value.')
+      return
+    }
+    if (formWeight === '' || isNaN(Number(formWeight)) || Number(formWeight) <= 0) {
+      error('Weight required', 'Please specify a valid weight allocation percentage.')
+      return
+    }
+    if (!formDueDate) {
+      error('Due date required', 'Please select a target due date.')
+      return
+    }
 
     try {
       await goalService.save({
         id: editingGoal?.id,
         userId: currentUser.id,
         cycleId: activeCycle.id,
-        title: formTitle,
-        description: formDescription,
-        metric: formMetric,
+        title: formTitle.trim(),
+        description: formDescription.trim(),
+        metric: formMetric.trim(),
         target: Number(formTarget),
-        unit: formUnit,
+        unit: formUnit.trim() || '%',
         weight: Number(formWeight),
         dueDate: formDueDate,
         status: editingGoal?.status === 'returned' ? 'draft' : editingGoal?.status || 'draft',
@@ -323,16 +354,23 @@ export const EmployeeGoals: React.FC = () => {
       let finalFileUrl = evidenceFileUrl
       let finalFileSize = evidenceFileSize
 
-      // If a real file was chosen from device, upload through goalService.uploadEvidence
+      // If a real file was chosen from device, upload through goalService.uploadEvidence with safe fallback
       if (selectedFile) {
-        const uploaded = await goalService.uploadEvidence(
-          selectedFile,
-          currentUser.id,
-          progressGoal.id
-        )
-        finalFileName = uploaded.fileName
-        finalFileUrl = uploaded.fileUrl
-        finalFileSize = uploaded.fileSize
+        try {
+          const uploaded = await goalService.uploadEvidence(
+            selectedFile,
+            currentUser.id,
+            progressGoal.id
+          )
+          if (uploaded?.fileUrl) {
+            finalFileName = uploaded.fileName
+            finalFileUrl = uploaded.fileUrl
+            finalFileSize = uploaded.fileSize
+          }
+        } catch (uploadErr) {
+          console.warn('Storage upload notice; proceeding with local attached evidence payload:', uploadErr)
+          // finalFileUrl already holds the valid Data URL from processSelectedFile
+        }
       }
 
       await goalService.addProgress(
@@ -478,9 +516,9 @@ export const EmployeeGoals: React.FC = () => {
 
         {/* Multi-Segmented Proportional Weight Bar */}
         <div className="space-y-3">
-          <div className="w-full h-3 rounded-full overflow-hidden p-0.5 bg-slate-100 dark:bg-white/[0.04] border border-slate-200 dark:border-white/[0.06] flex items-center">
+          <div className="w-full h-3 rounded-full overflow-hidden p-0.5 bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 flex items-center">
             {goals.length === 0 ? (
-              <div className="w-full h-full rounded-full bg-slate-200 dark:bg-white/10" />
+              <div className="w-full h-full rounded-full bg-slate-300 dark:bg-zinc-700" />
             ) : (
               <div
                 className="h-full flex items-center gap-2 transition-all duration-500 w-full"
@@ -561,9 +599,9 @@ export const EmployeeGoals: React.FC = () => {
       </div>
 
       {/* Search & Segmented Filter Bar (Single-Line, No Card Wrapper: Equal Heights & Balanced Widths) */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0 max-w-full">
         {/* Left: Status Filter Capsule */}
-        <div className="overflow-x-auto scrollbar-none py-0.5">
+        <div className="w-full sm:w-auto min-w-0 max-w-full overflow-x-auto scrollbar-none py-0.5">
           <RubberSegmentedControl
             options={[
               { value: 'all', label: 'All', count: goals.length },
@@ -596,8 +634,8 @@ export const EmployeeGoals: React.FC = () => {
         </div>
 
         {/* Right: Compact Search Input (Matching h-8.5 height & rounded-full capsule geometry) */}
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
-          <div className="relative w-full sm:w-56 md:w-64 flex items-center shrink-0">
+        <div className="flex items-center gap-2 w-full sm:w-auto sm:justify-end min-w-0">
+          <div className="relative flex-1 sm:flex-initial sm:w-56 md:w-64 min-w-0 flex items-center">
             <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
@@ -605,7 +643,7 @@ export const EmployeeGoals: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search goals by title..."
-              className="w-full h-8.5 pl-8.5 pr-8 rounded-full bg-white dark:bg-[#18181b] border border-slate-200/90 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans shadow-2xs"
+              className="w-full h-8.5 pl-9 pr-8 rounded-full bg-white dark:bg-[#18181b] border border-slate-200/90 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans shadow-2xs"
             />
             {search ? (
               <button
@@ -639,7 +677,7 @@ export const EmployeeGoals: React.FC = () => {
 
       {/* Goals List */}
       {loading ? (
-        <div className="p-12 text-center text-xs text-slate-400">Loading goals...</div>
+        <LoadingState message="Loading performance goals..." variant="card" />
       ) : filteredGoals.length === 0 ? (
         <EmptyState
           title="No goals match your filter"
@@ -778,7 +816,7 @@ export const EmployeeGoals: React.FC = () => {
 
                     {/* Visual Slider Track with Knob */}
                     <div className="relative w-full pt-1">
-                      <div className="w-full bg-slate-200/90 dark:bg-zinc-900 border border-slate-300/80 dark:border-zinc-800/90 rounded-full h-2.5 relative">
+                      <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-600 rounded-full h-2.5 relative">
                         <div
                           className="h-full rounded-full bg-slate-900 dark:bg-white transition-all duration-500"
                           style={{ width: `${Math.min(100, Math.max(0, g.progress))}%` }}
@@ -851,8 +889,26 @@ export const EmployeeGoals: React.FC = () => {
         title={editingGoal ? 'Edit Performance Goal' : 'Define New Performance Goal'}
         subtitle={`Goal will be part of ${activeCycle.name}`}
         maxWidth="lg"
+        onSubmit={handleSaveGoal}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowGoalModal(false)}
+              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-white font-semibold transition-colors shadow-xs cursor-pointer"
+            >
+              {editingGoal ? 'Update Goal' : 'Save Goal'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSaveGoal} className="space-y-4 text-xs">
+        <div className="space-y-4 text-xs">
           <div>
             <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Goal Title *</label>
             <input
@@ -890,12 +946,13 @@ export const EmployeeGoals: React.FC = () => {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Target Value</label>
+                <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Target Value *</label>
                 <input
                   type="number"
                   required
+                  placeholder="e.g. 100"
                   value={formTarget}
-                  onChange={(e) => setFormTarget(parseFloat(e.target.value))}
+                  onChange={(e) => setFormTarget(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -903,10 +960,9 @@ export const EmployeeGoals: React.FC = () => {
                 <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Unit</label>
                 <input
                   type="text"
-                  required
                   value={formUnit}
                   onChange={(e) => setFormUnit(e.target.value)}
-                  placeholder="%"
+                  placeholder="e.g. % or count"
                   className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -918,11 +974,12 @@ export const EmployeeGoals: React.FC = () => {
               <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Weight Allocation (%) *</label>
               <input
                 type="number"
-                min="5"
+                min="1"
                 max="100"
                 required
+                placeholder="e.g. 25"
                 value={formWeight}
-                onChange={(e) => setFormWeight(parseInt(e.target.value))}
+                onChange={(e) => setFormWeight(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
               />
               <span className="text-[11px] text-slate-400 mt-1 block">
@@ -933,6 +990,7 @@ export const EmployeeGoals: React.FC = () => {
             <div>
               <DatePicker
                 label="Target Due Date"
+                placeholder="Select target due date"
                 required
                 value={formDueDate}
                 onChange={(val) => setFormDueDate(val)}
@@ -940,22 +998,7 @@ export const EmployeeGoals: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowGoalModal(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors font-medium cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-white font-semibold transition-colors shadow-xs cursor-pointer"
-            >
-              {editingGoal ? 'Update Goal' : 'Save Goal'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Progress Update Modal */}
@@ -965,26 +1008,80 @@ export const EmployeeGoals: React.FC = () => {
         title="Record Goal Progress & Evidence"
         subtitle={progressGoal?.title}
         maxWidth="md"
+        onSubmit={handleSaveProgress}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowProgressModal(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isUploading}
+              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isUploading ? 'Uploading Evidence...' : 'Record Checkpoint'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSaveProgress} className="space-y-4 text-xs font-sans">
+        <div className="space-y-4 text-xs font-sans">
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="font-semibold text-slate-700 dark:text-zinc-300">Completion Percentage</label>
-              <span className="font-sans font-bold text-sm text-slate-900 dark:text-white">{progressPercentage}%</span>
+              <label className="font-semibold text-slate-700 dark:text-zinc-200">Completion Percentage</label>
+              <span className="font-mono font-bold text-base text-slate-900 dark:text-white bg-slate-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg border border-slate-200 dark:border-zinc-700">
+                {progressPercentage}%
+              </span>
             </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              value={progressPercentage}
-              onChange={(e) => setProgressPercentage(parseInt(e.target.value))}
-              className="rating-slider w-full h-2.5 bg-slate-200 dark:bg-zinc-800 rounded-full appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-[10px] text-slate-400 dark:text-zinc-500 pt-1">
+
+            {/* Slider Track with Visible High-Contrast Underlay and Active Fill */}
+            <div className="relative py-2.5 flex items-center w-full">
+              <div className="absolute inset-x-0 h-3 rounded-full bg-slate-200 dark:bg-zinc-800 border-[1.5px] border-slate-300 dark:border-zinc-600 overflow-hidden pointer-events-none shadow-2xs">
+                {/* Active Progress Fill */}
+                <div
+                  className="h-full bg-slate-900 dark:bg-white transition-all duration-75"
+                  style={{ width: `${progressPercentage}%` }}
+                />
+              </div>
+
+              {/* Native Range Slider */}
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={progressPercentage}
+                onChange={(e) => setProgressPercentage(parseInt(e.target.value))}
+                className="rating-slider relative z-10 w-full h-3 appearance-none bg-transparent cursor-pointer transition-all"
+              />
+            </div>
+
+            <div className="flex justify-between text-[11px] font-semibold text-slate-600 dark:text-zinc-300 px-0.5 pt-0.5">
               <span>0% Not Started</span>
-              <span>50% In Progress</span>
+              <strong className="text-slate-900 dark:text-white font-bold">50% In Progress</strong>
               <span>100% Completed</span>
+            </div>
+
+            {/* Quick Preset Buttons */}
+            <div className="flex items-center gap-1.5 pt-2.5">
+              <span className="text-[11px] font-semibold text-slate-500 dark:text-zinc-400 mr-1">Presets:</span>
+              {[0, 25, 50, 75, 100].map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => setProgressPercentage(preset)}
+                  className={`px-2 py-0.5 text-[11px] font-semibold rounded-md border transition-all cursor-pointer ${
+                    progressPercentage === preset
+                      ? 'bg-slate-900 text-white border-slate-900 dark:bg-white dark:text-slate-900 dark:border-white shadow-2xs'
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-zinc-300 dark:border-zinc-700'
+                  }`}
+                >
+                  {preset}%
+                </button>
+              ))}
             </div>
           </div>
 
@@ -1092,23 +1189,7 @@ export const EmployeeGoals: React.FC = () => {
             )}
           </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowProgressModal(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isUploading}
-              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isUploading ? 'Uploading Evidence...' : 'Record Checkpoint'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Submit Goals Confirmation */}

@@ -368,7 +368,7 @@ export const AdminReports: React.FC = () => {
                       {dept.completionRate}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200/80 dark:bg-white/[0.08] border border-slate-300/60 dark:border-transparent rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:to-[#4FE3C1] h-full rounded-full transition-all duration-500"
                       style={{ width: `${dept.completionRate}%` }}
@@ -383,7 +383,7 @@ export const AdminReports: React.FC = () => {
                       {dept.goalAttainment}%
                     </span>
                   </div>
-                  <div className="w-full bg-slate-200/80 dark:bg-white/[0.08] border border-slate-300/60 dark:border-transparent rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:to-[#4FE3C1] h-full rounded-full transition-all duration-500"
                       style={{ width: `${dept.goalAttainment}%` }}

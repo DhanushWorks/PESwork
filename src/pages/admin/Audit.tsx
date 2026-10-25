@@ -258,13 +258,30 @@ export const AdminAudit: React.FC = () => {
   // Fetch audit records
   const fetchLogs = async () => {
     setLoading(true)
-    const list = await auditService.list()
-    setLogs(list)
-    setLoading(false)
+    try {
+      const list = await auditService.list()
+      setLogs(list)
+    } catch (err) {
+      console.warn('Notice loading audit logs:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchLogs()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchLogs().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [])
 
   // User Map for rich actor information
@@ -717,7 +734,7 @@ export const AdminAudit: React.FC = () => {
             className="w-full max-w-xl bg-white dark:bg-[#18181b] menu-solid-bg modal-surface rounded-2xl border border-slate-200 dark:border-zinc-700/80 shadow-2xl overflow-hidden flex flex-col max-h-[88vh] animate-scale-up"
           >
             {/* Modal Header */}
-            <div className="p-5 border-b border-slate-200 dark:border-zinc-700/80 flex items-center justify-between bg-slate-50 dark:bg-zinc-900 menu-inner-card">
+            <div className="p-5 border-b border-slate-200 dark:border-zinc-700/80 flex items-center justify-between bg-slate-50 dark:bg-zinc-900 menu-inner-card shrink-0">
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-slate-100 text-slate-700 border border-slate-200 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700 flex items-center justify-center">
                   <Key className="w-4 h-4" />
@@ -744,7 +761,7 @@ export const AdminAudit: React.FC = () => {
             </div>
 
             {/* Modal Body */}
-            <div className="p-5 space-y-4 overflow-y-auto text-xs">
+            <div className="p-5 space-y-4 overflow-y-auto overscroll-contain flex-1 min-h-0 text-xs">
               {/* Event Provenance Grid */}
               <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/70 dark:border-white/10">
                 <div>
@@ -841,7 +858,7 @@ export const AdminAudit: React.FC = () => {
             </div>
 
             {/* Modal Footer */}
-            <div className="p-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50/60 dark:bg-white/[0.02]">
+            <div className="p-4 border-t border-slate-200 dark:border-white/10 flex items-center justify-between bg-slate-50/60 dark:bg-white/[0.02] shrink-0">
               <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-sans flex items-center gap-1 font-medium">
                 <Lock className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500" />
                 Guaranteed append-only audit record

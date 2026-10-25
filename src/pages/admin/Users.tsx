@@ -6,6 +6,7 @@ import { Role, User } from '../../types'
 import { RoleBadge } from '../../components/ui/Badge'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate } from '../../lib/formatters'
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import { CustomDropdown } from '../../components/ui/CustomDropdown'
@@ -90,13 +91,30 @@ export const AdminUsers: React.FC = () => {
 
   const fetchUsers = async () => {
     setLoading(true)
-    const list = await peopleService.list()
-    setUsers(list)
-    setLoading(false)
+    try {
+      const list = await peopleService.list()
+      setUsers(list)
+    } catch (err) {
+      console.warn('Notice loading users:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchUsers()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchUsers().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [])
 
   const openCreateModal = () => {
@@ -275,9 +293,9 @@ export const AdminUsers: React.FC = () => {
         </div>
 
         {/* Right: Search Input & Department Dropdown */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto sm:justify-end min-w-0">
           {/* Compact Search Input */}
-          <div className="relative w-full sm:w-52 md:w-60 flex items-center shrink-0">
+          <div className="relative flex-1 sm:flex-initial sm:w-52 md:w-60 min-w-0 flex items-center">
             <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
@@ -285,7 +303,7 @@ export const AdminUsers: React.FC = () => {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search personnel..."
-              className="w-full h-9 pl-8.5 pr-8 rounded-xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition-all font-sans shadow-2xs"
+              className="w-full h-9 pl-9 pr-8 rounded-xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition-all font-sans shadow-2xs"
             />
             {search ? (
               <button
@@ -324,7 +342,7 @@ export const AdminUsers: React.FC = () => {
       {/* Directory Content: Grid Cards View vs Table View */}
       {viewMode === 'grid' ? (
         loading ? (
-          <div className="text-center py-16 text-slate-400 font-sans text-xs">Loading talent directory...</div>
+          <LoadingState message="Loading talent directory..." variant="card" />
         ) : filteredUsers.length === 0 ? (
           <div className="dark-glass-card p-12 text-center">
             <Users className="w-10 h-10 text-slate-300 dark:text-zinc-600 mx-auto mb-3" />
@@ -459,11 +477,7 @@ export const AdminUsers: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/[0.05] text-slate-700">
                 {loading ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-10 text-slate-400">
-                      Loading users...
-                    </td>
-                  </tr>
+                  <LoadingState message="Loading directory roster..." variant="table" colSpan={6} />
                 ) : filteredUsers.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="text-center py-10 text-slate-400">
@@ -584,8 +598,26 @@ export const AdminUsers: React.FC = () => {
         title={editingUser ? 'Edit Employee Record' : 'Add Employee to Directory'}
         subtitle="Manage employee profile and reporting relationship"
         maxWidth="md"
+        onSubmit={handleSaveUser}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
+            >
+              {editingUser ? 'Save Changes' : 'Create Account'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSaveUser} className="space-y-4 text-xs">
+        <div className="space-y-4 text-xs">
           <div>
             <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Full Name *</label>
             <input
@@ -671,22 +703,7 @@ export const AdminUsers: React.FC = () => {
             />
           </div>
 
-          <div className="pt-3 border-t border-slate-100 dark:border-white/[0.08] flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
-            >
-              {editingUser ? 'Save Changes' : 'Create Account'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Instagram-Style Profile Photo Modal */}

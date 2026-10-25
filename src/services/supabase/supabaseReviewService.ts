@@ -1,6 +1,7 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { ManagerReview, SelfReview, User } from '../../types'
 import { calculateCompositeScore } from '../../lib/scoring'
+import { matchesCycle, matchesUser } from '../../lib/workflow'
 import { supabaseCycleService as cycleService } from './supabaseCycleService'
 import { supabasePeopleService as peopleService } from './supabasePeopleService'
 import { reviewService as mockReviewService, TeamReviewSummary } from '../mock/reviewService'
@@ -28,7 +29,7 @@ export const supabaseReviewService = {
    * Retrieve employee self-review for a specific cycle
    */
   async getSelfReview(userId: string, cycleId: string): Promise<SelfReview | null> {
-    if (!isSupabaseConfigured) return mockReviewService.getSelfReview(userId, cycleId)
+    if (!isSupabaseReady()) return mockReviewService.getSelfReview(userId, cycleId)
 
     try {
       const { data, error } = await supabase
@@ -60,6 +61,7 @@ export const supabaseReviewService = {
         valueRatings: answers.valueRatings || {},
       }
     } catch (err) {
+      markSupabaseOffline(err)
       console.warn('Notice fetching self_assessments from Supabase:', err)
       return mockReviewService.getSelfReview(userId, cycleId)
     }
@@ -198,7 +200,7 @@ export const supabaseReviewService = {
    * Retrieve manager review evaluation for an employee
    */
   async getManagerReview(employeeId: string, cycleId: string): Promise<ManagerReview | null> {
-    if (!isSupabaseConfigured) return mockReviewService.getManagerReview(employeeId, cycleId)
+    if (!isSupabaseReady()) return mockReviewService.getManagerReview(employeeId, cycleId)
 
     try {
       const { data, error } = await supabase
@@ -444,7 +446,7 @@ export const supabaseReviewService = {
    * List team members with appraisal status for manager direct reports
    */
   async listTeamReviews(managerId: string, cycleId: string): Promise<TeamReviewSummary[]> {
-    if (!isSupabaseConfigured) return mockReviewService.listTeamReviews(managerId, cycleId)
+    if (!isSupabaseReady()) return mockReviewService.listTeamReviews(managerId, cycleId)
 
     try {
       const reports: User[] = await peopleService.getDirectReports(managerId)
@@ -507,7 +509,7 @@ export const supabaseReviewService = {
    * List all self reviews for a cycle (Administrative view)
    */
   async listAllSelfReviews(cycleId: string): Promise<SelfReview[]> {
-    if (!isSupabaseConfigured) return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId)
+    if (!isSupabaseReady()) return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
 
     try {
       const { data, error } = await supabase
@@ -516,7 +518,7 @@ export const supabaseReviewService = {
         .eq('cycle_id', cycleId)
 
       if (error || !data || data.length === 0) {
-        return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId)
+        return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
       }
 
       return data.map((d) => {
@@ -538,7 +540,7 @@ export const supabaseReviewService = {
         }
       })
     } catch {
-      return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId)
+      return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
     }
   },
 
@@ -546,7 +548,7 @@ export const supabaseReviewService = {
    * List all manager reviews for a cycle (Administrative view)
    */
   async listAllManagerReviews(cycleId: string): Promise<ManagerReview[]> {
-    if (!isSupabaseConfigured) return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId)
+    if (!isSupabaseReady()) return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))
 
     try {
       const { data, error } = await supabase
@@ -555,7 +557,7 @@ export const supabaseReviewService = {
         .eq('cycle_id', cycleId)
 
       if (error || !data || data.length === 0) {
-        return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId)
+        return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))
       }
 
       return data.map((d) => {
@@ -580,7 +582,7 @@ export const supabaseReviewService = {
         }
       })
     } catch {
-      return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId)
+      return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))
     }
   },
 }

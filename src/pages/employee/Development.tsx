@@ -6,20 +6,18 @@ import { DevelopmentPlan, GrowthAction, RecommendedCourse } from '../../types'
 import { Modal } from '../../components/ui/Modal'
 import { DatePicker } from '../../components/ui/DatePicker'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate } from '../../lib/formatters'
 import {
   Award,
   BookOpen,
   Calendar,
   Check,
-  CheckCircle2,
   Clock,
   Compass,
-  GraduationCap,
   Laptop,
   Plus,
   Sparkles,
-  TrendingUp,
   ArrowRight,
   ShieldCheck,
   PlayCircle,
@@ -103,17 +101,34 @@ export const EmployeeDevelopment: React.FC = () => {
   // Add Action Modal
   const [showAddModal, setShowAddModal] = useState(false)
   const [newTitle, setNewTitle] = useState('')
-  const [newTargetDate, setNewTargetDate] = useState('2026-12-15')
+  const [newTargetDate, setNewTargetDate] = useState('')
 
   const fetchPlan = async () => {
     setLoading(true)
-    const data = await developmentService.getPlan(currentUser.id)
-    setPlan(data)
-    setLoading(false)
+    try {
+      const data = await developmentService.getPlan(currentUser.id)
+      setPlan(data)
+    } catch (err) {
+      console.warn('Notice loading development plan:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchPlan()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchPlan().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [currentUser.id])
 
   const handleToggleStatus = async (action: GrowthAction) => {
@@ -136,13 +151,21 @@ export const EmployeeDevelopment: React.FC = () => {
 
   const handleAddAction = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newTitle.trim()) return
+    if (!newTitle.trim()) {
+      error('Title required', 'Please provide a title for the growth milestone.')
+      return
+    }
+    if (!newTargetDate) {
+      error('Date required', 'Please select a target completion date.')
+      return
+    }
 
     try {
       const updated = await developmentService.addAction(currentUser.id, newTitle, newTargetDate)
       setPlan(updated)
       setShowAddModal(false)
       setNewTitle('')
+      setNewTargetDate('')
       success('Growth action added', 'New development milestone added to your growth plan.')
     } catch (err: any) {
       error('Failed to add action', err.message)
@@ -160,12 +183,7 @@ export const EmployeeDevelopment: React.FC = () => {
   }
 
   if (loading) {
-    return (
-      <div className="py-24 text-center">
-        <div className="w-8 h-8 mx-auto mb-3 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin" />
-        <p className="text-xs text-slate-400 dark:text-zinc-300 font-mono">Decrypting career growth ledger...</p>
-      </div>
-    )
+    return <LoadingState message="Loading career growth milestones & syllabus..." variant="page" />
   }
 
   const allActions = plan?.agreedActions || []
@@ -185,15 +203,10 @@ export const EmployeeDevelopment: React.FC = () => {
       {/* SECTION 1: Skills Matrix */}
       <div className="dark-glass-card conic-border-glow rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0">
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <div>
-              <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
-                Skills Matrix
-              </h2>
-            </div>
+          <div>
+            <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
+              Skills Matrix
+            </h2>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto">
@@ -279,15 +292,10 @@ export const EmployeeDevelopment: React.FC = () => {
       <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         {/* Top Header Row */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0 shadow-2xs">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
-                Development Commitments
-              </h2>
-            </div>
+          <div>
+            <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
+              Development Commitments
+            </h2>
           </div>
 
           {/* Rubber Segmented Control Filter Tabs & Add Action */}
@@ -491,15 +499,10 @@ export const EmployeeDevelopment: React.FC = () => {
       {/* SECTION 3: Recommended Courses */}
       <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-200/80 text-indigo-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200 flex items-center justify-center shrink-0 shadow-2xs">
-              <GraduationCap className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
-                Recommended Courses
-              </h2>
-            </div>
+          <div>
+            <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
+              Recommended Courses
+            </h2>
           </div>
 
           <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
@@ -639,8 +642,26 @@ export const EmployeeDevelopment: React.FC = () => {
         title="Add Growth Milestone"
         maxWidth="md"
         overflowVisible={true}
+        onSubmit={handleAddAction}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowAddModal(false)}
+              className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer text-xs font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="premium-glow-btn h-9 px-4 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
+            >
+              Add Milestone
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleAddAction} className="space-y-4 text-xs font-sans">
+        <div className="space-y-4 text-xs font-sans">
           <div>
             <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
               Growth Milestone Title *
@@ -658,28 +679,13 @@ export const EmployeeDevelopment: React.FC = () => {
           <div>
             <DatePicker
               label="Target Completion Date"
+              placeholder="Select completion date"
               required
               value={newTargetDate}
               onChange={(val) => setNewTargetDate(val)}
             />
           </div>
-
-          <div className="pt-3 border-t border-slate-200 dark:border-white/[0.08] flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowAddModal(false)}
-              className="h-9 px-4 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer text-xs font-medium"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="premium-glow-btn h-9 px-4 text-xs font-semibold cursor-pointer inline-flex items-center gap-1.5"
-            >
-              Add Milestone
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
     </div>
   )

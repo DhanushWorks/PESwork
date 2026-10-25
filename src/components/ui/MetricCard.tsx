@@ -123,7 +123,7 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
           )}
         </div>
       )}
-      <div className={`w-full bg-slate-200/80 dark:bg-white/[0.08] border border-slate-200 dark:border-transparent rounded-full overflow-hidden ${heightClass}`}>
+      <div className={`w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full overflow-hidden ${heightClass}`}>
         <div
           className={`${heightClass} rounded-full transition-all duration-1000 ease-out ${variantClass}`}
           style={{ width: isMounted ? `${percentage}%` : '0%' }}

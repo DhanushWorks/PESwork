@@ -1,8 +1,18 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { ReviewCycle, CycleStage, User } from '../../types'
 import { STAGE_ORDER } from '../../lib/formatters'
 import { generateDeterministicDeadlines } from '../../lib/deadlines'
 import { cycleService as mockCycleService } from '../mock/cycleService'
+import { storageService } from '../mock/storageService'
+import { matchesUser } from '../../lib/workflow'
+import { supabasePeopleService } from './supabasePeopleService'
+
+export function toDatabaseUserId(userId: string): string {
+  if (userId === 'u-emp-1') return '11111111-1111-1111-1111-111111111101'
+  if (userId === 'u-mgr-1') return '11111111-1111-1111-1111-111111111102'
+  if (userId === 'u-admin') return '11111111-1111-1111-1111-111111111103'
+  return userId
+}
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -31,7 +41,7 @@ export function normalizeCycleDeadlines(rawDeadlines: any, startDate: string, en
 
 export const supabaseCycleService = {
   async list(): Promise<ReviewCycle[]> {
-    if (!isSupabaseConfigured) return mockCycleService.list()
+    if (!isSupabaseReady()) return mockCycleService.list()
 
     try {
       const { data, error } = await supabase.from('review_cycles').select('*')
@@ -63,13 +73,14 @@ export const supabaseCycleService = {
           participantIds: cycleParticipants,
         }
       })
-    } catch {
+    } catch (err) {
+      markSupabaseOffline(err)
       return mockCycleService.list()
     }
   },
 
   async getById(id: string): Promise<ReviewCycle | null> {
-    if (!isSupabaseConfigured) return mockCycleService.getById(id)
+    if (!isSupabaseReady()) return mockCycleService.getById(id)
 
     const targetUuid = resolveCycleUuid(id)
     if (!targetUuid) {
@@ -100,7 +111,8 @@ export const supabaseCycleService = {
         deadlines: normalizeCycleDeadlines(data.deadlines, data.start_date, data.end_date),
         participantIds,
       }
-    } catch {
+    } catch (err) {
+      markSupabaseOffline(err)
       return mockCycleService.getById(id)
     }
   },
@@ -212,10 +224,16 @@ export const supabaseCycleService = {
             const rows = cycleData.participantIds.map((userId) => ({
               tenant_id: tenantId,
               cycle_id: data.id,
-              user_id: userId,
+              user_id: toDatabaseUserId(userId),
             }))
             await supabase.from('cycle_participants').insert(rows)
           }
+
+          // Sync the mock cycle ID with the newly created Supabase UUID so both match!
+          storageService.updateState((s) => ({
+            cycles: s.cycles.map((c) => (c.id === mockCreated.id ? { ...c, id: data.id } : c)),
+            activeCycleId: data.id,
+          }))
 
           return {
             id: data.id,
@@ -261,7 +279,42 @@ export const supabaseCycleService = {
   },
 
   async getEnrolledParticipants(cycleId: string): Promise<User[]> {
-    return mockCycleService.getEnrolledParticipants(cycleId)
+    const allUsers = await supabasePeopleService.list()
+    const targetUuid = resolveCycleUuid(cycleId)
+
+    if (isSupabaseReady() && targetUuid) {
+      try {
+        const { data: participants, error } = await supabase
+          .from('cycle_participants')
+          .select('user_id')
+          .eq('cycle_id', targetUuid)
+
+        if (!error && participants) {
+          const enrolledUserIds = participants.map((p) => p.user_id)
+          const matched = allUsers
+            .filter((u) => u.role !== 'admin')
+            .filter((u) =>
+              enrolledUserIds.some((pId) => u.id === pId || matchesUser(u.id, pId))
+            )
+          return matched
+        }
+      } catch (e) {
+        console.warn('Supabase getEnrolledParticipants error:', e)
+      }
+    }
+
+    // Fallback to cycle participantIds on the cycle record
+    const cycle = await this.getById(cycleId)
+    if (!cycle) return []
+
+    const participantIds = cycle.participantIds || []
+    if (participantIds.length === 0) return []
+
+    return allUsers
+      .filter((u) => u.role !== 'admin')
+      .filter((u) =>
+        participantIds.some((pId) => u.id === pId || matchesUser(u.id, pId))
+      )
   },
 
   async checkParticipantEvaluationHistory(cycleId: string, userId: string) {
@@ -275,13 +328,14 @@ export const supabaseCycleService = {
     purgeEvaluations: boolean = false
   ): Promise<ReviewCycle> {
     const targetUuid = resolveCycleUuid(cycleId)
-    if (isSupabaseConfigured && targetUuid && UUID_REGEX.test(userId)) {
+    const targetUserId = toDatabaseUserId(userId)
+    if (isSupabaseConfigured && targetUuid && UUID_REGEX.test(targetUserId)) {
       try {
         await supabase
           .from('cycle_participants')
           .delete()
           .eq('cycle_id', targetUuid)
-          .eq('user_id', userId)
+          .eq('user_id', targetUserId)
       } catch (e) {
         console.warn('Supabase removeParticipant notice:', e)
       }
@@ -292,7 +346,8 @@ export const supabaseCycleService = {
 
   async addParticipant(cycleId: string, userId: string, actorName: string = 'Admin'): Promise<ReviewCycle> {
     const targetUuid = resolveCycleUuid(cycleId)
-    if (isSupabaseConfigured && targetUuid && UUID_REGEX.test(userId)) {
+    const targetUserId = toDatabaseUserId(userId)
+    if (isSupabaseConfigured && targetUuid && UUID_REGEX.test(targetUserId)) {
       try {
         const { data: tenant } = await supabase.from('tenants').select('id').limit(1).single()
         const tenantId = tenant?.id || '00000000-0000-0000-0000-000000000001'
@@ -300,7 +355,7 @@ export const supabaseCycleService = {
         await supabase.from('cycle_participants').insert({
           tenant_id: tenantId,
           cycle_id: targetUuid,
-          user_id: userId,
+          user_id: targetUserId,
         })
       } catch (e) {
         console.warn('Supabase addParticipant notice:', e)
@@ -317,7 +372,7 @@ export const supabaseCycleService = {
         const { data: tenant } = await supabase.from('tenants').select('id').limit(1).single()
         const tenantId = tenant?.id || '00000000-0000-0000-0000-000000000001'
 
-        const validUserIds = userIds.filter((u) => UUID_REGEX.test(u))
+        const validUserIds = userIds.map((u) => toDatabaseUserId(u)).filter((u) => UUID_REGEX.test(u))
         if (validUserIds.length > 0) {
           const rows = validUserIds.map((userId) => ({
             tenant_id: tenantId,
@@ -335,33 +390,49 @@ export const supabaseCycleService = {
   },
 
   async delete(cycleId: string, actorName: string = 'Admin'): Promise<void> {
-    const targetUuid = resolveCycleUuid(cycleId)
+    // Step 1: Best-effort Supabase cleanup — fully non-fatal, never blocks local delete
+    if (isSupabaseConfigured) {
+      // Only send to Supabase if we have a valid UUID (prevents "invalid input syntax for uuid" errors)
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      const targetUuid = UUID_RE.test(cycleId) ? cycleId : resolveCycleUuid(cycleId)
 
-    if (isSupabaseConfigured && targetUuid) {
-      try {
-        // Cascade delete child rows in Supabase using valid UUID only
-        await supabase.from('cycle_participants').delete().eq('cycle_id', targetUuid)
-        await supabase.from('goals').delete().eq('cycle_id', targetUuid)
-        await supabase.from('self_assessments').delete().eq('cycle_id', targetUuid)
-        await supabase.from('manager_reviews').delete().eq('cycle_id', targetUuid)
-        await supabase.from('calibrations').delete().eq('cycle_id', targetUuid)
-        await supabase.from('final_results').delete().eq('cycle_id', targetUuid)
-        const { error } = await supabase.from('review_cycles').delete().eq('id', targetUuid)
-        if (error) {
-          console.warn('Supabase delete cycle notice (non-fatal):', error.message)
-        }
-      } catch (e: any) {
-        console.warn('Supabase delete cycle exception (non-fatal):', e?.message || e)
+      if (targetUuid) {
+        // Fire-and-forget: never let Supabase rejections propagate to the UI error handler
+        Promise.allSettled([
+          supabase.from('cycle_participants').delete().eq('cycle_id', targetUuid),
+          supabase.from('goals').delete().eq('cycle_id', targetUuid),
+          supabase.from('self_assessments').delete().eq('cycle_id', targetUuid),
+          supabase.from('manager_reviews').delete().eq('cycle_id', targetUuid),
+          supabase.from('calibrations').delete().eq('cycle_id', targetUuid),
+          supabase.from('final_results').delete().eq('cycle_id', targetUuid),
+          supabase.from('review_cycles').delete().eq('id', targetUuid),
+        ]).then((results) => {
+          results.forEach((r) => {
+            if (r.status === 'rejected') {
+              console.warn('[CycleService] Supabase delete notice (non-fatal):', r.reason?.message || r.reason)
+            }
+          })
+        }).catch(() => {
+          // silently swallow any unexpected allSettled errors
+        })
       }
     }
 
-    // Always delete from mock / local storage so cycle is permanently removed without errors
-    await mockCycleService.delete(cycleId, actorName)
-    if (targetUuid && targetUuid !== cycleId) {
+    // Step 2: Always delete from local mock storage — this is the UI source of truth.
+    // Handles both the original cycleId and its resolved UUID alias so no phantom cycle
+    // ever remains in UI state regardless of what ID format was stored.
+    try {
+      await mockCycleService.delete(cycleId, actorName)
+    } catch {
+      // Already removed or never existed in local state — safe to ignore
+    }
+
+    const resolvedUuid = resolveCycleUuid(cycleId)
+    if (resolvedUuid && resolvedUuid !== cycleId) {
       try {
-        await mockCycleService.delete(targetUuid, actorName)
+        await mockCycleService.delete(resolvedUuid, actorName)
       } catch {
-        // Silently ignore if already removed
+        // Alias already cleaned up — safe to ignore
       }
     }
   },

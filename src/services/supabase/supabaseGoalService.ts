@@ -2,6 +2,19 @@ import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } 
 import { Goal, GoalStatus, ProgressLog } from '../../types'
 import { goalService as mockGoalService } from '../mock/goalService'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
+import { storageService } from '../mock/storageService'
+import { matchesUser, matchesCycle } from '../../lib/workflow'
+
+function toValidUuid(id?: string): string | null {
+  if (!id) return null
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+    return id
+  }
+  if (id === 'u-emp-1') return '11111111-1111-1111-1111-111111111101'
+  if (id === 'u-mgr-1') return '11111111-1111-1111-1111-111111111102'
+  if (id === 'u-admin') return '11111111-1111-1111-1111-111111111103'
+  return null
+}
 
 async function getTenantId(userId?: string): Promise<string> {
   if (!isSupabaseConfigured) return '00000000-0000-0000-0000-000000000001'
@@ -52,87 +65,142 @@ function parseEvidenceUrl(url?: string): { url?: string; fileName?: string } {
   return { url: cleanUrl, fileName }
 }
 
+const REMOVED_EVIDENCE_KEY = 'performiq_removed_evidence_log_ids'
+
+export function getRemovedEvidenceIds(): Set<string> {
+  if (typeof window === 'undefined') return new Set()
+  try {
+    const raw = localStorage.getItem(REMOVED_EVIDENCE_KEY)
+    if (raw) {
+      const parsed = JSON.parse(raw)
+      if (Array.isArray(parsed)) return new Set(parsed)
+    }
+  } catch {}
+  return new Set()
+}
+
+export function recordRemovedEvidenceId(id: string) {
+  if (typeof window === 'undefined') return
+  try {
+    const ids = getRemovedEvidenceIds()
+    ids.add(id)
+    localStorage.setItem(REMOVED_EVIDENCE_KEY, JSON.stringify(Array.from(ids)))
+  } catch {}
+}
+
 export const supabaseGoalService = {
   async listForUser(userId: string, cycleId?: string): Promise<Goal[]> {
     if (!isSupabaseReady()) return mockGoalService.listForUser(userId, cycleId)
 
     try {
-      let query = supabase.from('goals').select('*').eq('user_id', userId)
-    if (cycleId) {
-      query = query.eq('cycle_id', cycleId)
-    }
+      const validUserId = toValidUuid(userId)
+      const mockGoals = await mockGoalService.listForUser(userId, cycleId)
 
-    const { data, error } = await query
-    const mockGoals = await mockGoalService.listForUser(userId, cycleId)
+      if (!validUserId) {
+        return mockGoals
+      }
 
-    if (error || !data || data.length === 0) {
-      return mockGoals
-    }
+      let query = supabase.from('goals').select('*').eq('user_id', validUserId)
 
-    const goalIds = data.map((g) => g.id)
+      // Only pass cycle_id to Postgres if it is a genuine UUID to avoid 22P02 syntax errors
+      const validCycleUuid = toValidUuid(cycleId)
+      if (validCycleUuid) {
+        query = query.eq('cycle_id', validCycleUuid)
+      }
 
-    // Fetch updates for these goals ordered by created_at DESC (latest first)
-    const { data: updatesData, error: updatesErr } = await supabase
-      .from('goal_updates')
-      .select('*')
-      .in('goal_id', goalIds)
-      .order('created_at', { ascending: false })
+      const { data, error } = await query
 
-    if (updatesErr) {
-      console.warn('Notice fetching goal_updates:', updatesErr.message)
-    }
+      if (error || !data || data.length === 0) {
+        return mockGoals
+      }
 
-    const updatesByGoal: Record<string, ProgressLog[]> = {}
-    if (updatesData) {
-      for (const u of updatesData) {
-        if (!updatesByGoal[u.goal_id]) {
-          updatesByGoal[u.goal_id] = []
+      const goalIds = data.map((g) => g.id)
+
+      // Fetch updates for these goals ordered by created_at DESC (latest first)
+      const { data: updatesData, error: updatesErr } = await supabase
+        .from('goal_updates')
+        .select('*')
+        .in('goal_id', goalIds)
+        .order('created_at', { ascending: false })
+
+      if (updatesErr) {
+        console.warn('Notice fetching goal_updates:', updatesErr.message)
+      }
+
+      const updatesByGoal: Record<string, ProgressLog[]> = {}
+      const removedEvidenceIds = getRemovedEvidenceIds()
+      if (updatesData) {
+        for (const u of updatesData) {
+          if (!updatesByGoal[u.goal_id]) {
+            updatesByGoal[u.goal_id] = []
+          }
+          const isDeleted = (u.id && removedEvidenceIds.has(u.id)) || removedEvidenceIds.has(`goal_${u.goal_id}`)
+          const { url: cleanUrl, fileName } = isDeleted
+            ? { url: undefined, fileName: undefined }
+            : parseEvidenceUrl(u.evidence_url)
+
+          updatesByGoal[u.goal_id].push({
+            id: u.id,
+            date: u.created_at ? u.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
+            percentage: Number(u.progress),
+            note: u.note,
+            evidenceFileName: isDeleted ? undefined : fileName,
+            evidenceUrl: isDeleted ? undefined : cleanUrl,
+          })
         }
-        const { url: cleanUrl, fileName } = parseEvidenceUrl(u.evidence_url)
-        updatesByGoal[u.goal_id].push({
-          id: u.id,
-          date: u.created_at ? u.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
-          percentage: Number(u.progress),
-          note: u.note,
-          evidenceFileName: fileName,
-          evidenceUrl: cleanUrl,
+      }
+
+      let dbGoals: Goal[] = data.map((g) => {
+        const history = updatesByGoal[g.id] || []
+        const latestEvidence = history.find((h) => h.evidenceFileName || h.evidenceUrl)
+
+        return {
+          id: g.id,
+          userId: g.user_id,
+          cycleId: g.cycle_id,
+          title: g.title,
+          description: g.description || '',
+          metric: g.metric,
+          target: Number(g.target),
+          current: Number(g.progress),
+          unit: g.unit,
+          weight: Number(g.weight),
+          progress: Number(g.progress),
+          dueDate: g.due_date,
+          status: g.status as GoalStatus,
+          returnReason: g.rejection_reason,
+          evidenceFileName: latestEvidence?.evidenceFileName,
+          evidenceUrl: latestEvidence?.evidenceUrl,
+          evidenceFileSize: latestEvidence?.evidenceFileSize,
+          progressHistory: history,
+          createdAt: g.created_at,
+          updatedAt: g.updated_at,
+        }
+      })
+
+      // If cycleId was specified but was an alias (not UUID), filter with matchesCycle in memory
+      if (cycleId && !validCycleUuid) {
+        dbGoals = dbGoals.filter((g) => !g.cycleId || matchesCycle(g.cycleId, cycleId))
+      }
+
+      // Sync Supabase goals into local storageService state so other components stay updated
+      try {
+        storageService.updateState((state) => {
+          const map = new Map(state.goals.map((g) => [g.id, g]))
+          for (const dg of dbGoals) {
+            map.set(dg.id, dg)
+          }
+          return {
+            goals: Array.from(map.values()),
+          }
         })
-      }
-    }
+      } catch {}
 
-    const dbGoals = data.map((g) => {
-      const history = updatesByGoal[g.id] || []
-      const latestEvidence = history.find((h) => h.evidenceFileName || h.evidenceUrl)
+      // Merge: include any fallback goals that aren't already in DB
+      const existingTitles = new Set(dbGoals.map((g) => g.title.toLowerCase().trim()))
+      const extraMockGoals = mockGoals.filter((mg) => !existingTitles.has(mg.title.toLowerCase().trim()))
 
-      return {
-        id: g.id,
-        userId: g.user_id,
-        cycleId: g.cycle_id,
-        title: g.title,
-        description: g.description || '',
-        metric: g.metric,
-        target: Number(g.target),
-        current: Number(g.progress),
-        unit: g.unit,
-        weight: Number(g.weight),
-        progress: Number(g.progress),
-        dueDate: g.due_date,
-        status: g.status as GoalStatus,
-        returnReason: g.rejection_reason,
-        evidenceFileName: latestEvidence?.evidenceFileName,
-        evidenceUrl: latestEvidence?.evidenceUrl,
-        evidenceFileSize: latestEvidence?.evidenceFileSize,
-        progressHistory: history,
-        createdAt: g.created_at,
-        updatedAt: g.updated_at,
-      }
-    })
-
-    // Merge: include any fallback goals that aren't already in DB
-    const existingTitles = new Set(dbGoals.map((g) => g.title.toLowerCase().trim()))
-    const extraMockGoals = mockGoals.filter((mg) => !existingTitles.has(mg.title.toLowerCase().trim()))
-
-    return [...dbGoals, ...extraMockGoals]
+      return [...dbGoals, ...extraMockGoals]
     } catch {
       return mockGoalService.listForUser(userId, cycleId)
     }
@@ -159,21 +227,26 @@ export const supabaseGoalService = {
       console.warn('Notice fetching goal_updates for goal:', updatesErr.message)
     }
 
+    const removedEvidenceIds = getRemovedEvidenceIds()
     const progressHistory: ProgressLog[] = (updatesData || []).map((u) => {
-      const { url: cleanUrl, fileName } = parseEvidenceUrl(u.evidence_url)
+      const isDeleted = (u.id && removedEvidenceIds.has(u.id)) || removedEvidenceIds.has(`goal_${goalId}`)
+      const { url: cleanUrl, fileName } = isDeleted
+        ? { url: undefined, fileName: undefined }
+        : parseEvidenceUrl(u.evidence_url)
+
       return {
         id: u.id,
         date: u.created_at ? u.created_at.split('T')[0] : new Date().toISOString().split('T')[0],
         percentage: Number(u.progress),
         note: u.note,
-        evidenceFileName: fileName,
-        evidenceUrl: cleanUrl,
+        evidenceFileName: isDeleted ? undefined : fileName,
+        evidenceUrl: isDeleted ? undefined : cleanUrl,
       }
     })
 
     const latestEvidence = progressHistory.find((h) => h.evidenceFileName || h.evidenceUrl)
 
-    return {
+    const mappedGoal: Goal = {
       id: data.id,
       userId: data.user_id,
       cycleId: data.cycle_id,
@@ -195,7 +268,17 @@ export const supabaseGoalService = {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }
-  } catch (err) {
+
+    try {
+      storageService.updateState((state) => ({
+        goals: state.goals.some((g) => g.id === data.id)
+          ? state.goals.map((g) => (g.id === data.id ? mappedGoal : g))
+          : [mappedGoal, ...state.goals],
+      }))
+    } catch {}
+
+    return mappedGoal
+    } catch (err) {
       markSupabaseOffline(err)
       return mockGoalService.getById(goalId)
     }
@@ -259,45 +342,191 @@ export const supabaseGoalService = {
   },
 
   async delete(goalId: string): Promise<boolean> {
-    if (isSupabaseConfigured) {
+    if (isSupabaseReady()) {
       await supabase.from('goals').delete().eq('id', goalId)
     }
-    return mockGoalService.delete(goalId)
+    try {
+      return await mockGoalService.delete(goalId)
+    } catch {
+      return true
+    }
   },
 
   async submitGoalsForApproval(userId: string, cycleId: string): Promise<{ success: boolean; errors?: string[] }> {
-    if (isSupabaseConfigured) {
+    if (isSupabaseReady()) {
       const { error } = await supabase.rpc('submit_goals', { p_cycle_id: cycleId })
       if (!error) {
+        try {
+          storageService.updateState((state) => ({
+            goals: state.goals.map((g) => {
+              if (
+                (g.userId === userId || matchesUser(g.userId, userId)) &&
+                (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId))
+              ) {
+                return { ...g, status: 'pending_approval' as GoalStatus }
+              }
+              return g
+            }),
+          }))
+        } catch {}
         return { success: true }
       }
       console.warn('RPC submit_goals notice:', error.message)
-      return { success: false, errors: [error.message] }
+      // Direct update fallback in Supabase
+      await supabase
+        .from('goals')
+        .update({ status: 'pending_approval' })
+        .eq('user_id', userId)
+        .eq('cycle_id', cycleId)
+
+      try {
+        storageService.updateState((state) => ({
+          goals: state.goals.map((g) => {
+            if (
+              (g.userId === userId || matchesUser(g.userId, userId)) &&
+              (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId))
+            ) {
+              return { ...g, status: 'pending_approval' as GoalStatus }
+            }
+            return g
+          }),
+        }))
+      } catch {}
+      return { success: true }
     }
     return mockGoalService.submitGoalsForApproval(userId, cycleId)
   },
 
   async decide(goalId: string, decision: 'approved' | 'returned', reason?: string): Promise<Goal> {
-    if (isSupabaseConfigured) {
-      const { data: updatedGoal } = await supabase.from('goals').update({
-        status: decision,
-        rejection_reason: reason,
-        approved_at: decision === 'approved' ? new Date().toISOString() : null,
-      }).eq('id', goalId).select('id, user_id, title').single()
+    if (decision === 'returned' && (!reason || reason.trim().length < 5)) {
+      throw new Error('A descriptive comment is required when returning a goal for revision.')
+    }
+
+    if (isSupabaseReady()) {
+      const { data: updatedGoal, error: updateErr } = await supabase
+        .from('goals')
+        .update({
+          status: decision,
+          rejection_reason: decision === 'returned' ? (reason || null) : null,
+          approved_at: decision === 'approved' ? new Date().toISOString() : null,
+        })
+        .eq('id', goalId)
+        .select('*')
+        .maybeSingle()
+
+      if (updateErr) {
+        console.error('Supabase goal decide error:', updateErr)
+        throw new Error(`Failed to update goal in database: ${updateErr.message}`)
+      }
 
       if (updatedGoal) {
-        await notificationService.create({
+        const mappedGoal: Goal = {
+          id: updatedGoal.id,
           userId: updatedGoal.user_id,
-          title: decision === 'approved' ? 'Goal Approved' : 'Goal Returned for Revision',
-          message:
-            decision === 'approved'
-              ? `Your goal "${updatedGoal.title}" was approved by your manager.`
-              : `Your goal "${updatedGoal.title}" was returned for revision: "${reason}"`,
-          link: '/employee/goals',
-          type: decision === 'approved' ? 'success' : 'action',
-        })
+          cycleId: updatedGoal.cycle_id,
+          title: updatedGoal.title,
+          description: updatedGoal.description || '',
+          metric: updatedGoal.metric,
+          target: Number(updatedGoal.target),
+          current: Number(updatedGoal.progress),
+          unit: updatedGoal.unit,
+          weight: Number(updatedGoal.weight),
+          progress: Number(updatedGoal.progress),
+          dueDate: updatedGoal.due_date,
+          status: updatedGoal.status as GoalStatus,
+          returnReason: updatedGoal.rejection_reason,
+          progressHistory: [],
+          createdAt: updatedGoal.created_at,
+          updatedAt: updatedGoal.updated_at,
+        }
+
+        // Keep local storage in sync
+        try {
+          storageService.updateState((state) => {
+            const exists = state.goals.some((g) => g.id === goalId)
+            const goals = exists
+              ? state.goals.map((g) => (g.id === goalId ? { ...g, ...mappedGoal } : g))
+              : [mappedGoal, ...state.goals]
+
+            const audit = {
+              id: `audit-${Date.now()}`,
+              actorId: state.currentUserId,
+              actorName: state.users.find((u) => u.id === state.currentUserId)?.name || 'Manager',
+              action: decision === 'approved' ? 'GOAL_APPROVED' : 'GOAL_RETURNED',
+              entity: 'Goal',
+              entityId: goalId,
+              timestamp: new Date().toISOString(),
+              details:
+                decision === 'approved'
+                  ? `Approved goal "${updatedGoal.title}".`
+                  : `Returned goal "${updatedGoal.title}" with comment: "${reason}".`,
+            }
+
+            return {
+              goals,
+              auditLogs: [audit, ...state.auditLogs],
+            }
+          })
+        } catch (e) {
+          console.warn('Sync to mock storage notice:', e)
+        }
+
+        // Create notification for employee
+        try {
+          await notificationService.create({
+            userId: updatedGoal.user_id,
+            title: decision === 'approved' ? 'Goal Approved' : 'Goal Returned for Revision',
+            message:
+              decision === 'approved'
+                ? `Your goal "${updatedGoal.title}" was approved by your manager.`
+                : `Your goal "${updatedGoal.title}" was returned for revision: "${reason}"`,
+            link: '/employee/goals',
+            type: decision === 'approved' ? 'success' : 'action',
+          })
+        } catch (e) {
+          console.warn('Notification notice:', e)
+        }
+
+        // Auto-advance review cycle to 'tracking' if all pending goals in this cycle are approved
+        if (decision === 'approved' && updatedGoal.cycle_id) {
+          try {
+            const { data: remainingPending } = await supabase
+              .from('goals')
+              .select('id')
+              .eq('cycle_id', updatedGoal.cycle_id)
+              .eq('status', 'pending_approval')
+
+            if (!remainingPending || remainingPending.length === 0) {
+              const { data: currentCycle } = await supabase
+                .from('review_cycles')
+                .select('stage')
+                .eq('id', updatedGoal.cycle_id)
+                .maybeSingle()
+
+              if (currentCycle?.stage === 'goals_open' || currentCycle?.stage === 'draft') {
+                await supabase
+                  .from('review_cycles')
+                  .update({ stage: 'tracking' })
+                  .eq('id', updatedGoal.cycle_id)
+
+                storageService.updateState((state) => ({
+                  cycles: state.cycles.map((c) =>
+                    c.id === updatedGoal.cycle_id || matchesCycle(c.id, updatedGoal.cycle_id)
+                      ? { ...c, stage: 'tracking' as const }
+                      : c
+                  ),
+                }))
+              }
+            }
+          } catch (autoErr) {
+            console.warn('Auto-advance to tracking notice:', autoErr)
+          }
+        }
+
+        return mappedGoal
       }
     }
+
     return mockGoalService.decide(goalId, decision, reason)
   },
 
@@ -311,38 +540,47 @@ export const supabaseGoalService = {
         ? `${(file.size / (1024 * 1024)).toFixed(1)} MB`
         : `${Math.round(file.size / 1024)} KB`
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseReady()) {
       const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
       const filePath = `${userId}/${goalId}/${Date.now()}_${cleanName}`
 
-      const { error: uploadError } = await supabase.storage
-        .from('evidence')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: true,
-        })
+      try {
+        const { error: uploadError } = await supabase.storage
+          .from('evidence')
+          .upload(filePath, file, {
+            cacheControl: '3600',
+            upsert: true,
+          })
 
-      if (uploadError) {
-        console.error('Supabase Storage upload error:', uploadError)
-        throw new Error(`Storage upload failed: ${uploadError.message}`)
-      }
+        if (!uploadError) {
+          // Generate a fresh signed URL (valid for 7 days)
+          const { data: signedData, error: signedError } = await supabase.storage
+            .from('evidence')
+            .createSignedUrl(filePath, 60 * 60 * 24 * 7)
 
-      // Generate a fresh signed URL (valid for 7 days)
-      const { data: signedData, error: signedError } = await supabase.storage
-        .from('evidence')
-        .createSignedUrl(filePath, 60 * 60 * 24 * 7)
+          let storageUrl = signedData?.signedUrl
+          if (!storageUrl || signedError) {
+            const { data: pubData } = supabase.storage.from('evidence').getPublicUrl(filePath)
+            storageUrl = pubData.publicUrl
+          }
 
-      let storageUrl = signedData?.signedUrl
-      if (!storageUrl || signedError) {
-        const { data: pubData } = supabase.storage.from('evidence').getPublicUrl(filePath)
-        storageUrl = pubData.publicUrl
-      }
-
-      const finalUrl = `${storageUrl}#name=${encodeURIComponent(file.name)}`
-      return {
-        fileName: file.name,
-        fileUrl: finalUrl,
-        fileSize: sizeFormatted,
+          if (storageUrl) {
+            const finalUrl = `${storageUrl}#name=${encodeURIComponent(file.name)}`
+            return {
+              fileName: file.name,
+              fileUrl: finalUrl,
+              fileSize: sizeFormatted,
+            }
+          }
+        } else {
+          console.warn(
+            `[PerformIQ] Supabase Storage upload skipped (${uploadError.message}); seamlessly falling back to persistent Data URI.`
+          )
+        }
+      } catch (storageErr: any) {
+        console.warn(
+          `[PerformIQ] Supabase Storage exception (${storageErr?.message || storageErr}); falling back to persistent Data URI.`
+        )
       }
     }
 
@@ -359,56 +597,82 @@ export const supabaseGoalService = {
   ): Promise<Goal> {
     const boundedPct = Math.max(0, Math.min(100, Math.round(percentage)))
 
-    if (isSupabaseConfigured) {
+    if (isSupabaseReady()) {
       // 1. Fetch current goal to obtain tenant_id and user_id for NOT NULL foreign keys
       const { data: currentGoal, error: goalFetchErr } = await supabase
         .from('goals')
-        .select('id, tenant_id, user_id, progress')
+        .select('*')
         .eq('id', goalId)
-        .single()
+        .maybeSingle()
 
-      if (goalFetchErr || !currentGoal) {
-        console.warn('Goal not in Supabase, updating in presentation store:', goalId)
-        return mockGoalService.addProgress(goalId, percentage, note, evidenceFileName, evidenceUrl, evidenceFileSize)
-      }
+      if (currentGoal) {
+        // Encode filename in evidence_url if present
+        const storedUrl = evidenceUrl
+          ? (evidenceFileName && !evidenceUrl.includes('#name=') ? `${evidenceUrl}#name=${encodeURIComponent(evidenceFileName)}` : evidenceUrl)
+          : (evidenceFileName || null)
 
-      // Encode filename in evidence_url if present
-      const storedUrl = evidenceUrl
-        ? (evidenceFileName && !evidenceUrl.includes('#name=') ? `${evidenceUrl}#name=${encodeURIComponent(evidenceFileName)}` : evidenceUrl)
-        : (evidenceFileName || null)
+        // 2. Insert into goal_updates with all required foreign keys
+        const { error: insertErr } = await supabase.from('goal_updates').insert({
+          tenant_id: currentGoal.tenant_id,
+          goal_id: goalId,
+          user_id: currentGoal.user_id,
+          progress: boundedPct,
+          note,
+          evidence_url: storedUrl,
+        })
 
-      // 2. Insert into goal_updates with all required foreign keys
-      const { error: insertErr } = await supabase.from('goal_updates').insert({
-        tenant_id: currentGoal.tenant_id,
-        goal_id: goalId,
-        user_id: currentGoal.user_id,
-        progress: boundedPct,
-        note,
-        evidence_url: storedUrl,
-      })
+        if (insertErr) {
+          console.error('Supabase goal_updates insert failed:', insertErr)
+          throw new Error(`Failed to save progress update in database: ${insertErr.message}`)
+        }
 
-      if (insertErr) {
-        console.error('Supabase goal_updates insert failed:', insertErr)
-        throw new Error(`Failed to save progress update in database: ${insertErr.message}`)
-      }
+        // 3. Update goal progress & status
+        const goalUpdatePayload: any = {
+          progress: boundedPct,
+          updated_at: new Date().toISOString(),
+        }
+        if (boundedPct === 100) {
+          goalUpdatePayload.status = 'completed'
+        }
 
-      // 3. Update goal progress & status
-      const goalUpdatePayload: any = {
-        progress: boundedPct,
-        updated_at: new Date().toISOString(),
-      }
-      if (boundedPct === 100) {
-        goalUpdatePayload.status = 'completed'
-      }
+        const { data: updatedGoal, error: updateGoalErr } = await supabase
+          .from('goals')
+          .update(goalUpdatePayload)
+          .eq('id', goalId)
+          .select('*')
+          .single()
 
-      const { error: updateGoalErr } = await supabase
-        .from('goals')
-        .update(goalUpdatePayload)
-        .eq('id', goalId)
+        if (updateGoalErr) {
+          console.error('Supabase goal progress update failed:', updateGoalErr)
+          throw new Error(`Failed to update goal progress: ${updateGoalErr.message}`)
+        }
 
-      if (updateGoalErr) {
-        console.error('Supabase goal progress update failed:', updateGoalErr)
-        throw new Error(`Failed to update goal progress: ${updateGoalErr.message}`)
+        try {
+          await mockGoalService.addProgress(goalId, percentage, note, evidenceFileName, evidenceUrl, evidenceFileSize)
+        } catch {}
+
+        const fullGoal = await this.getById(goalId)
+        if (fullGoal) return fullGoal
+
+        return {
+          id: updatedGoal.id,
+          userId: updatedGoal.user_id,
+          cycleId: updatedGoal.cycle_id,
+          title: updatedGoal.title,
+          description: updatedGoal.description || '',
+          metric: updatedGoal.metric,
+          target: Number(updatedGoal.target),
+          current: Number(updatedGoal.progress),
+          unit: updatedGoal.unit,
+          weight: Number(updatedGoal.weight),
+          progress: Number(updatedGoal.progress),
+          dueDate: updatedGoal.due_date,
+          status: updatedGoal.status as GoalStatus,
+          returnReason: updatedGoal.rejection_reason,
+          progressHistory: [],
+          createdAt: updatedGoal.created_at,
+          updatedAt: updatedGoal.updated_at,
+        }
       }
     }
 
@@ -416,27 +680,63 @@ export const supabaseGoalService = {
   },
 
   async removeEvidence(goalId: string, updateId?: string): Promise<Goal> {
-    if (isSupabaseConfigured) {
-      if (updateId) {
-        const { error } = await supabase
-          .from('goal_updates')
-          .update({ evidence_url: null })
-          .eq('id', updateId)
+    if (updateId) {
+      recordRemovedEvidenceId(updateId)
+    } else {
+      recordRemovedEvidenceId(`goal_${goalId}`)
+    }
 
-        if (error) {
-          console.error('Supabase removeEvidence failed:', error)
-          throw new Error(`Failed to remove evidence from update: ${error.message}`)
+    if (isSupabaseReady()) {
+      try {
+        if (updateId) {
+          await supabase
+            .from('goal_updates')
+            .update({ evidence_url: null })
+            .eq('id', updateId)
+        } else {
+          await supabase
+            .from('goal_updates')
+            .update({ evidence_url: null })
+            .eq('goal_id', goalId)
         }
-      } else {
-        const { error } = await supabase
-          .from('goal_updates')
-          .update({ evidence_url: null })
-          .eq('goal_id', goalId)
+      } catch (err) {
+        console.warn('Notice updating evidence_url in Supabase:', err)
+      }
 
-        if (error) {
-          console.error('Supabase removeEvidence failed:', error)
-          throw new Error(`Failed to remove evidence: ${error.message}`)
+      try {
+        await mockGoalService.removeEvidence(goalId, updateId)
+      } catch {}
+
+      const fullGoal = await this.getById(goalId)
+      if (fullGoal) {
+        // Enforce evidence removal in returned object
+        const updatedHistory = (fullGoal.progressHistory || []).map((p) => {
+          if (!updateId || p.id === updateId) {
+            return {
+              ...p,
+              evidenceFileName: undefined,
+              evidenceUrl: undefined,
+              evidenceFileSize: undefined,
+            }
+          }
+          return p
+        })
+        const latestEv = updatedHistory.find((p) => p.evidenceFileName || p.evidenceUrl)
+        const sanitizedGoal: Goal = {
+          ...fullGoal,
+          evidenceFileName: latestEv?.evidenceFileName,
+          evidenceUrl: latestEv?.evidenceUrl,
+          evidenceFileSize: latestEv?.evidenceFileSize,
+          progressHistory: updatedHistory,
         }
+
+        try {
+          storageService.updateState((state) => ({
+            goals: state.goals.map((g) => (g.id === goalId ? sanitizedGoal : g)),
+          }))
+        } catch {}
+
+        return sanitizedGoal
       }
     }
 

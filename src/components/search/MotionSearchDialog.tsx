@@ -174,7 +174,7 @@ export const MotionSearchDialog: React.FC<MotionSearchDialogProps> = ({ isOpen, 
       {/* Outer Modal Container */}
       <div className="relative w-full max-w-2xl bg-white dark:bg-[#18181b] menu-solid-bg modal-surface rounded-3xl shadow-2xl border border-slate-200 dark:border-zinc-700/80 overflow-hidden flex flex-col" role="dialog">
         {/* Top Header Tab Selector & Close Button */}
-        <div className="px-5 py-3.5 bg-slate-50 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-700/80 flex items-center justify-between menu-inner-card">
+        <div className="px-5 py-3.5 bg-slate-50 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-700/80 flex items-center justify-between menu-inner-card shrink-0">
           <div className="flex items-center gap-2">
             <span className="p-1 rounded-md bg-slate-200 text-slate-700">
               <Command className="w-3.5 h-3.5" />
@@ -405,7 +405,7 @@ export const MotionSearchDialog: React.FC<MotionSearchDialogProps> = ({ isOpen, 
         )}
 
         {/* Modal Footer Controls */}
-        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500">
+        <div className="px-5 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-[11px] text-slate-500 shrink-0">
           <div className="flex items-center gap-3">
             <span className="flex items-center gap-1">
               <kbd className="px-1.5 py-0.5 bg-white border border-slate-200 rounded text-[10px] font-sans shadow-2xs">ESC</kbd> to exit

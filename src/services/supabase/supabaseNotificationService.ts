@@ -1,10 +1,10 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { Notification } from '../../types'
 import { mockNotificationService } from '../mock/notificationService'
 
 export const supabaseNotificationService = {
   async list(userId: string): Promise<Notification[]> {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseReady()) {
       return mockNotificationService.list(userId)
     }
 
@@ -39,7 +39,8 @@ export const supabaseNotificationService = {
       return [...mapped, ...extra].sort(
         (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       )
-    } catch {
+    } catch (err) {
+      markSupabaseOffline(err)
       return mockNotificationService.list(userId)
     }
   },

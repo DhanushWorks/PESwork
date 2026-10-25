@@ -33,9 +33,9 @@ const getEmptyCycleDefaults = () => ({
   description: '',
   startDate: '',
   endDate: '',
-  goalsWeight: 60,
-  compWeight: 25,
-  valuesWeight: 15,
+  goalsWeight: '' as number | string,
+  compWeight: '' as number | string,
+  valuesWeight: '' as number | string,
   deadlines: {
     goalsDue: '',
     selfReviewDue: '',
@@ -67,9 +67,9 @@ export const AdminCycles: React.FC = () => {
   const [description, setDescription] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
-  const [goalsWeight, setGoalsWeight] = useState(60)
-  const [compWeight, setCompWeight] = useState(25)
-  const [valuesWeight, setValuesWeight] = useState(15)
+  const [goalsWeight, setGoalsWeight] = useState<number | string>('')
+  const [compWeight, setCompWeight] = useState<number | string>('')
+  const [valuesWeight, setValuesWeight] = useState<number | string>('')
 
   // Deadlines state for Create modal
   const [createDeadlines, setCreateDeadlines] = useState<ReviewCycle['deadlines']>({
@@ -106,13 +106,30 @@ export const AdminCycles: React.FC = () => {
 
   const fetchCycles = async () => {
     setLoading(true)
-    const list = await cycleService.list()
-    setCycles(list)
-    setLoading(false)
+    try {
+      const list = await cycleService.list()
+      setCycles(list)
+    } catch (err) {
+      console.warn('Notice loading cycles:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchCycles()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchCycles().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [])
 
   // Manual date updates for Create Modal - keeps deadlines empty unless user explicitly recalculates
@@ -253,7 +270,7 @@ export const AdminCycles: React.FC = () => {
     // Determine initial participants
     let participantIds: string[] = []
     if (enrollmentMode === 'all') {
-      participantIds = allUsers.map((u) => u.id)
+      participantIds = allUsers.filter((u) => u.role !== 'admin').map((u) => u.id)
     } else if (enrollmentMode === 'custom') {
       participantIds = selectedParticipantIds
     } else {
@@ -327,7 +344,8 @@ export const AdminCycles: React.FC = () => {
       })
     : cycles
 
-  const filteredUsers = allUsers.filter((u) => {
+  const eligibleStaff = allUsers.filter((u) => u.role !== 'admin')
+  const filteredUsers = eligibleStaff.filter((u) => {
     if (!userSearchQuery.trim()) return true
     const q = userSearchQuery.toLowerCase()
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.department.toLowerCase().includes(q)
@@ -507,36 +525,36 @@ export const AdminCycles: React.FC = () => {
 
                   <div className="flex items-center gap-2 font-sans text-xs flex-wrap">
                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border border-slate-300/80 dark:border-zinc-700 text-xs font-bold shadow-2xs">
-                      Goals: {c.weights.goals}%
+                      Goals: {c.weights?.goals ?? 60}%
                     </span>
                     <span className="text-slate-500 dark:text-zinc-400 font-bold">+</span>
                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border border-slate-300/80 dark:border-zinc-700 text-xs font-bold shadow-2xs">
-                      Competencies: {c.weights.competencies}%
+                      Competencies: {c.weights?.competencies ?? 25}%
                     </span>
                     <span className="text-slate-500 dark:text-zinc-400 font-bold">+</span>
                     <span className="inline-flex items-center px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 border border-slate-300/80 dark:border-zinc-700 text-xs font-bold shadow-2xs">
-                      Values: {c.weights.values}%
+                      Values: {c.weights?.values ?? 15}%
                     </span>
                     <span className="text-slate-800 dark:text-zinc-200 font-extrabold">= 100%</span>
                   </div>
                 </div>
 
                 {/* Proportional Mini Segmented Weight Bar */}
-                <div className="w-full h-2 rounded-full overflow-hidden bg-slate-100 dark:bg-white/[0.04] flex items-center gap-1 p-0.5 border border-slate-200/80 dark:border-transparent">
+                <div className="w-full h-2 rounded-full overflow-hidden bg-slate-200 dark:bg-zinc-800 flex items-center gap-1 p-0.5 border border-slate-300/80 dark:border-zinc-700">
                   <div
-                    style={{ width: `${c.weights.goals}%` }}
+                    style={{ width: `${c.weights?.goals ?? 60}%` }}
                     className="h-full rounded-full bg-indigo-600 dark:bg-[#4FE3C1] transition-all"
-                    title={`Goals: ${c.weights.goals}%`}
+                    title={`Goals: ${c.weights?.goals ?? 60}%`}
                   />
                   <div
-                    style={{ width: `${c.weights.competencies}%` }}
+                    style={{ width: `${c.weights?.competencies ?? 25}%` }}
                     className="h-full rounded-full bg-slate-400 dark:bg-white/40 transition-all"
-                    title={`Competencies: ${c.weights.competencies}%`}
+                    title={`Competencies: ${c.weights?.competencies ?? 25}%`}
                   />
                   <div
-                    style={{ width: `${c.weights.values}%` }}
+                    style={{ width: `${c.weights?.values ?? 15}%` }}
                     className="h-full rounded-full bg-slate-300 dark:bg-white/20 transition-all"
-                    title={`Values: ${c.weights.values}%`}
+                    title={`Values: ${c.weights?.values ?? 15}%`}
                   />
                 </div>
               </div>
@@ -557,8 +575,26 @@ export const AdminCycles: React.FC = () => {
         title="Create Performance Review Cycle"
         subtitle="Configure duration, deterministic deadlines, and appraisal formula"
         maxWidth="2xl"
+        onSubmit={handleCreateCycle}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowCreateModal(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
+            >
+              Create Cycle
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleCreateCycle} className="space-y-4 text-xs font-sans">
+        <div className="space-y-4 text-xs font-sans">
           <div>
             <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Cycle Name *</label>
             <input
@@ -694,8 +730,9 @@ export const AdminCycles: React.FC = () => {
                   min="0"
                   max="100"
                   required
+                  placeholder="e.g. 50"
                   value={goalsWeight}
-                  onChange={(e) => setGoalsWeight(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setGoalsWeight(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -707,8 +744,9 @@ export const AdminCycles: React.FC = () => {
                   min="0"
                   max="100"
                   required
+                  placeholder="e.g. 30"
                   value={compWeight}
-                  onChange={(e) => setCompWeight(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setCompWeight(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -720,8 +758,9 @@ export const AdminCycles: React.FC = () => {
                   min="0"
                   max="100"
                   required
+                  placeholder="e.g. 20"
                   value={valuesWeight}
-                  onChange={(e) => setValuesWeight(parseInt(e.target.value) || 0)}
+                  onChange={(e) => setValuesWeight(e.target.value === '' ? '' : parseInt(e.target.value) || 0)}
                   className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                 />
               </div>
@@ -758,7 +797,7 @@ export const AdminCycles: React.FC = () => {
                   className="accent-slate-900 dark:accent-white"
                 />
                 <span className="text-slate-700 dark:text-zinc-300">
-                  Enroll all active employees ({allUsers.length} staff members)
+                  Enroll all active employees ({allUsers.filter((u) => u.role !== 'admin').length} staff members)
                 </span>
               </label>
 
@@ -819,23 +858,7 @@ export const AdminCycles: React.FC = () => {
               </div>
             )}
           </div>
-
-          <div className="pt-4 border-t border-slate-200/90 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-5">
-            <button
-              type="button"
-              onClick={() => setShowCreateModal(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
-            >
-              Create Cycle
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Edit Cycle Modal */}
@@ -851,8 +874,31 @@ export const AdminCycles: React.FC = () => {
           title={`Edit "${cycleToEdit.name}"`}
           subtitle="Update cycle parameters, performance period, deadlines, and formula weights"
           maxWidth="2xl"
+          onSubmit={handleSaveEditCycle}
+          footer={
+            <>
+              <button
+                type="button"
+                disabled={isSavingEdit}
+                onClick={() => {
+                  setShowEditModal(false)
+                  setCycleToEdit(null)
+                }}
+                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isSavingEdit}
+                className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
+              >
+                {isSavingEdit ? 'Saving Changes...' : 'Save Changes'}
+              </button>
+            </>
+          }
         >
-          <form onSubmit={handleSaveEditCycle} className="space-y-4 text-xs font-sans">
+          <div className="space-y-4 text-xs font-sans">
             <div>
               <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Cycle Name *</label>
               <input
@@ -979,8 +1025,9 @@ export const AdminCycles: React.FC = () => {
                     min="0"
                     max="100"
                     required
+                    placeholder="e.g. 50"
                     value={editGoalsWeight}
-                    onChange={(e) => setEditGoalsWeight(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setEditGoalsWeight(e.target.value === '' ? '' as any : parseInt(e.target.value) || 0)}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                   />
                 </div>
@@ -992,8 +1039,9 @@ export const AdminCycles: React.FC = () => {
                     min="0"
                     max="100"
                     required
+                    placeholder="e.g. 30"
                     value={editCompWeight}
-                    onChange={(e) => setEditCompWeight(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setEditCompWeight(e.target.value === '' ? '' as any : parseInt(e.target.value) || 0)}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                   />
                 </div>
@@ -1005,35 +1053,16 @@ export const AdminCycles: React.FC = () => {
                     min="0"
                     max="100"
                     required
+                    placeholder="e.g. 20"
                     value={editValuesWeight}
-                    onChange={(e) => setEditValuesWeight(parseInt(e.target.value) || 0)}
+                    onChange={(e) => setEditValuesWeight(e.target.value === '' ? '' as any : parseInt(e.target.value) || 0)}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 dark:border-zinc-700 font-sans bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
                   />
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-200/90 dark:border-zinc-800 flex items-center justify-end gap-2.5 mt-5">
-              <button
-                type="button"
-                disabled={isSavingEdit}
-                onClick={() => {
-                  setShowEditModal(false)
-                  setCycleToEdit(null)
-                }}
-                className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                disabled={isSavingEdit}
-                className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer"
-              >
-                {isSavingEdit ? 'Saving Changes...' : 'Save Changes'}
-              </button>
-            </div>
-          </form>
+          </div>
         </Modal>
       )}
 

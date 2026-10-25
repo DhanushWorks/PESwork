@@ -699,3 +699,48 @@ VALUES (
 ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name, role = EXCLUDED.role, manager_id = EXCLUDED.manager_id;
 
 
+
+-- ============================================================================
+-- 10. Storage Bucket Setup (Evidence Files & PDF Checkpoints)
+-- ============================================================================
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+  'evidence',
+  'evidence',
+  true,
+  20971520,
+  ARRAY[
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/gif',
+    'image/svg+xml',
+    'application/pdf',
+    'text/plain',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  ]
+)
+ON CONFLICT (id) DO UPDATE SET
+  public = true,
+  file_size_limit = 20971520;
+
+DROP POLICY IF EXISTS "Public Read Evidence" ON storage.objects;
+DROP POLICY IF EXISTS "Allow Upload Evidence" ON storage.objects;
+DROP POLICY IF EXISTS "Allow Update Evidence" ON storage.objects;
+DROP POLICY IF EXISTS "Allow Delete Evidence" ON storage.objects;
+
+CREATE POLICY "Public Read Evidence" ON storage.objects FOR SELECT USING (bucket_id = 'evidence');
+CREATE POLICY "Allow Upload Evidence" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'evidence');
+CREATE POLICY "Allow Update Evidence" ON storage.objects FOR UPDATE USING (bucket_id = 'evidence');
+CREATE POLICY "Allow Delete Evidence" ON storage.objects FOR DELETE USING (bucket_id = 'evidence');
+
+-- ============================================================================
+-- 11. Goal Updates Full RLS Policies
+-- ============================================================================
+DROP POLICY IF EXISTS "goal_updates_all" ON public.goal_updates;
+DROP POLICY IF EXISTS "goal_updates_update" ON public.goal_updates;
+DROP POLICY IF EXISTS "goal_updates_delete" ON public.goal_updates;
+
+CREATE POLICY "goal_updates_all" ON public.goal_updates
+  FOR ALL USING (true) WITH CHECK (true);

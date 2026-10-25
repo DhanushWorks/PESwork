@@ -33,32 +33,44 @@ export function getEmployeeWorkflowState(params: {
   managerReview?: ManagerReview | null
   result?: EvaluationResult | null
   hasGoals?: boolean
+  goals?: Goal[]
 }): WorkflowStateInfo {
-  const { cycle, selfReview, managerReview, result } = params
+  const { cycle, selfReview, managerReview, result, goals = [] } = params
 
   const isManagerReviewSubmitted = managerReview?.status === 'submitted'
   const isSelfReviewSubmitted = selfReview?.status === 'submitted'
+  const isResultReleased =
+    cycle.stage === 'released' ||
+    (!!result && (result as any).status !== 'pending' && (result as any).isReleased !== false)
+
+  const hasApprovedGoals = goals.some((g) => g.status === 'approved' || g.status === 'completed')
+  const hasPendingGoals = goals.some((g) => g.status === 'pending_approval' || g.status === 'draft' || g.status === 'returned')
+  const allGoalsApproved = goals.length > 0 && goals.every((g) => g.status === 'approved' || g.status === 'completed')
 
   let effectiveStage: CycleStage
 
-  if (cycle.stage === 'closed' && result) {
+  if (cycle.stage === 'closed') {
     effectiveStage = 'closed'
-  } else if (result) {
-    // Evaluation results only advance to 'released' if Admin has formally reviewed & granted permission
+  } else if (isResultReleased) {
     effectiveStage = 'released'
-  } else if (isManagerReviewSubmitted) {
-    // If manager submitted evaluation, it remains strictly in 'calibration' until Admin grants permission
+  } else if (isManagerReviewSubmitted || cycle.stage === 'calibration') {
     effectiveStage = 'calibration'
-  } else if (isSelfReviewSubmitted || selfReview) {
+  } else if (isSelfReviewSubmitted || selfReview || cycle.stage === 'manager_review') {
     effectiveStage = 'manager_review'
+  } else if (cycle.stage === 'self_review') {
+    effectiveStage = 'self_review'
+  } else if (allGoalsApproved || cycle.stage === 'tracking' || (hasApprovedGoals && !hasPendingGoals)) {
+    effectiveStage = 'tracking'
+  } else if (hasPendingGoals || cycle.stage === 'goals_open') {
+    effectiveStage = 'goals_open'
   } else {
-    const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
-    const selfReviewIdx = STAGE_ORDER.indexOf('self_review')
-    if (cycleStageIdx >= selfReviewIdx) {
-      effectiveStage = 'self_review'
-    } else {
-      effectiveStage = cycle.stage
-    }
+    effectiveStage = cycle.stage
+  }
+
+  const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
+  const effectiveStageIdx = STAGE_ORDER.indexOf(effectiveStage)
+  if (cycleStageIdx > effectiveStageIdx) {
+    effectiveStage = cycle.stage
   }
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
@@ -183,9 +195,16 @@ export function getManagerWorkflowState(params: {
     pendingManagerReviews[0]?.employee ||
     teamSummaries.find((t) => t.managerReviewStatus !== 'submitted')?.employee
 
+  const cleanReleasedResults = releasedResults.filter((r) => (r as any).status !== 'pending')
   const hasReleasedResults =
-    (releasedResults.length > 0 && totalReports > 0 && releasedResults.length >= totalReports) ||
-    cycle.stage === 'released'
+    cycle.stage === 'released' ||
+    (cleanReleasedResults.length > 0 && totalReports > 0 && cleanReleasedResults.length >= totalReports) ||
+    cleanReleasedResults.length > 0
+
+  const allTeamGoalsApproved =
+    totalReports > 0
+      ? teamSummaries.every((t) => t.goalsCount > 0 && t.goalsApprovedCount >= t.goalsCount)
+      : pendingGoals.length === 0
 
   let effectiveStage: CycleStage
 
@@ -193,26 +212,30 @@ export function getManagerWorkflowState(params: {
     effectiveStage = 'closed'
   } else if (hasReleasedResults) {
     effectiveStage = 'released'
-  } else if (totalReports > 0 && submittedManagerReviews.length === totalReports) {
-    // All direct reports' evaluations have been submitted to calibration
-    effectiveStage = 'calibration'
-  } else if (pendingManagerReviews.length > 0) {
-    // Direct reports have submitted self-reviews; manager reviews pending
-    effectiveStage = 'manager_review'
-  } else if (totalReports > 0 && submittedManagerReviews.length > 0) {
-    // Some manager reviews completed, remaining haven't submitted self-reviews yet
-    effectiveStage = 'calibration'
   } else if (
-    cycle.stage === 'self_review' ||
-    (STAGE_ORDER.indexOf(cycle.stage) >= STAGE_ORDER.indexOf('self_review') &&
-      submittedSelfReviews.length < totalReports)
+    cycle.stage === 'calibration' ||
+    (totalReports > 0 && submittedManagerReviews.length === totalReports) ||
+    submittedManagerReviews.length > 0
   ) {
-    effectiveStage = 'self_review'
-  } else if (pendingGoals.length > 0 || cycle.stage === 'goals_open') {
+    effectiveStage = 'calibration'
+  } else if (pendingManagerReviews.length > 0 || cycle.stage === 'manager_review') {
+    effectiveStage = 'manager_review'
+  } else if (submittedSelfReviews.length > 0 || cycle.stage === 'self_review') {
+    effectiveStage = submittedSelfReviews.length > 0 ? 'manager_review' : 'self_review'
+  } else if (pendingGoals.length > 0) {
     effectiveStage = 'goals_open'
-  } else if (cycle.stage === 'tracking') {
+  } else if (allTeamGoalsApproved || cycle.stage === 'tracking') {
     effectiveStage = 'tracking'
+  } else if (cycle.stage === 'goals_open') {
+    const hasAnyGoals = teamSummaries.some((t) => t.goalsCount > 0)
+    effectiveStage = hasAnyGoals ? 'tracking' : 'goals_open'
   } else {
+    effectiveStage = cycle.stage
+  }
+
+  const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
+  const effectiveStageIdx = STAGE_ORDER.indexOf(effectiveStage)
+  if (cycleStageIdx > effectiveStageIdx) {
     effectiveStage = cycle.stage
   }
 
@@ -331,20 +354,29 @@ export function getAdminWorkflowState(params: {
 }): WorkflowStateInfo {
   const { cycle, totalEmployees, selfReviews, managerReviews, calibrations, results, goals = [] } = params
 
-  const cycleSelf = selfReviews.filter((s) => s.cycleId === cycle.id && s.status === 'submitted')
-  const cycleMgr = managerReviews.filter((m) => m.cycleId === cycle.id && m.status === 'submitted')
-  const approvedCals = calibrations.filter((c) => c.cycleId === cycle.id && c.adminApproved)
-  const cycleResults = results.filter((r) => r.cycleId === cycle.id)
-  const cycleGoals = goals.filter((g) => g.cycleId === cycle.id)
+  const cycleSelf = selfReviews.filter((s) => (s.cycleId === cycle.id || matchesCycle(s.cycleId, cycle.id)) && s.status === 'submitted')
+  const cycleMgr = managerReviews.filter((m) => (m.cycleId === cycle.id || matchesCycle(m.cycleId, cycle.id)) && m.status === 'submitted')
+  const approvedCals = calibrations.filter((c) => (c.cycleId === cycle.id || matchesCycle(c.cycleId, cycle.id)) && c.adminApproved)
+  const cycleResults = results.filter((r) => (r.cycleId === cycle.id || matchesCycle(r.cycleId, cycle.id)) && (r as any).status !== 'pending')
+  const cycleGoals = goals.filter((g) => g.cycleId === cycle.id || matchesCycle(g.cycleId, cycle.id))
 
   const approvedGoals = cycleGoals.filter((g) => g.status === 'approved' || g.status === 'completed')
-  const allGoalsApproved = cycleGoals.length > 0 && approvedGoals.length >= cycleGoals.length
+  const pendingGoals = cycleGoals.filter((g) => g.status === 'pending_approval' || g.status === 'draft')
+  const allGoalsApproved =
+    (cycleGoals.length > 0 && approvedGoals.length >= cycleGoals.length) ||
+    (cycleGoals.length > 0 && pendingGoals.length === 0)
+
+  const isFormallyReleased =
+    cycle.stage === 'released' ||
+    cycle.stage === 'closed' ||
+    cycleResults.length > 0 ||
+    approvedCals.some((c) => c.adminApproved || (c as any).status === 'approved')
 
   let effectiveStage: CycleStage
 
   if (cycle.stage === 'closed') {
     effectiveStage = 'closed'
-  } else if (cycleResults.length > 0 || cycle.stage === 'released') {
+  } else if (isFormallyReleased) {
     effectiveStage = 'released'
   } else if (cycleMgr.length > 0 || cycle.stage === 'calibration') {
     effectiveStage = 'calibration'
@@ -352,19 +384,14 @@ export function getAdminWorkflowState(params: {
     effectiveStage = 'manager_review'
   } else if (cycle.stage === 'self_review') {
     effectiveStage = 'self_review'
-  } else if (cycle.stage === 'tracking') {
+  } else if (cycle.stage === 'tracking' || allGoalsApproved) {
     effectiveStage = 'tracking'
   } else if (cycle.stage === 'goals_open') {
-    if (allGoalsApproved) {
-      effectiveStage = 'tracking'
-    } else {
-      effectiveStage = 'goals_open'
-    }
+    effectiveStage = allGoalsApproved ? 'tracking' : 'goals_open'
   } else {
     effectiveStage = cycle.stage
   }
 
-  // Ensure effectiveStage is never behind cycle.stage if explicitly advanced by Admin
   const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
   const effectiveStageIdx = STAGE_ORDER.indexOf(effectiveStage)
   if (cycleStageIdx > effectiveStageIdx) {
@@ -488,7 +515,7 @@ export function matchesUser(idA?: string, idB?: string): boolean {
 export function matchesCycle(idA?: string, idB?: string): boolean {
   if (!idA || !idB) return false
   if (idA === idB) return true
-  const c1Ids = ['cycle-2026-h1', '30000000-0000-0000-0000-000000000001']
+  const c1Ids = ['cycle-2026-h1', 'cycle-2026-h2', '30000000-0000-0000-0000-000000000001']
   if (c1Ids.includes(idA) && c1Ids.includes(idB)) return true
   const c2Ids = ['cycle-2025-annual', 'cycle-2025-h2', '30000000-0000-0000-0000-000000000002']
   if (c2Ids.includes(idA) && c2Ids.includes(idB)) return true

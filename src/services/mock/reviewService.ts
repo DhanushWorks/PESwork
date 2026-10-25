@@ -15,6 +15,11 @@ export type TeamReviewSummary = {
   compositeScore?: number
   goalsCount: number
   goalsApprovedCount: number
+  isCalibrated?: boolean
+  isReleased?: boolean
+  adminApproved?: boolean
+  calibratedScore?: number
+  ratingBandLabel?: string
 }
 
 export const reviewService = {
@@ -109,7 +114,7 @@ export const reviewService = {
 
   async listTeamReviews(managerId: string, cycleId: string): Promise<TeamReviewSummary[]> {
     const reports = await peopleService.getDirectReports(managerId)
-    const { selfReviews, managerReviews, goals } = storageService.getState()
+    const { selfReviews, managerReviews, goals, calibrations, results } = storageService.getState()
 
     return reports.map((employee) => {
       const sr = selfReviews.find((r) =>
@@ -124,6 +129,17 @@ export const reviewService = {
         (g.userId === employee.id || matchesUser(g.userId, employee.id)) &&
         (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId))
       )
+      const cal = calibrations?.find((c) =>
+        (c.employeeId === employee.id || matchesUser(c.employeeId, employee.id)) &&
+        (c.cycleId === cycleId || matchesCycle(c.cycleId, cycleId))
+      )
+      const res = results?.find((r) =>
+        (r.employeeId === employee.id || matchesUser(r.employeeId, employee.id)) &&
+        (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
+      )
+
+      const isReleased = Boolean(res || cal?.adminApproved)
+      const finalScore = res?.compositeScore ?? cal?.adjustedScore ?? mr?.compositeScore
 
       return {
         employee,
@@ -131,9 +147,14 @@ export const reviewService = {
         selfReviewSubmittedAt: sr?.submittedAt,
         managerReviewStatus: mr ? mr.status : 'not_started',
         managerReviewSubmittedAt: mr?.submittedAt,
-        compositeScore: mr?.compositeScore,
+        compositeScore: finalScore,
         goalsCount: userGoals.length,
         goalsApprovedCount: userGoals.filter((g) => g.status === 'approved' || g.status === 'completed').length,
+        isCalibrated: Boolean(cal),
+        isReleased,
+        adminApproved: cal?.adminApproved ?? false,
+        calibratedScore: cal?.adjustedScore,
+        ratingBandLabel: res?.finalRatingLabel,
       }
     })
   },

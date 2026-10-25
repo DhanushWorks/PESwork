@@ -106,6 +106,7 @@ export const EmployeeDashboard: React.FC = () => {
     selfReview,
     managerReview,
     result: releasedResult,
+    goals,
   })
   const effectiveStage: CycleStage = workflowState.effectiveStage
 
@@ -702,7 +703,7 @@ export const EmployeeDashboard: React.FC = () => {
                       <span className="text-slate-900 dark:text-[#EEF1F7] font-sans">{g.progress}%</span>
                     </div>
                     {/* Clean Gradient Bar */}
-                    <div className="h-2.5 rounded-full bg-slate-200/80 dark:bg-white/[0.07] border border-slate-200 dark:border-transparent overflow-hidden">
+                    <div className="h-2.5 rounded-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 overflow-hidden">
                       <div
                         className="h-full rounded-full bg-slate-900 dark:bg-white transition-all duration-1000 ease-out"
                         style={{

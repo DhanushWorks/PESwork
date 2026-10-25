@@ -18,7 +18,6 @@ import {
   Check,
   UserCheck,
   TrendingUp,
-  BookOpen,
   ArrowRight,
   ShieldCheck,
   MessageSquare,
@@ -84,13 +83,13 @@ export const ManagerOneOnOnes: React.FC = () => {
   const [isScheduleModalOpen, setIsScheduleModalOpen] = useState(false)
   const [selectedMeetingForAction, setSelectedMeetingForAction] = useState<string | null>(null)
   const [newActionItemText, setNewActionItemText] = useState('')
-  const [newActionTargetDate, setNewActionTargetDate] = useState('Dec 15, 2026')
+  const [newActionTargetDate, setNewActionTargetDate] = useState('')
 
   // Schedule modal form state
   const [newMeetingForm, setNewMeetingForm] = useState({
     employeeName: 'Alex Rivera',
-    date: 'Upcoming Friday, 3:00 PM',
-    cadence: 'Bi-Weekly Sync · 30 min',
+    date: '',
+    cadence: '',
     agendaTitle: '',
     agendaDescription: '',
     actionItem: '',
@@ -148,7 +147,7 @@ export const ManagerOneOnOnes: React.FC = () => {
           id: `act-${Date.now()}`,
           text: newActionItemText.trim(),
           completed: false,
-          targetDate: newActionTargetDate || 'Dec 15, 2026',
+          targetDate: newActionTargetDate.trim() || 'No target date set',
           assignedTo: assignedName,
         }
         return { ...m, actionItems: [...m.actionItems, newAct] }
@@ -157,6 +156,7 @@ export const ManagerOneOnOnes: React.FC = () => {
 
     success('Agreed commitment added', `New milestone recorded for ${assignedName}.`)
     setNewActionItemText('')
+    setNewActionTargetDate('')
     setSelectedMeetingForAction(null)
   }
 
@@ -237,8 +237,8 @@ export const ManagerOneOnOnes: React.FC = () => {
     setIsScheduleModalOpen(false)
     setNewMeetingForm({
       employeeName: 'Alex Rivera',
-      date: 'Upcoming Friday, 3:00 PM',
-      cadence: 'Bi-Weekly Sync · 30 min',
+      date: '',
+      cadence: '',
       agendaTitle: '',
       agendaDescription: '',
       actionItem: '',
@@ -604,26 +604,16 @@ export const ManagerOneOnOnes: React.FC = () => {
         )}
       </div>
 
-      {/* SECTION 3: Curated Conversation Playbooks & Frameworks (Matching Reference's Coursework Grid) */}
+      {/* SECTION 3: 1:1 Templates */}
       <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="flex items-start sm:items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-indigo-500/10 border border-indigo-500/25 text-[#8B7CFF] flex items-center justify-center shrink-0 shadow-2xs">
-              <BookOpen className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-[#8B7CFF]">
-                  ENGINEERING LEADERSHIP · CONVERSATION PLAYBOOKS
-                </span>
-              </div>
-              <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white mt-0.5">
-                Curated 1:1 Coaching Playbooks & Templates
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-                Battle-tested conversational frameworks for high-performing engineering teams.
-              </p>
-            </div>
+          <div>
+            <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
+              1:1 Templates
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+              Discussion guides and frameworks for syncs.
+            </p>
           </div>
         </div>
 
@@ -707,8 +697,27 @@ export const ManagerOneOnOnes: React.FC = () => {
         title="Add Agreed Commitment"
         subtitle="Record a new negotiated milestone or follow-up deliverable from this sync."
         maxWidth="md"
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setSelectedMeetingForAction(null)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleAddActionItem}
+              disabled={!newActionItemText.trim()}
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 shadow-xs disabled:opacity-50 transition-all cursor-pointer"
+            >
+              Add Commitment
+            </button>
+          </>
+        }
       >
-        <div className="space-y-4">
+        <div className="space-y-4 font-sans">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
               Commitment Title
@@ -741,24 +750,6 @@ export const ManagerOneOnOnes: React.FC = () => {
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
             />
           </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setSelectedMeetingForAction(null)}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleAddActionItem}
-              disabled={!newActionItemText.trim()}
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 shadow-xs disabled:opacity-50 transition-all"
-            >
-              Add Commitment
-            </button>
-          </div>
         </div>
       </Modal>
 
@@ -769,8 +760,26 @@ export const ManagerOneOnOnes: React.FC = () => {
         title="Schedule 1:1 Executive Sync"
         subtitle="Set up a structured 1:1 sync with agenda and strategic discussion topics."
         maxWidth="lg"
+        onSubmit={handleCreateMeeting}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setIsScheduleModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 shadow-xs transition-all active:scale-[0.98] cursor-pointer"
+            >
+              Schedule Check-in
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleCreateMeeting} className="space-y-4">
+        <div className="space-y-4 font-sans text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1.5">
@@ -859,23 +868,7 @@ export const ManagerOneOnOnes: React.FC = () => {
               className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-black/50 text-slate-900 dark:text-white text-sm focus:outline-hidden focus:ring-2 focus:ring-indigo-500/30"
             />
           </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2">
-            <button
-              type="button"
-              onClick={() => setIsScheduleModalOpen(false)}
-              className="px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 shadow-xs transition-all active:scale-[0.98]"
-            >
-              Schedule Check-in
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
     </div>
   )

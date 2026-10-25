@@ -3,8 +3,9 @@ import { useApp } from '../../app/AppContext'
 import { peopleService, reviewService, goalService, storageService } from '../../services'
 import { Goal, User, ManagerReview } from '../../types'
 import { MetricCard } from '../../components/ui/MetricCard'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { RATING_BANDS } from '../../lib/scoring'
-import { BarChart3, TrendingUp, Users, Target, Award } from 'lucide-react'
+import { TrendingUp, Users, Target, Award } from 'lucide-react'
 
 export const ManagerAnalytics: React.FC = () => {
   const { currentUser, activeCycle } = useApp()
@@ -15,27 +16,38 @@ export const ManagerAnalytics: React.FC = () => {
 
   const fetchData = useCallback(async () => {
     setLoading(true)
-    const direct = await peopleService.getDirectReports(currentUser.id)
-    setReports(direct)
+    try {
+      const direct = await peopleService.getDirectReports(currentUser.id)
+      setReports(direct)
 
-    const mrList: ManagerReview[] = []
-    const gList: Goal[] = []
+      const mrList: ManagerReview[] = []
+      const gList: Goal[] = []
 
-    for (const emp of direct) {
-      const mr = await reviewService.getManagerReview(emp.id, activeCycle.id)
-      if (mr) mrList.push(mr)
-      const userGoals = await goalService.listForUser(emp.id, activeCycle.id)
-      gList.push(...userGoals)
+      for (const emp of direct) {
+        const mr = await reviewService.getManagerReview(emp.id, activeCycle.id)
+        if (mr) mrList.push(mr)
+        const userGoals = await goalService.listForUser(emp.id, activeCycle.id)
+        gList.push(...userGoals)
+      }
+
+      setReviews(mrList)
+      setGoals(gList)
+    } catch (err) {
+      console.warn('Notice loading manager analytics:', err)
+    } finally {
+      setLoading(false)
     }
-
-    setReviews(mrList)
-    setGoals(gList)
-    setLoading(false)
   }, [currentUser.id, activeCycle.id])
 
   useEffect(() => {
     let isMounted = true
-    fetchData()
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchData().finally(() => {
+      clearTimeout(safetyTimer)
+    })
 
     const unsubscribe = storageService.subscribe(() => {
       if (isMounted) fetchData()
@@ -43,6 +55,7 @@ export const ManagerAnalytics: React.FC = () => {
 
     return () => {
       isMounted = false
+      clearTimeout(safetyTimer)
       unsubscribe()
     }
   }, [fetchData])
@@ -53,8 +66,15 @@ export const ManagerAnalytics: React.FC = () => {
     bandCounts[b.label] = 0
   })
 
+  const analyticsState = storageService.getState()
+  const calList = analyticsState.calibrations || []
+  const resList = analyticsState.results || []
+
   reviews.forEach((r) => {
-    const score = r.compositeScore
+    const matchingCal = calList.find((c) => c.employeeId === r.employeeId && c.cycleId === activeCycle.id)
+    const matchingRes = resList.find((res) => res.employeeId === r.employeeId && res.cycleId === activeCycle.id)
+    const score = matchingRes?.compositeScore ?? matchingCal?.adjustedScore ?? r.compositeScore
+
     for (const b of RATING_BANDS) {
       if (score >= b.min && score <= b.max) {
         bandCounts[b.label] = (bandCounts[b.label] || 0) + 1
@@ -65,13 +85,24 @@ export const ManagerAnalytics: React.FC = () => {
 
   const avgTeamScore =
     reviews.length > 0
-      ? (reviews.reduce((sum, r) => sum + r.compositeScore, 0) / reviews.length).toFixed(2)
+      ? (
+          reviews.reduce((sum, r) => {
+            const matchingCal = calList.find((c) => c.employeeId === r.employeeId && c.cycleId === activeCycle.id)
+            const matchingRes = resList.find((res) => res.employeeId === r.employeeId && res.cycleId === activeCycle.id)
+            const score = matchingRes?.compositeScore ?? matchingCal?.adjustedScore ?? r.compositeScore
+            return sum + score
+          }, 0) / reviews.length
+        ).toFixed(2)
       : '—'
 
   const avgGoalProgress =
     goals.length > 0
       ? Math.round(goals.reduce((sum, g) => sum + g.progress, 0) / goals.length)
       : 0
+
+  if (loading) {
+    return <LoadingState message="Loading team performance analytics..." variant="page" />
+  }
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
@@ -100,8 +131,7 @@ export const ManagerAnalytics: React.FC = () => {
       <div className="dark-glass-card conic-border-glow rounded-2xl p-6 sm:p-8 space-y-5 shadow-sm">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
           <div>
-            <h2 className="text-sm font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider flex items-center gap-2 font-sans">
-              <BarChart3 className="w-4 h-4 text-[#8B7CFF]" />
+            <h2 className="text-sm font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
               Rating Distribution
             </h2>
           </div>
@@ -115,7 +145,11 @@ export const ManagerAnalytics: React.FC = () => {
             const count = bandCounts[band.label] || 0
             const percentage = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0
 
-            return (
+            if (loading) {
+    return <LoadingState message="Loading team performance analytics..." variant="page" />
+  }
+
+  return (
               <div key={band.band} className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between font-medium">
                   <span className="text-slate-800 dark:text-[#F0F3FA]">
@@ -126,7 +160,7 @@ export const ManagerAnalytics: React.FC = () => {
                     {count} member{count === 1 ? '' : 's'} ({percentage}%)
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 dark:bg-white/[0.06] border border-slate-200/90 dark:border-white/[0.06] rounded-full h-3.5 overflow-hidden p-[2px]">
+                <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300 dark:border-zinc-700 rounded-full h-3.5 overflow-hidden p-[2px]">
                   <div
                     className={`h-full rounded-full transition-all duration-500 shadow-xs ${band.barClass}`}
                     style={{
@@ -165,7 +199,7 @@ export const ManagerAnalytics: React.FC = () => {
                 </div>
 
                 <div className="flex-1 max-w-md">
-                  <div className="w-full bg-slate-100 dark:bg-white/[0.06] border border-slate-200/90 dark:border-white/[0.06] rounded-full h-2.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2.5 overflow-hidden">
                     <div
                       className="bg-gradient-to-r from-indigo-600 to-indigo-500 dark:from-[#8B7CFF] dark:to-[#4FE3C1] h-full rounded-full transition-all duration-500"
                       style={{ width: `${empAvg}%` }}

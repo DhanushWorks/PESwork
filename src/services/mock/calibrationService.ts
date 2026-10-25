@@ -381,7 +381,12 @@ export const calibrationService = {
       const filteredCals = s.calibrations.filter((c) => !(c.cycleId === cycleId && c.employeeId === employeeId))
       const filteredResults = s.results.filter((r) => !(r.cycleId === cycleId && r.employeeId === employeeId))
 
+      const updatedCycles = s.cycles.map((c) =>
+        c.id === cycleId || matchesCycle(c.id, cycleId) ? { ...c, stage: 'released' as const } : c
+      )
+
       return {
+        cycles: updatedCycles,
         calibrations: [...filteredCals, approvedCal],
         results: [...filteredResults, evaluationResult],
         notifications: [empNotif, mgrNotif, ...s.notifications],

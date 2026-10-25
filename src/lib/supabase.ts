@@ -30,19 +30,20 @@ export const isSupabaseConfigured = Boolean(
 )
 
 // Circuit-breaker & health status tracking to prevent UI freezes
-let supabaseReachable = (() => {
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      const stored = sessionStorage.getItem('performiq_supabase_offline')
-      if (stored === 'true') return false
-    }
-  } catch {}
-  return true
-})()
+let supabaseReachable = true
+let lastFailureTimestamp = 0
+const OFFLINE_COOLDOWN_MS = 25000 // 25 seconds backoff before retrying network
 
 export function isSupabaseOnline(): boolean {
   if (!isSupabaseConfigured) return false
-  return supabaseReachable
+  if (!supabaseReachable) {
+    if (Date.now() - lastFailureTimestamp > OFFLINE_COOLDOWN_MS) {
+      supabaseReachable = true
+      return true
+    }
+    return false
+  }
+  return true
 }
 
 export function markSupabaseOffline(err?: any) {
@@ -53,34 +54,29 @@ export function markSupabaseOffline(err?: any) {
     )
   }
   supabaseReachable = false
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.setItem('performiq_supabase_offline', 'true')
-    }
-  } catch {}
+  lastFailureTimestamp = Date.now()
 }
 
 export function markSupabaseOnline() {
   supabaseReachable = true
-  try {
-    if (typeof sessionStorage !== 'undefined') {
-      sessionStorage.removeItem('performiq_supabase_offline')
-    }
-  } catch {}
+  lastFailureTimestamp = 0
 }
 
+/**
+ * Returns true only if Supabase is both configured and currently reachable
+ */
 export function isSupabaseReady(): boolean {
   return isSupabaseConfigured && isSupabaseOnline()
 }
 
-// Resilient fetch wrapper with 1.2s timeout to eliminate infinite hangs
+// Resilient fetch wrapper with 3.5s timeout to eliminate infinite hangs
 const resilientFetch: typeof fetch = async (input, init) => {
   if (!isSupabaseOnline()) {
     throw new Error('Supabase is currently offline or unreachable')
   }
 
   const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 1200)
+  const timeoutId = setTimeout(() => controller.abort(), 3500)
 
   try {
     const response = await fetch(input, {
@@ -95,29 +91,6 @@ const resilientFetch: typeof fetch = async (input, init) => {
   } finally {
     clearTimeout(timeoutId)
   }
-}
-
-// Fast preflight probe on startup (600ms) to detect if Supabase host is alive without waiting for user action
-if (isSupabaseConfigured && typeof window !== 'undefined' && supabaseReachable) {
-  const probeController = new AbortController()
-  const probeTimeout = setTimeout(() => probeController.abort(), 600)
-  fetch(`${supabaseUrl}/rest/v1/`, {
-    method: 'HEAD',
-    signal: probeController.signal,
-    headers: { apikey: supabaseAnonKey || '' },
-  })
-    .then((res) => {
-      clearTimeout(probeTimeout)
-      if (res.ok || res.status < 500) {
-        markSupabaseOnline()
-      } else {
-        markSupabaseOffline(new Error(`HTTP ${res.status}`))
-      }
-    })
-    .catch((err) => {
-      clearTimeout(probeTimeout)
-      markSupabaseOffline(err)
-    })
 }
 
 if (!isSupabaseConfigured) {

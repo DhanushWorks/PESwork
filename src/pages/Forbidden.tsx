@@ -1,15 +1,12 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
 import { ShieldAlert, ArrowLeft, RotateCcw, AlertTriangle } from 'lucide-react'
-import { useApp } from '../app/AppContext'
+import { useOptionalApp } from '../app/AppContext'
 import { useRouteError } from 'react-router-dom'
 
 export const Forbidden: React.FC = () => {
-  let role = 'employee'
-  try {
-    const app = useApp()
-    if (app?.currentUser?.role) role = app.currentUser.role
-  } catch {}
+  const app = useOptionalApp()
+  const role = app?.currentUser?.role || 'employee'
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6">
@@ -37,11 +34,8 @@ export const Forbidden: React.FC = () => {
 }
 
 export const NotFound: React.FC = () => {
-  let role = 'employee'
-  try {
-    const app = useApp()
-    if (app?.currentUser?.role) role = app.currentUser.role
-  } catch {}
+  const app = useOptionalApp()
+  const role = app?.currentUser?.role || 'employee'
 
   return (
     <div className="min-h-[70vh] flex flex-col items-center justify-center text-center p-6">
@@ -64,11 +58,8 @@ export const NotFound: React.FC = () => {
 }
 
 export const RouteErrorBoundary: React.FC = () => {
-  let role = 'employee'
-  try {
-    const app = useApp()
-    if (app?.currentUser?.role) role = app.currentUser.role
-  } catch {}
+  const app = useOptionalApp()
+  const role = app?.currentUser?.role || 'employee'
   const error = useRouteError() as any
 
   return (

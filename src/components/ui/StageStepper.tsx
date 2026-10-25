@@ -32,10 +32,35 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   const currentIndex = STAGE_ORDER.indexOf(currentStage)
   const isCycleFinished = isFinished || currentStage === 'closed'
   const [containerRef, isInView] = useInView<HTMLDivElement>({ threshold: 0.15, triggerOnce: true })
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const activeStepRef = useRef<HTMLDivElement>(null)
   const [isAnimated, setIsAnimated] = useState(false)
   const [activeStepIndex, setActiveStepIndex] = useState(-1)
   const hasAnimatedRef = useRef(false)
   const prevStageRef = useRef(currentStage)
+
+  // Smoothly center the active workflow stage in the scroll container on mobile view
+  useEffect(() => {
+    if (activeStepRef.current && scrollContainerRef.current) {
+      const timer = window.setTimeout(() => {
+        if (!activeStepRef.current || !scrollContainerRef.current) return
+        const container = scrollContainerRef.current
+        const step = activeStepRef.current
+        const containerWidth = container.clientWidth
+        const stepLeft = step.offsetLeft
+        const stepWidth = step.clientWidth
+
+        if (container.scrollWidth > containerWidth) {
+          const targetScroll = stepLeft - containerWidth / 2 + stepWidth / 2
+          container.scrollTo({
+            left: Math.max(0, targetScroll),
+            behavior: 'smooth',
+          })
+        }
+      }, 300)
+      return () => clearTimeout(timer)
+    }
+  }, [currentStage, isInView])
 
   useEffect(() => {
     if (!isInView) return
@@ -87,7 +112,7 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   return (
     <div
       ref={containerRef}
-      className="dark-glass-card p-4 sm:p-5 overflow-x-auto no-scrollbar group cursor-default transition-all"
+      className="dark-glass-card p-4 sm:p-5 group cursor-default transition-all overflow-hidden"
     >
       {/* Header Bar */}
       {showCycleInfo ? (
@@ -108,7 +133,7 @@ export const StageStepper: React.FC<StageStepperProps> = ({
               </span>
             )}
 
-            {currentUser?.role === 'admin' && effectiveCycle && (
+            {currentUser?.role === 'admin' && effectiveCycle?.id && (
               <Link
                 to={`/admin/cycles/${effectiveCycle.id}`}
                 className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
@@ -119,15 +144,37 @@ export const StageStepper: React.FC<StageStepperProps> = ({
               </Link>
             )}
             {currentUser?.role === 'manager' && (
-              <Link
-                to="/manager/approvals"
-                className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
-                title="Review pending goal approvals"
-              >
-                <CheckSquare className="w-3.5 h-3.5 text-[#FFB454]" />
-                <span>Goal Approvals</span>
-                <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
-              </Link>
+              currentStage === 'goals_open' ? (
+                <Link
+                  to="/manager/approvals"
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                  title="Review pending goal approvals"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-[#FFB454]" />
+                  <span>Goal Approvals</span>
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+                </Link>
+              ) : currentStage === 'manager_review' ? (
+                <Link
+                  to="/manager#roster"
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                  title="Complete direct report evaluations"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Review Workspace</span>
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+                </Link>
+              ) : (
+                <Link
+                  to="/manager#roster"
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                  title="Inspect team appraisal roster"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-emerald-500" />
+                  <span>Team Roster</span>
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+                </Link>
+              )
             )}
           </div>
         </div>
@@ -139,81 +186,89 @@ export const StageStepper: React.FC<StageStepperProps> = ({
         </div>
       )}
 
-      {/* Steps Track with Connected Progress Bar */}
-      <div className="relative min-w-[760px] pb-1">
-        {/* Base Connecting Line behind circles */}
-        <div className="absolute top-[21px] left-[6.25%] w-[87.5%] h-[2.5px] bg-slate-200 dark:bg-white/[0.08] rounded-full pointer-events-none overflow-hidden">
-          {/* Active Filled Line */}
-          <div
-            className="absolute left-0 top-0 bottom-0 bg-slate-900 dark:bg-white transition-all duration-1000 ease-out rounded-full"
-            style={{
-              width: isAnimated ? `${targetPercentage}%` : '0%',
-            }}
-          >
-            {/* Ambient traveling beam */}
-            <div className="absolute inset-y-0 w-28 bg-gradient-to-r from-transparent via-white/40 dark:via-zinc-400/40 to-transparent animate-line-travel opacity-75" />
-            {/* Particle head at the leading edge */}
-            {isAnimated && (
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-slate-900 dark:bg-white shadow-xs" />
-            )}
+      {/* Horizontally scrollable tracking flow ONLY on mobile (Header remains 100% stable) */}
+      <div
+        ref={scrollContainerRef}
+        className="w-full overflow-x-auto no-scrollbar overscroll-x-contain py-1"
+        style={{ WebkitOverflowScrolling: 'touch' }}
+      >
+        {/* Steps Track with Connected Progress Bar */}
+        <div className="relative min-w-[720px] sm:min-w-[760px] pb-1 px-1">
+          {/* Base Connecting Line behind circles */}
+          <div className="absolute top-[20px] left-[6.25%] w-[87.5%] h-[3px] bg-slate-300 dark:bg-zinc-700 rounded-full pointer-events-none overflow-hidden border border-slate-300/80 dark:border-zinc-600/80">
+            {/* Active Filled Line */}
+            <div
+              className="absolute left-0 top-0 bottom-0 bg-slate-900 dark:bg-white transition-all duration-1000 ease-out rounded-full"
+              style={{
+                width: isAnimated ? `${targetPercentage}%` : '0%',
+              }}
+            >
+              {/* Ambient traveling beam */}
+              <div className="absolute inset-y-0 w-28 bg-gradient-to-r from-transparent via-white/40 dark:via-zinc-400/40 to-transparent animate-line-travel opacity-75" />
+              {/* Particle head at the leading edge */}
+              {isAnimated && (
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-3 h-3 rounded-full bg-slate-900 dark:bg-white shadow-xs" />
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Step Nodes Row */}
-        <div className="relative flex justify-between">
-          {STAGE_ORDER.map((stage, idx) => {
-            const isCompleted = isCycleFinished ? idx <= currentIndex : idx < currentIndex
-            const isCurrent = isCycleFinished ? false : idx === currentIndex
-            const isLit = idx <= activeStepIndex
-            const details = CYCLE_STAGE_DETAILS[stage]
+          {/* Step Nodes Row */}
+          <div className="relative flex justify-between">
+            {STAGE_ORDER.map((stage, idx) => {
+              const isCompleted = isCycleFinished ? idx <= currentIndex : idx < currentIndex
+              const isCurrent = isCycleFinished ? false : idx === currentIndex
+              const isLit = idx <= activeStepIndex
+              const details = CYCLE_STAGE_DETAILS[stage]
 
-            return (
-              <div
-                key={stage}
-                title={!readOnly && onStageSelect ? `Switch stage to: ${details.label}` : details.label}
-                className={`flex-1 text-center relative select-none ${
-                  !readOnly && onStageSelect ? 'cursor-pointer group' : ''
-                }`}
-                onClick={() => !readOnly && onStageSelect && onStageSelect(stage)}
-              >
-                {/* Step Node Circle (42px) */}
-                <div className="relative w-[42px] h-[42px] mx-auto mb-2.5">
+              return (
+                <div
+                  key={stage}
+                  ref={isCurrent ? activeStepRef : undefined}
+                  title={!readOnly && onStageSelect ? `Switch stage to: ${details.label}` : details.label}
+                  className={`flex-1 text-center relative select-none ${
+                    !readOnly && onStageSelect ? 'cursor-pointer group' : ''
+                  }`}
+                  onClick={() => !readOnly && onStageSelect && onStageSelect(stage)}
+                >
+                  {/* Step Node Circle (42px) */}
+                  <div className="relative w-[42px] h-[42px] mx-auto mb-2.5">
+                    <div
+                      className={`w-full h-full rounded-full grid place-items-center font-bold text-sm transition-all duration-300 ${
+                        isCurrent
+                          ? isLit
+                            ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white ring-4 ring-slate-900/15 dark:ring-white/20 scale-105'
+                            : 'bg-white dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 border-2 border-slate-300 dark:border-zinc-700'
+                          : isCompleted
+                          ? isLit
+                            ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
+                            : 'bg-white dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 border-2 border-slate-300 dark:border-zinc-700'
+                          : 'bg-white dark:bg-zinc-900 text-slate-500 dark:text-zinc-400 border-2 border-slate-300 dark:border-zinc-700'
+                      } ${!readOnly && onStageSelect ? 'group-hover:scale-110 group-hover:ring-4 group-hover:ring-indigo-500/25 group-hover:border-indigo-500' : ''}`}
+                    >
+                      {isCompleted && isLit ? (
+                        <Check className="w-4 h-4 stroke-[3]" />
+                      ) : (
+                        <span className="tabular-nums">{idx + 1}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Step Label */}
                   <div
-                    className={`w-full h-full rounded-full grid place-items-center font-bold text-sm transition-all duration-300 ${
-                      isCurrent
-                        ? isLit
-                          ? 'bg-white dark:bg-zinc-900 text-slate-900 dark:text-white border-2 border-slate-900 dark:border-white ring-4 ring-slate-900/15 dark:ring-white/20 scale-105'
-                          : 'bg-white dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800'
-                        : isCompleted
-                        ? isLit
-                          ? 'bg-slate-900 text-white dark:bg-white dark:text-slate-900 shadow-xs'
-                          : 'bg-white dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800'
-                        : 'bg-white dark:bg-zinc-900 text-slate-400 dark:text-zinc-500 border border-slate-200 dark:border-zinc-800'
-                    } ${!readOnly && onStageSelect ? 'group-hover:scale-110 group-hover:ring-4 group-hover:ring-indigo-500/25 group-hover:border-indigo-500' : ''}`}
+                    className={`text-xs transition-colors line-clamp-1 ${
+                      isCurrent || (isCycleFinished && idx === currentIndex)
+                        ? 'text-slate-950 dark:text-white font-bold'
+                        : isCompleted && isLit
+                        ? 'text-slate-700 dark:text-[#C9CEDB] font-medium'
+                        : 'text-slate-400 dark:text-[#667085] font-normal'
+                    } ${!readOnly && onStageSelect ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-400' : ''}`}
                   >
-                    {isCompleted && isLit ? (
-                      <Check className="w-4 h-4 stroke-[3]" />
-                    ) : (
-                      <span className="tabular-nums">{idx + 1}</span>
-                    )}
+                    {details.label}
                   </div>
                 </div>
-
-                {/* Step Label */}
-                <div
-                  className={`text-xs transition-colors line-clamp-1 ${
-                    isCurrent || (isCycleFinished && idx === currentIndex)
-                      ? 'text-slate-950 dark:text-white font-bold'
-                      : isCompleted && isLit
-                      ? 'text-slate-700 dark:text-[#C9CEDB] font-medium'
-                      : 'text-slate-400 dark:text-[#667085] font-normal'
-                  } ${!readOnly && onStageSelect ? 'group-hover:text-indigo-600 dark:group-hover:text-indigo-400' : ''}`}
-                >
-                  {details.label}
-                </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
       </div>
     </div>

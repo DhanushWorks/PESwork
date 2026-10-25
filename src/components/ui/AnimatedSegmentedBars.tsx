@@ -65,7 +65,7 @@ export const AnimatedSegmentedBars: React.FC<AnimatedSegmentedBarsProps> = ({
         return (
           <div
             key={seg.id ?? idx}
-            className={`h-full bg-slate-200/60 dark:bg-white/[0.06] rounded-full overflow-hidden`}
+            className={`h-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/60 dark:border-zinc-700 rounded-full overflow-hidden`}
             style={{ flex: seg.weight || 25 }}
             title={seg.title || `Weight: ${seg.weight}%`}
           >

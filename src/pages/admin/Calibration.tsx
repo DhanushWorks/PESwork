@@ -7,6 +7,7 @@ import { RatingBadge } from '../../components/ui/Badge'
 import { RatingInput } from '../../components/ui/RatingInput'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { RATING_BANDS, getRatingBand } from '../../lib/scoring'
 import { formatDate, formatDateTime } from '../../lib/formatters'
@@ -14,8 +15,8 @@ import { PdfViewerModal } from '../../components/ui/PdfViewerModal'
 import {
   AlertCircle,
   ArrowRight,
-  BarChart3,
   CheckCircle2,
+  ChevronLeft,
   ChevronRight,
   Clock,
   Download,
@@ -71,6 +72,67 @@ export const AdminCalibration: React.FC = () => {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [selectedItem, setSelectedItem] = useState<CalibrationItem | null>(null)
   const [activeTab, setActiveTab] = useState<'dossier' | 'calibrate'>('dossier')
+  const tableContainerRef = useRef<HTMLDivElement>(null)
+  const isDraggingRef = useRef(false)
+  const dragStartXRef = useRef(0)
+  const dragScrollLeftRef = useRef(0)
+
+  // Wireless mouse wheel listener: translate vertical wheel ticks into horizontal table scroll
+  const handleTableWheel = (e: React.WheelEvent<HTMLDivElement>) => {
+    const el = tableContainerRef.current
+    if (!el) return
+    if (el.scrollWidth > el.clientWidth) {
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+        const maxScroll = el.scrollWidth - el.clientWidth
+        const atLeft = el.scrollLeft <= 0
+        const atRight = el.scrollLeft >= maxScroll - 1
+        if ((e.deltaY > 0 && !atRight) || (e.deltaY < 0 && !atLeft)) {
+          e.preventDefault()
+          el.scrollLeft += e.deltaY * 1.2
+        }
+      }
+    }
+  }
+
+  // Mouse click-and-drag panning for any mouse
+  const handleTableMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    const target = e.target as HTMLElement
+    if (target.closest('button, a, input, select, textarea, [role="button"]')) return
+    const el = tableContainerRef.current
+    if (!el) return
+    isDraggingRef.current = true
+    dragStartXRef.current = e.pageX - el.offsetLeft
+    dragScrollLeftRef.current = el.scrollLeft
+  }
+
+  useEffect(() => {
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return
+      const el = tableContainerRef.current
+      if (!el) return
+      e.preventDefault()
+      const x = e.pageX - el.offsetLeft
+      const walk = (x - dragStartXRef.current) * 1.4
+      el.scrollLeft = dragScrollLeftRef.current - walk
+    }
+    const handleGlobalMouseUp = () => {
+      isDraggingRef.current = false
+    }
+    window.addEventListener('mousemove', handleGlobalMouseMove)
+    window.addEventListener('mouseup', handleGlobalMouseUp)
+    return () => {
+      window.removeEventListener('mousemove', handleGlobalMouseMove)
+      window.removeEventListener('mouseup', handleGlobalMouseUp)
+    }
+  }, [])
+
+  const scrollTable = (direction: 'left' | 'right') => {
+    const el = tableContainerRef.current
+    if (!el) return
+    const scrollAmount = 350
+    el.scrollBy({ left: direction === 'right' ? scrollAmount : -scrollAmount, behavior: 'smooth' })
+  }
   const [adjustedScore, setAdjustedScore] = useState<number>(4.0)
   const [calibrationReason, setCalibrationReason] = useState<string>('')
   const [isProcessing, setIsProcessing] = useState(false)
@@ -89,13 +151,30 @@ export const AdminCalibration: React.FC = () => {
 
   const fetchItems = async () => {
     setLoading(true)
-    const data = await calibrationService.listForCycle(activeCycle.id)
-    setItems(data)
-    setLoading(false)
+    try {
+      const data = await calibrationService.listForCycle(activeCycle.id)
+      setItems(data)
+    } catch (err) {
+      console.warn('Notice loading calibration items:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchItems()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchItems().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [activeCycle.id])
 
   // Open the comprehensive Review & Calibrate Dossier modal
@@ -214,7 +293,7 @@ export const AdminCalibration: React.FC = () => {
 
       success(
         'Admin Permission Granted & Results Released',
-        `Formally approved ${selectedItem.employee.name}'s calibration (${adjustedScore.toFixed(2)}). Results are now published to the employee dashboard.`
+        `Formally approved ${selectedItem.employee.name}'s calibration (${adjustedScore.toFixed(2)}). Results are now published and synchronized across Admin, Manager, and Employee portals.`
       )
       setShowReviewModal(false)
       await refreshData()
@@ -255,7 +334,7 @@ export const AdminCalibration: React.FC = () => {
       const res = await calibrationService.releaseCycle(activeCycle.id)
       success(
         'Results Released Successfully!',
-        `Admin granted permission for all ${res.releasedCount} employee evaluations. Results published immediately.`
+        `Admin granted permission for all ${res.releasedCount} employee evaluations. Results are now officially published and synchronized across Admin, Manager, and Employee portals.`
       )
       setShowReleaseConfirm(false)
       await refreshData()
@@ -336,9 +415,6 @@ export const AdminCalibration: React.FC = () => {
         {/* Top Header Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-slate-100 dark:bg-zinc-800 flex items-center justify-center text-slate-900 dark:text-white shrink-0">
-              <BarChart3 className="w-4 h-4" />
-            </div>
             <h2 className="text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
               Calibration Status
             </h2>
@@ -445,7 +521,7 @@ export const AdminCalibration: React.FC = () => {
                 </div>
 
                 <div className="space-y-1.5 pt-1">
-                  <div className="w-full bg-slate-200 dark:bg-white/[0.08] rounded-full h-1.5 overflow-hidden p-[1px]">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2 overflow-hidden p-[1px]">
                     <div
                       className="h-full rounded-full transition-all duration-500"
                       style={{ width: `${pct}%`, backgroundColor: b.color }}
@@ -523,8 +599,8 @@ export const AdminCalibration: React.FC = () => {
         </div>
 
         {/* Right: Compact Search Input (Matching h-8.5 height & rounded-full capsule geometry) */}
-        <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
-          <div className="relative w-full sm:w-52 md:w-60 flex items-center shrink-0">
+        <div className="flex items-center gap-2.5 w-full sm:w-auto sm:justify-end min-w-0">
+          <div className="relative flex-1 sm:flex-initial sm:w-52 md:w-60 min-w-0 flex items-center">
             <Search className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
             <input
               ref={searchInputRef}
@@ -532,7 +608,7 @@ export const AdminCalibration: React.FC = () => {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search staff, evidence..."
-              className="w-full h-8.5 pl-8.5 pr-8 rounded-full bg-white dark:bg-[#18181b] border border-slate-200/90 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans shadow-2xs"
+              className="w-full h-8.5 pl-9 pr-8 rounded-full bg-white dark:bg-[#18181b] border border-slate-200/90 dark:border-white/10 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/30 transition-all font-sans shadow-2xs"
             />
             {searchQuery ? (
               <button
@@ -552,27 +628,53 @@ export const AdminCalibration: React.FC = () => {
         </div>
       </div>
 
-      {/* Calibration Table Container with Guaranteed Zero-Wrap Architecture */}
+      {/* Calibration Table Container with Wireless Mouse Wheel & Drag Panning Architecture */}
       <div className="rounded-2xl sm:rounded-3xl border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md overflow-hidden transition-all">
-        <div className="overflow-x-auto no-scrollbar w-full">
-          <table className="w-full min-w-[1180px] text-left text-xs border-collapse">
+        {/* Table Controls Bar with Left/Right Quick Scroll Navigation */}
+        <div className="px-4 py-2 bg-slate-50/70 dark:bg-white/[0.02] border-b border-slate-200/80 dark:border-white/[0.08] flex items-center justify-between text-[11px] text-slate-500 dark:text-zinc-400 font-sans">
+          <span className="flex items-center gap-1.5 font-medium">
+            <span>Scroll using wireless mouse wheel or click-and-drag table</span>
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => scrollTable('left')}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors cursor-pointer shadow-2xs"
+              title="Scroll table left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTable('right')}
+              className="p-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-slate-100 dark:hover:bg-zinc-700 text-slate-600 dark:text-zinc-300 transition-colors cursor-pointer shadow-2xs"
+              title="Scroll table right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          ref={tableContainerRef}
+          onWheel={handleTableWheel}
+          onMouseDown={handleTableMouseDown}
+          className="overflow-x-auto table-scrollbar w-full cursor-grab active:cursor-grabbing pb-1 select-none"
+        >
+          <table className="w-full min-w-[1020px] text-left text-xs border-collapse">
             <thead>
               <tr className="bg-slate-100/80 dark:bg-white/[0.04] border-b border-slate-200 dark:border-white/[0.12] text-slate-900 dark:text-white uppercase tracking-wider text-xs font-bold font-sans whitespace-nowrap select-none">
-                <th className="py-4 px-5 min-w-[260px]">Employee</th>
-                <th className="py-4 px-4 min-w-[210px]">Manager Appraisal</th>
-                <th className="py-4 px-4 min-w-[230px]">Evaluation Evidence</th>
-                <th className="py-4 px-4 min-w-[250px]">Calibrated Outcome</th>
-                <th className="py-4 px-4 min-w-[200px]">Admin Permission Gate</th>
-                <th className="py-4 px-5 min-w-[230px] text-right">Actions</th>
+                <th className="py-3.5 px-4 min-w-[200px]">Employee</th>
+                <th className="py-3.5 px-3 min-w-[170px]">Manager Appraisal</th>
+                <th className="py-3.5 px-3 min-w-[170px]">Evaluation Evidence</th>
+                <th className="py-3.5 px-3 min-w-[180px]">Calibrated Outcome</th>
+                <th className="py-3.5 px-3 min-w-[170px]">Admin Permission Gate</th>
+                <th className="py-3.5 px-4 min-w-[180px] text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] text-slate-800 dark:text-zinc-200">
               {loading ? (
-                <tr>
-                  <td colSpan={6} className="text-center py-12 text-slate-400 dark:text-zinc-400 font-sans">
-                    Loading calibration roster...
-                  </td>
-                </tr>
+                <LoadingState message="Loading calibration committee roster..." variant="table" colSpan={6} />
               ) : filteredItems.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center py-12 text-slate-400 dark:text-zinc-400 font-sans">
@@ -773,28 +875,86 @@ export const AdminCalibration: React.FC = () => {
             : ''
         }
         maxWidth="2xl"
+        footer={
+          selectedItem ? (
+            activeTab === 'calibrate' ? (
+              <div className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowReviewModal(false)}
+                  className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-xs font-medium"
+                >
+                  Close
+                </button>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <button
+                    type="submit"
+                    form="calibration-form"
+                    disabled={isProcessing}
+                    className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-medium cursor-pointer transition-colors"
+                  >
+                    {isProcessing ? 'Saving...' : 'Save Draft Only'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleApproveAndPermit}
+                    disabled={isProcessing}
+                    className="h-9 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-2 transition-colors"
+                  >
+                    <ShieldCheck className="w-4 h-4 opacity-80" />
+                    <span>{isProcessing ? 'Granting...' : 'Approve & Grant Permission to Next Step'}</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => openEvidencePdf(selectedItem)}
+                  className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" />
+                  <span>View Primary Evidence in Full Viewer</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('calibrate')}
+                  className="h-9 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-2 transition-colors"
+                >
+                  <span>Proceed to Calibration & Permission Gate</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            )
+          ) : null
+        }
       >
         {selectedItem && (
           <div className="space-y-5">
-            {/* Review Cycle & Governance Banner */}
-            <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 sm:p-3.5 rounded-xl bg-slate-100/90 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs font-sans">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-zinc-400">
-                  Review Cycle
-                </span>
-                <span className="font-bold text-slate-900 dark:text-white">
-                  {selectedItem.cycleName || activeCycle.name}
-                </span>
+            {/* Sticky Header Tabs & Governance Bar */}
+            <div className="sticky -top-4 sm:-top-6 z-20 bg-white dark:bg-[#18181b] pt-0 pb-3 -mt-1 -mx-4 sm:-mx-6 px-4 sm:px-6 border-b border-slate-100 dark:border-zinc-800 space-y-3">
+              {/* Review Cycle & Governance Banner */}
+              <div className="flex flex-wrap items-center justify-between gap-2.5 p-3 sm:p-3.5 rounded-xl bg-slate-100/90 dark:bg-white/[0.04] border border-slate-200 dark:border-white/10 text-xs font-sans">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] uppercase font-bold tracking-wider text-slate-500 dark:text-zinc-400">
+                    Review Cycle
+                  </span>
+                  <span className="font-bold text-slate-900 dark:text-white">
+                    {selectedItem.cycleName || activeCycle.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-zinc-400">
+                  <span className="font-medium text-slate-800 dark:text-zinc-200">{selectedItem.employee.department}</span>
+                  <span>•</span>
+                  <span>Code #{selectedItem.employee.employeeCode || 'EMP-001'}</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2 text-[11px] text-slate-600 dark:text-zinc-400">
-                <span className="font-medium text-slate-800 dark:text-zinc-200">{selectedItem.employee.department}</span>
-                <span>•</span>
-                <span>Code #{selectedItem.employee.employeeCode || 'EMP-001'}</span>
-              </div>
-            </div>
 
-            {/* Top Navigation Tabs */}
-            <div className="flex items-center justify-between border-b border-slate-200 dark:border-white/10 pb-3">
+              {/* Top Navigation Tabs */}
+              <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <button
                   type="button"
@@ -833,11 +993,12 @@ export const AdminCalibration: React.FC = () => {
                   <span>Pending Admin Release</span>
                 </span>
               )}
+              </div>
             </div>
 
             {/* TAB 1: Evaluation Dossier & Evidence PDF */}
             {activeTab === 'dossier' && (
-              <div className="space-y-5 max-h-[65vh] overflow-y-auto no-scrollbar pr-1">
+              <div className="space-y-5">
                 {/* 1. All Performance Goals & Attached Evidence */}
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
@@ -1185,32 +1346,12 @@ export const AdminCalibration: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Bottom Action inside Tab 1 */}
-                <div className="pt-2 flex items-center justify-between">
-                  <button
-                    type="button"
-                    onClick={() => openEvidencePdf(selectedItem)}
-                    className="inline-flex items-center gap-1.5 text-xs font-sans font-medium text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
-                  >
-                    <Eye className="w-3.5 h-3.5" />
-                    <span>View Primary Evidence in Full Viewer</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setActiveTab('calibrate')}
-                    className="h-9 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-2 transition-colors"
-                  >
-                    <span>Proceed to Calibration & Permission Gate</span>
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
-                </div>
               </div>
             )}
 
             {/* TAB 2: Calibration & Permission Gate */}
             {activeTab === 'calibrate' && (
-              <form onSubmit={handleSaveDraft} className="space-y-5 text-xs font-sans">
+              <form id="calibration-form" onSubmit={handleSaveDraft} className="space-y-5 text-xs font-sans">
                 {/* Contextual Appraisal and Evidence Briefing */}
                 <div className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-900/70 border border-slate-200 dark:border-zinc-800 space-y-3">
                   <div className="flex items-center justify-between">
@@ -1330,36 +1471,6 @@ export const AdminCalibration: React.FC = () => {
                   </div>
                 )}
 
-                {/* Admin Actions Footer */}
-                <div className="pt-4 border-t border-slate-200 dark:border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setShowReviewModal(false)}
-                    className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-zinc-800 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors cursor-pointer text-xs font-medium"
-                  >
-                    Close
-                  </button>
-
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                      type="submit"
-                      disabled={isProcessing}
-                      className="px-3.5 py-2 rounded-lg border border-slate-200 dark:border-zinc-800 bg-slate-100 dark:bg-zinc-800 hover:bg-slate-200 dark:hover:bg-zinc-700 text-slate-800 dark:text-zinc-200 text-xs font-medium cursor-pointer transition-colors"
-                    >
-                      {isProcessing ? 'Saving...' : 'Save Draft Only'}
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleApproveAndPermit}
-                      disabled={isProcessing}
-                      className="h-9 px-4 rounded-lg bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-2 transition-colors"
-                    >
-                      <ShieldCheck className="w-4 h-4 opacity-80" />
-                      <span>{isProcessing ? 'Granting...' : 'Approve & Grant Permission to Next Step'}</span>
-                    </button>
-                  </div>
-                </div>
               </form>
             )}
           </div>

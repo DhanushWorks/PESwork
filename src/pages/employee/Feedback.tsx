@@ -6,6 +6,7 @@ import { feedbackService } from '../../services'
 import { FeedbackItem, User } from '../../types'
 import { Modal } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { CustomDropdown } from '../../components/ui/CustomDropdown'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { formatDate } from '../../lib/formatters'
@@ -92,13 +93,30 @@ export const EmployeeFeedback: React.FC = () => {
 
   const fetchFeedback = async () => {
     setLoading(true)
-    const data = await feedbackService.listForUser(currentUser.id)
-    setFeedback(data)
-    setLoading(false)
+    try {
+      const data = await feedbackService.listForUser(currentUser.id)
+      setFeedback(data)
+    } catch (err) {
+      console.warn('Notice loading feedback:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => {
-    fetchFeedback()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchFeedback().finally(() => {
+      clearTimeout(safetyTimer)
+    })
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
   }, [currentUser.id])
 
   useEffect(() => {
@@ -207,7 +225,7 @@ export const EmployeeFeedback: React.FC = () => {
 
       {/* Content */}
       {loading ? (
-        <div className="p-12 text-center text-xs text-slate-400 font-sans">Loading feedback...</div>
+        <LoadingState message="Loading peer recognition..." variant="card" />
       ) : items.length === 0 ? (
         <EmptyState
           title={activeTab === 'received' ? 'No feedback received yet' : 'No feedback sent yet'}
@@ -547,8 +565,27 @@ export const EmployeeFeedback: React.FC = () => {
         title="Share Peer Feedback"
         subtitle="Feedback promotes high performance, psychological safety, and growth"
         maxWidth="md"
+        onSubmit={handleSendFeedback}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowModal(false)}
+              className="px-3.5 py-2 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-xs font-medium cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isSending}
+              className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors shadow-xs text-xs cursor-pointer disabled:opacity-60"
+            >
+              {isSending ? 'Sending...' : 'Send Feedback'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleSendFeedback} className="space-y-3.5 text-xs">
+        <div className="space-y-3.5 text-xs font-sans">
           <div>
             <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Colleague *</label>
             <CustomDropdown
@@ -605,27 +642,10 @@ export const EmployeeFeedback: React.FC = () => {
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               placeholder="Be specific: describe what they did, how it helped the team, and what to keep doing..."
-              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-xs"
+              className="w-full p-2.5 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-zinc-800 text-slate-900 dark:text-zinc-100 placeholder:text-slate-400 dark:placeholder:text-zinc-500 text-xs font-sans"
             />
           </div>
-
-          <div className="pt-2.5 border-t border-slate-100 dark:border-zinc-800 flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowModal(false)}
-              className="px-3.5 py-1.5 rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors text-xs"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isSending}
-              className="px-4 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-semibold transition-colors shadow-xs text-xs"
-            >
-              {isSending ? 'Sending...' : 'Send Feedback'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
 
       {/* Selected Feedback Card Page / Executive Presentation Modal */}
@@ -642,6 +662,20 @@ export const EmployeeFeedback: React.FC = () => {
             title={isKudos ? 'Peer Recognition Certificate' : 'Constructive Growth Card'}
             subtitle={`Card #${selectedFeedback.id.toUpperCase()} • Official Performance Record`}
             maxWidth="xl"
+            footer={
+              <div className="w-full flex items-center justify-between">
+                <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-sans">
+                  PerformIQ Recognition Network • Verified Feedback Record
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setSelectedFeedback(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:hover:bg-slate-100 text-white dark:text-slate-900 font-medium text-xs transition-colors shadow-xs cursor-pointer"
+                >
+                  Close Card
+                </button>
+              </div>
+            }
           >
             <div className="space-y-3.5 pt-0.5">
               {/* Luxury Certificate Card Container */}
@@ -837,20 +871,6 @@ export const EmployeeFeedback: React.FC = () => {
                     )}
                   </button>
                 </div>
-              </div>
-
-              {/* Bottom Actions */}
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] text-slate-400 dark:text-zinc-500">
-                  PerformIQ Recognition Network • Verified Feedback Record
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setSelectedFeedback(null)}
-                  className="px-4 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-white font-medium text-xs transition-colors shadow-xs cursor-pointer"
-                >
-                  Close Card
-                </button>
               </div>
             </div>
           </Modal>

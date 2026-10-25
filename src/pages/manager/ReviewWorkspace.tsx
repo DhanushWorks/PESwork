@@ -7,6 +7,7 @@ import {
   goalService,
   reviewService,
   feedbackService,
+  storageService,
 } from '../../services'
 import { Goal, ManagerReview, SelfReview, User, FeedbackItem } from '../../types'
 import { RatingInput } from '../../components/ui/RatingInput'
@@ -14,6 +15,7 @@ import { ScorePreviewCard } from '../../components/ui/ScorePreviewCard'
 import { ProgressBar } from '../../components/ui/MetricCard'
 import { GoalStatusBadge, RatingBadge } from '../../components/ui/Badge'
 import { ConfirmDialog } from '../../components/ui/Modal'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate, formatDateTime } from '../../lib/formatters'
 import {
   ArrowLeft,
@@ -82,7 +84,10 @@ export const ManagerReviewWorkspace: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!employeeId) return
+      if (!employeeId) {
+        setLoading(false)
+        return
+      }
       setLoading(true)
       try {
         const [emp, gList, sr, mr, fb] = await Promise.all([
@@ -182,9 +187,18 @@ export const ManagerReviewWorkspace: React.FC = () => {
   }
 
   const isSubmitted = existingReview?.status === 'submitted'
+  const appState = storageService.getState()
+  const calRecord = appState.calibrations?.find(
+    (c) => c.employeeId === employeeId && c.cycleId === activeCycle.id
+  )
+  const evalResult = appState.results?.find(
+    (r) => r.employeeId === employeeId && r.cycleId === activeCycle.id
+  )
+  const isReleased = Boolean(evalResult || calRecord?.adminApproved)
+  const officialScore = evalResult?.compositeScore ?? calRecord?.adjustedScore ?? existingReview?.compositeScore
 
   if (loading) {
-    return <div className="p-12 text-center text-xs text-slate-400">Loading review workspace...</div>
+    return <LoadingState message="Loading review workspace..." variant="page" />
   }
 
   if (!employee) {
@@ -223,7 +237,11 @@ export const ManagerReviewWorkspace: React.FC = () => {
                 <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
                   {employee.name}
                 </h1>
-                {isSubmitted ? (
+                {isReleased ? (
+                  <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border dark:border-emerald-800/50 flex items-center gap-1 font-sans">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-current" /> Official Results Released
+                  </span>
+                ) : isSubmitted ? (
                   <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border-indigo-200/90 dark:text-[#B7B1FF] dark:bg-[#8B7CFF]/15 px-2.5 py-0.5 rounded-full border dark:border-[#8B7CFF]/30 flex items-center gap-1 font-sans">
                     <FileCheck className="w-3.5 h-3.5" /> Evaluation Submitted
                   </span>
@@ -271,7 +289,24 @@ export const ManagerReviewWorkspace: React.FC = () => {
         </div>
       </div>
 
-      {isSubmitted && (
+      {isReleased && existingReview ? (
+        <div className="p-4 rounded-2xl dark-glass-card border border-emerald-200/90 dark:border-emerald-500/30 bg-emerald-50/60 dark:bg-emerald-950/20 text-xs text-slate-900 dark:text-[#F0F3FA] flex items-start gap-3">
+          <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-bold text-emerald-900 dark:text-emerald-300">
+              Admin Permission Granted & Results Released ({officialScore?.toFixed(2)} – {evalResult?.finalRatingLabel || 'Official Calibrated Rating'})
+            </p>
+            <p className="text-slate-700 dark:text-zinc-200 font-medium">
+              This appraisal has been calibrated, officially approved by Admin, and published across Employee, Manager, and Admin dashboards.
+            </p>
+            {calRecord?.reason && (
+              <p className="text-slate-600 dark:text-zinc-400 text-[11px] italic pt-1 border-t border-emerald-200/60 dark:border-white/10">
+                Committee Note: "{calRecord.reason}"
+              </p>
+            )}
+          </div>
+        </div>
+      ) : isSubmitted ? (
         <div className="p-4 rounded-2xl dark-glass-card border border-indigo-200/90 dark:border-[#4FE3C1]/30 bg-indigo-50/50 dark:bg-transparent text-xs text-slate-900 dark:text-[#F0F3FA] flex items-start gap-3">
           <Lock className="w-5 h-5 text-indigo-600 dark:text-[#4FE3C1] flex-shrink-0 mt-0.5" />
           <div>
@@ -284,7 +319,7 @@ export const ManagerReviewWorkspace: React.FC = () => {
             </p>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* 2-Column Desktop Layout / Stacked Mobile Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">

@@ -53,29 +53,44 @@ export type DemoState = {
   notifications: Notification[]
 }
 
-const STORAGE_KEY = 'performiq_presentation_demo_v2'
+const STORAGE_KEY = 'performiq_clean_workflow_v1'
 
 export function getCleanState(): DemoState {
   return {
     dataMode: 'clean',
     users: [...SEED_USERS],
-    cycles: [...SEED_CYCLES],
-    activeCycleId: SEED_CYCLES[0]?.id || 'cycle-2026-h1',
+    cycles: [],
+    activeCycleId: '',
     currentUserId: 'u-emp-1', // Default to Alex Rivera (Employee)
-    goals: [...SEED_GOALS],
-    selfReviews: [...SEED_SELF_REVIEWS],
-    managerReviews: [...SEED_MANAGER_REVIEWS],
-    calibrations: [...SEED_CALIBRATIONS],
-    results: [...SEED_RESULTS],
-    feedback: [...SEED_FEEDBACK],
-    developmentPlans: { ...SEED_DEVELOPMENT_PLANS },
-    auditLogs: [...SEED_AUDIT_LOGS],
-    notifications: [...SEED_NOTIFICATIONS],
+    goals: [],
+    selfReviews: [],
+    managerReviews: [],
+    calibrations: [],
+    results: [],
+    feedback: [],
+    developmentPlans: {},
+    auditLogs: [],
+    notifications: [],
   }
 }
 
 export function getFullState(): DemoState {
-  return getCleanState()
+  return {
+    dataMode: 'full',
+    users: [...FULL_SEED_USERS],
+    cycles: [...FULL_SEED_CYCLES],
+    activeCycleId: FULL_SEED_CYCLES[0]?.id || '',
+    currentUserId: 'u-emp-1',
+    goals: [...FULL_SEED_GOALS],
+    selfReviews: [...FULL_SEED_SELF_REVIEWS],
+    managerReviews: [...FULL_SEED_MANAGER_REVIEWS],
+    calibrations: [...FULL_SEED_CALIBRATIONS],
+    results: [...FULL_SEED_RESULTS],
+    feedback: [...FULL_SEED_FEEDBACK],
+    developmentPlans: { ...FULL_SEED_DEVELOPMENT_PLANS },
+    auditLogs: [...FULL_SEED_AUDIT_LOGS],
+    notifications: [...FULL_SEED_NOTIFICATIONS],
+  }
 }
 
 class StorageService {
@@ -95,16 +110,81 @@ class StorageService {
         localStorage.removeItem('performiq_demo_state_v4')
         localStorage.removeItem('performiq_demo_state_v5')
         localStorage.removeItem('performiq_demo_state_v6')
+        localStorage.removeItem('performiq_presentation_demo_v1')
+        localStorage.removeItem('performiq_presentation_demo_v2')
+        localStorage.removeItem('performiq_presentation_demo_v3')
+        localStorage.removeItem('performiq_presentation_demo_v4')
         localStorage.removeItem('performiq_1on1_checkins_v1')
         localStorage.removeItem('performiq_1on1_checkins_v2')
+        localStorage.removeItem('performiq_1on1_checkins_v3')
       }
       const stored = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) : null
       if (stored) {
         const parsed = JSON.parse(stored) as DemoState
-        return {
+
+        // Sanitize users: purge any spurious custom employee accounts created for demo personas
+        const rawUsers = parsed.users && parsed.users.length > 0 ? parsed.users : [...SEED_USERS]
+        const sanitizedUsers: User[] = rawUsers
+          .filter((u: User) => {
+            // Remove spurious custom employee entries created for Eleanor Vance
+            if (
+              u.id.startsWith('u-custom-') &&
+              (u.email?.toLowerCase().includes('eleanor') ||
+                u.name?.toLowerCase().includes('eleanor') ||
+                u.email?.toLowerCase() === 'admin@performiq.internal')
+            ) {
+              return false
+            }
+            return true
+          })
+          .map((u: User) => {
+            // Guarantee Eleanor Vance is strictly Admin
+            if (
+              u.id === 'u-admin' ||
+              u.id === '11111111-1111-1111-1111-111111111103' ||
+              u.email?.toLowerCase() === 'eleanor.vance@performiq.internal' ||
+              u.email?.toLowerCase() === 'admin@performiq.internal' ||
+              u.name === 'Eleanor Vance'
+            ) {
+              return {
+                ...u,
+                id: u.id || 'u-admin',
+                name: 'Eleanor Vance',
+                email: 'eleanor.vance@performiq.internal',
+                role: 'admin' as const,
+              }
+            }
+            // Guarantee Marcus Chen is strictly Manager
+            if (
+              u.id === 'u-mgr-1' ||
+              u.id === '11111111-1111-1111-1111-111111111102' ||
+              u.email?.toLowerCase() === 'marcus.chen@performiq.internal' ||
+              u.name === 'Marcus Chen'
+            ) {
+              return {
+                ...u,
+                role: 'manager' as const,
+              }
+            }
+            return u
+          })
+
+        // Ensure baseline admin Eleanor Vance always exists
+        if (!sanitizedUsers.some((u) => u.id === 'u-admin' || u.id === '11111111-1111-1111-1111-111111111103')) {
+          const defaultAdmin = SEED_USERS.find((u) => u.id === 'u-admin')
+          if (defaultAdmin) sanitizedUsers.unshift(defaultAdmin)
+        }
+
+        let currentUserId = parsed.currentUserId
+        if (!sanitizedUsers.some((u) => u.id === currentUserId)) {
+          currentUserId = sanitizedUsers[0]?.id || 'u-admin'
+        }
+
+        const state: DemoState = {
           ...getCleanState(),
           ...parsed,
-          users: (parsed.users && parsed.users.length > 0) ? parsed.users : [...SEED_USERS],
+          currentUserId,
+          users: sanitizedUsers,
           cycles: Array.isArray(parsed.cycles) ? parsed.cycles : [...SEED_CYCLES],
           goals: Array.isArray(parsed.goals) ? parsed.goals : [...SEED_GOALS],
           selfReviews: Array.isArray(parsed.selfReviews) ? parsed.selfReviews : [...SEED_SELF_REVIEWS],
@@ -115,6 +195,19 @@ class StorageService {
           auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [...SEED_AUDIT_LOGS],
           notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [...SEED_NOTIFICATIONS],
         }
+
+        // Auto-heal: If cycle has approved calibrations & released results, ensure stage is 'released'
+        if (state.calibrations.some((c) => c.adminApproved) && state.results.length > 0) {
+          state.cycles = state.cycles.map((c) => {
+            if (state.calibrations.some((cal) => cal.cycleId === c.id && cal.adminApproved)) {
+              return { ...c, stage: 'released' }
+            }
+            return c
+          })
+        }
+
+        this.persist(state)
+        return state
       }
     } catch {
       // LocalStorage unavailable

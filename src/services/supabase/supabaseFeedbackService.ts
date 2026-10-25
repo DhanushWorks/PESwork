@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { FeedbackItem } from '../../types'
 import { feedbackService as mockFeedbackService } from '../mock/feedbackService'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
@@ -23,7 +23,7 @@ export const supabaseFeedbackService = {
    * List feedback items received and sent by a user
    */
   async listForUser(userId: string): Promise<{ received: FeedbackItem[]; sent: FeedbackItem[] }> {
-    if (!isSupabaseConfigured) return mockFeedbackService.listForUser(userId)
+    if (!isSupabaseReady()) return mockFeedbackService.listForUser(userId)
 
     try {
       const [recRes, sentRes] = await Promise.all([
@@ -64,6 +64,7 @@ export const supabaseFeedbackService = {
 
       return { received, sent }
     } catch (err) {
+      markSupabaseOffline(err)
       console.warn('Notice in supabaseFeedbackService.listForUser:', err)
       return mockFeedbackService.listForUser(userId)
     }

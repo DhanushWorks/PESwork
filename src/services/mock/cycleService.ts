@@ -1,6 +1,6 @@
 import { CycleStage, ReviewCycle, User } from '../../types'
 import { STAGE_ORDER } from '../../lib/formatters'
-import { matchesCycle } from '../../lib/workflow'
+import { matchesCycle, matchesUser } from '../../lib/workflow'
 import { storageService } from './storageService'
 
 export const cycleService = {
@@ -40,7 +40,7 @@ export const cycleService = {
     let updatedCycle: ReviewCycle | null = null
     storageService.updateState((state) => {
       const cycles = state.cycles.map((c) => {
-        if (c.id === cycleId) {
+        if (c.id === cycleId || matchesCycle(c.id, cycleId)) {
           updatedCycle = { ...c, stage: nextStage }
           return updatedCycle
         }
@@ -65,14 +65,14 @@ export const cycleService = {
       }
     })
 
-    return updatedCycle!
+    return updatedCycle || { ...cycle, stage: nextStage }
   },
 
   async setStage(cycleId: string, stage: CycleStage): Promise<ReviewCycle> {
     let updatedCycle: ReviewCycle | null = null
     storageService.updateState((state) => {
       const cycles = state.cycles.map((c) => {
-        if (c.id === cycleId) {
+        if (c.id === cycleId || matchesCycle(c.id, cycleId)) {
           updatedCycle = { ...c, stage }
           return updatedCycle
         }
@@ -80,7 +80,7 @@ export const cycleService = {
       })
       return { cycles }
     })
-    return updatedCycle!
+    return updatedCycle || (await this.getById(cycleId))!
   },
 
   /**
@@ -134,11 +134,15 @@ export const cycleService = {
 
     const { users } = storageService.getState()
     if (cycle.participantIds !== undefined && Array.isArray(cycle.participantIds)) {
-      return users.filter((u) => cycle.participantIds!.includes(u.id))
+      return users
+        .filter((u) => u.role !== 'admin')
+        .filter((u) =>
+          cycle.participantIds!.some((pId) => u.id === pId || matchesUser(u.id, pId))
+        )
     }
 
-    // Legacy fallback only if field is strictly undefined
-    return [...users]
+    // Legacy fallback only if field is strictly undefined (exclude admins)
+    return users.filter((u) => u.role !== 'admin')
   },
 
   /**
@@ -191,7 +195,9 @@ export const cycleService = {
       ? cycle.participantIds
       : users.map((u) => u.id)
 
-    const updatedParticipantIds = currentParticipantIds.filter((id) => id !== userId)
+    const updatedParticipantIds = currentParticipantIds.filter(
+      (id) => id !== userId && !matchesUser(id, userId)
+    )
 
     let updatedCycle: ReviewCycle = {
       ...cycle,
@@ -265,7 +271,7 @@ export const cycleService = {
       ? cycle.participantIds
       : users.map((u) => u.id)
 
-    if (currentParticipantIds.includes(userId)) {
+    if (currentParticipantIds.some((pId) => pId === userId || matchesUser(pId, userId))) {
       return cycle
     }
 
@@ -310,7 +316,9 @@ export const cycleService = {
       ? cycle.participantIds
       : users.map((u) => u.id)
 
-    const uniqueNewIds = userIds.filter((id) => !currentParticipantIds.includes(id))
+    const uniqueNewIds = userIds.filter(
+      (id) => !currentParticipantIds.some((pId) => pId === id || matchesUser(pId, id))
+    )
     if (uniqueNewIds.length === 0) {
       return cycle
     }

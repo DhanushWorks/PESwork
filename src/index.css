@@ -118,6 +118,31 @@ pre {
   button {
     font-family: inherit;
   }
+  /* Universal Number Input: Hide native up/down stepper spin buttons across all browsers */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button,
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+  }
+
+  .no-spinner::-webkit-outer-spin-button,
+  .no-spinner::-webkit-inner-spin-button {
+    -webkit-appearance: none !important;
+    margin: 0 !important;
+  }
+
+  .no-spinner {
+    -moz-appearance: textfield !important;
+    appearance: textfield !important;
+  }
+
 
   h1 {
     font-weight: 800;
@@ -649,26 +674,48 @@ pre {
 
   /* Range Slider Track & Thumb High-Contrast Styling */
   input[type="range"] {
-    accent-color: #4f46e5;
-    background-color: #e2e8f0;
+    accent-color: #0f172a;
+    -webkit-appearance: none;
+    appearance: none;
+    background: transparent;
     cursor: pointer;
   }
 
-  html.dark input[type="range"] {
-    accent-color: #6366f1;
-    background-color: #27272a !important;
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 10px;
+    border-radius: 9999px;
+    background-color: #cbd5e1;
+    border: 1.5px solid #94a3b8;
+  }
+
+  html.dark input[type="range"]::-webkit-slider-runnable-track {
+    background-color: #27272a;
+    border: 1.5px solid #52525b;
+  }
+
+  input[type="range"]::-moz-range-track {
+    height: 10px;
+    border-radius: 9999px;
+    background-color: #cbd5e1;
+    border: 1.5px solid #94a3b8;
+  }
+
+  html.dark input[type="range"]::-moz-range-track {
+    background-color: #27272a;
+    border: 1.5px solid #52525b;
   }
 
   input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
-    background-color: #4f46e5;
-    border: 2px solid #ffffff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+    background-color: #0f172a;
+    border: 2.5px solid #ffffff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
     cursor: pointer;
+    margin-top: -5px;
     transition: transform 0.15s ease, background-color 0.15s ease;
   }
 
@@ -677,8 +724,8 @@ pre {
   }
 
   html.dark input[type="range"]::-webkit-slider-thumb {
-    background-color: #6366f1;
-    border: 2px solid #18181b;
+    background-color: #ffffff;
+    border: 2.5px solid #18181b;
   }
 
   /* Accessible high-contrast placeholders */
@@ -1154,6 +1201,17 @@ input[type="range"].rating-slider {
   transition: all 0.15s ease;
 }
 
+
+/* Fallback track if rating-slider is rendered without an absolute underlay sibling */
+input[type="range"].rating-slider:only-child {
+  background-color: #cbd5e1;
+  border: 1.5px solid #94a3b8;
+}
+html.dark input[type="range"].rating-slider:only-child {
+  background-color: #27272a;
+  border: 1.5px solid #52525b;
+}
+
 input[type="range"].rating-slider:disabled {
   cursor: default;
   opacity: 1 !important;
@@ -1428,3 +1486,30 @@ html.dark .conic-border-glow::after {
 
 
 
+
+  /* Interactive table scrollbar for mouse users */
+  .table-scrollbar {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(148, 163, 184, 0.45) transparent !important;
+  }
+  .table-scrollbar::-webkit-scrollbar {
+    display: block !important;
+    height: 7px !important;
+    width: 7px !important;
+  }
+  .table-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  .table-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.45) !important;
+    border-radius: 9999px !important;
+  }
+  .table-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(100, 116, 139, 0.75) !important;
+  }
+  .dark .table-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22) !important;
+  }
+  .dark .table-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.45) !important;
+  }

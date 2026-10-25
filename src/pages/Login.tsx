@@ -2,16 +2,17 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../app/AppContext'
 import { useToast } from '../components/ui/Toast'
-import { peopleService, supabaseAuthService } from '../services'
+import { peopleService, storageService, supabaseAuthService } from '../services'
 import { isSupabaseConfigured, isSupabaseOnline } from '../lib/supabase'
-import { Role } from '../types'
+import { Role, User } from '../types'
+import { SEED_USERS } from '../data/seedData'
 import {
   AlertCircle,
   Eye,
   EyeOff,
   Shield,
   Users,
-  User,
+  User as UserIcon,
   ChevronDown,
   Check,
   Code2,
@@ -24,6 +25,83 @@ import {
 
 interface LoginProps {
   initialMode?: 'signin' | 'signup'
+}
+
+const normalizeText = (s?: string) => (s || '').trim().toLowerCase()
+
+export function resolvePersonaUser(identifier: string, availableUsers: User[]): User | undefined {
+  const target = normalizeText(identifier)
+  if (!target) return undefined
+
+  // 1. Direct email match
+  let found = availableUsers.find((u) => normalizeText(u.email) === target)
+  if (found) return found
+
+  // 2. Admin persona aliases (Eleanor Vance)
+  if (
+    target === 'eleanor.vance@performiq.internal' ||
+    target === 'admin@performiq.internal' ||
+    target === 'eleanor@performiq.internal' ||
+    target === 'admin' ||
+    target.includes('eleanor')
+  ) {
+    found =
+      availableUsers.find(
+        (u) =>
+          u.id === 'u-admin' ||
+          u.id === '11111111-1111-1111-1111-111111111103' ||
+          normalizeText(u.name).includes('eleanor') ||
+          u.role === 'admin'
+      ) || SEED_USERS.find((u) => u.id === 'u-admin')
+
+    if (found) return { ...found, role: 'admin' as const }
+  }
+
+  // 3. Manager persona aliases (Marcus Chen)
+  if (
+    target === 'marcus.chen@performiq.internal' ||
+    target === 'marcus@performiq.internal' ||
+    target === 'manager' ||
+    target.includes('marcus')
+  ) {
+    found =
+      availableUsers.find(
+        (u) =>
+          u.id === 'u-mgr-1' ||
+          u.id === '11111111-1111-1111-1111-111111111102' ||
+          (u.role === 'manager' && normalizeText(u.name).includes('marcus'))
+      ) || SEED_USERS.find((u) => u.id === 'u-mgr-1')
+
+    if (found) return { ...found, role: 'manager' as const }
+  }
+
+  // 4. Employee persona aliases (Alex Rivera)
+  if (
+    target === 'alex.rivera@performiq.internal' ||
+    target === 'alex@performiq.internal' ||
+    target === 'employee' ||
+    target.includes('alex')
+  ) {
+    found =
+      availableUsers.find(
+        (u) =>
+          u.id === 'u-emp-1' ||
+          u.id === '11111111-1111-1111-1111-111111111101' ||
+          (u.role === 'employee' && normalizeText(u.name).includes('alex'))
+      ) || SEED_USERS.find((u) => u.id === 'u-emp-1')
+
+    if (found) return { ...found, role: 'employee' as const }
+  }
+
+  // 5. Match by role name directly ('admin', 'manager', 'employee')
+  found = availableUsers.find((u) => normalizeText(u.role) === target)
+  if (found) return found
+
+  // 6. Match by user's full name
+  found = availableUsers.find((u) => normalizeText(u.name) === target || normalizeText(u.name).includes(target))
+  if (found) return found
+
+  return undefined
 }
 
 const DEPARTMENTS = [
@@ -41,7 +119,7 @@ const ROLES: { id: Role; label: string; desc: string; icon: any }[] = [
     id: 'employee',
     label: 'Employee',
     desc: 'Individual Contributor',
-    icon: User,
+    icon: UserIcon,
   },
   {
     id: 'manager',
@@ -196,46 +274,61 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       }
 
       // 2. Local / Persona authentication & Auto-Provisioning fallback
-      let matchedUser = allUsers.find((u) => u.email.toLowerCase() === normalized)
+      let userPool = allUsers && allUsers.length > 0 ? allUsers : []
+      if (userPool.length === 0) {
+        try {
+          userPool = await peopleService.list()
+        } catch {
+          userPool = storageService.getState().users
+        }
+      }
+
+      let matchedUser =
+        resolvePersonaUser(normalized, userPool) ||
+        resolvePersonaUser(normalized, storageService.getState().users) ||
+        resolvePersonaUser(normalized, SEED_USERS)
 
       if (!matchedUser) {
-        // Check for role or exact name match
-        const roleOrNameMatch =
-          allUsers.find((u) => u.role.toLowerCase() === normalized) ||
-          allUsers.find((u) => u.name.toLowerCase() === normalized)
+        // Auto-provision user account seamlessly with their custom email
+        const rawUsername = normalized.split('@')[0]
+        const formattedName =
+          rawUsername
+            .replace(/[._-]+/g, ' ')
+            .replace(/\b\w/g, (char) => char.toUpperCase()) || 'User'
 
-        if (roleOrNameMatch) {
-          matchedUser = roleOrNameMatch
-          success('Welcome back!', `Logged into PerformIQ as ${matchedUser.name}`)
-        } else {
-          // Auto-provision user account seamlessly with their custom email
-          const rawUsername = normalized.split('@')[0]
-          const formattedName =
-            rawUsername
-              .replace(/[._-]+/g, ' ')
-              .replace(/\b\w/g, (char) => char.toUpperCase()) || 'User'
+        const assignedRole: Role = normalized.includes('admin')
+          ? 'admin'
+          : normalized.includes('manager')
+          ? 'manager'
+          : 'employee'
 
-          const newUser = await peopleService.create({
-            name: formattedName,
-            email: normalized,
-            role: 'employee',
-            department: 'Engineering',
-            designation: 'Software Engineer',
-            active: true,
-            employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
-            joinedDate: new Date().toISOString().split('T')[0],
-            avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-          })
+        const newUser = await peopleService.create({
+          name: formattedName,
+          email: normalized,
+          role: assignedRole,
+          department: assignedRole === 'admin' ? 'People Operations' : 'Engineering',
+          designation:
+            assignedRole === 'admin'
+              ? 'People Operations Specialist'
+              : assignedRole === 'manager'
+              ? 'Engineering Team Lead'
+              : 'Software Engineer',
+          active: true,
+          employeeCode: `EMP-${Math.floor(100 + Math.random() * 900)}`,
+          joinedDate: new Date().toISOString().split('T')[0],
+          avatar:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        })
 
-          await refreshData()
-          matchedUser = newUser
-          success('Welcome to PerformIQ!', `Logged in as ${matchedUser.name}`)
-        }
+        await refreshData()
+        matchedUser = newUser
+        success('Welcome to PerformIQ!', `Logged in as ${matchedUser.name} (${matchedUser.role})`)
       } else {
-        success('Welcome back!', `Logged into PerformIQ as ${matchedUser.name}`)
+        success('Welcome back!', `Logged into PerformIQ as ${matchedUser.name} (${matchedUser.role})`)
       }
 
       await switchUser(matchedUser.id)
+      await refreshData()
       navigate(`/${matchedUser.role}`)
     } catch (err: any) {
       error('Sign in failed', err.message || 'Please check your credentials.')
@@ -362,11 +455,35 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
     setErrors({})
     setEmail(userEmail)
     setPassword('••••••••')
-    const matched = allUsers.find((u) => u.email.toLowerCase() === userEmail.toLowerCase())
-    if (matched) {
-      await switchUser(matched.id)
-      success('Session initialized', `Logged in as ${matched.name} (${matched.role})`)
-      navigate(`/${matched.role}`)
+    setIsLoading(true)
+
+    try {
+      let userPool = allUsers && allUsers.length > 0 ? allUsers : []
+      if (userPool.length === 0) {
+        try {
+          userPool = await peopleService.list()
+        } catch {
+          userPool = storageService.getState().users
+        }
+      }
+
+      const matched =
+        resolvePersonaUser(userEmail, userPool) ||
+        resolvePersonaUser(userEmail, storageService.getState().users) ||
+        resolvePersonaUser(userEmail, SEED_USERS)
+
+      if (matched) {
+        await switchUser(matched.id)
+        await refreshData()
+        success('Session initialized', `Logged in as ${matched.name} (${matched.role})`)
+        navigate(`/${matched.role}`)
+      } else {
+        error('Login failed', `Persona account for ${userEmail} not found.`)
+      }
+    } catch (err: any) {
+      error('Sign in failed', err?.message || 'Unable to log in.')
+    } finally {
+      setIsLoading(false)
     }
   }
 

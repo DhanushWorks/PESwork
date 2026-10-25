@@ -4,6 +4,7 @@ import { useToast } from '../../components/ui/Toast'
 import { reviewService } from '../../services'
 import { SelfReview } from '../../types'
 import { RatingInput } from '../../components/ui/RatingInput'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { getRatingBand } from '../../lib/scoring'
 import { ConfirmDialog } from '../../components/ui/Modal'
 import { formatDateTime, formatDate } from '../../lib/formatters'
@@ -50,37 +51,62 @@ export const EmployeeSelfReview: React.FC = () => {
   const [valueRatings, setValueRatings] = useState<Record<string, { rating: number; comment: string }>>({})
 
   useEffect(() => {
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
     const fetchSelfReview = async () => {
       setLoading(true)
-      const data = await reviewService.getSelfReview(currentUser.id, activeCycle.id)
-      if (data) {
-        setSelfReview(data)
-        setOverallRating(data.overallRating || 4.0)
-        setOverallReflection(data.overallReflection || '')
-        setAchievements(data.achievements || '')
-        setChallenges(data.challenges || '')
-        setDevelopmentNeeds(data.developmentNeeds || '')
-        setCompetencyRatings(data.competencyRatings || {})
-        setValueRatings(data.valueRatings || {})
-        setSaveStatus(`Saved at ${formatDateTime(data.lastSavedAt)}`)
-      } else {
-        // Defaults
-        const compInit: Record<string, { rating: number; comment: string }> = {}
-        COMPETENCIES.forEach((c) => {
-          compInit[c.id] = { rating: 4.0, comment: '' }
-        })
-        const valInit: Record<string, { rating: number; comment: string }> = {}
-        VALUES.forEach((v) => {
-          valInit[v.id] = { rating: 4.0, comment: '' }
-        })
-        setCompetencyRatings(compInit)
-        setValueRatings(valInit)
+      try {
+        if (!currentUser?.id) {
+          if (isMounted) setLoading(false)
+          return
+        }
+
+        const data = await reviewService.getSelfReview(currentUser.id, activeCycle?.id || '')
+        if (!isMounted) return
+
+        if (data) {
+          setSelfReview(data)
+          setOverallRating(data.overallRating || 4.0)
+          setOverallReflection(data.overallReflection || '')
+          setAchievements(data.achievements || '')
+          setChallenges(data.challenges || '')
+          setDevelopmentNeeds(data.developmentNeeds || '')
+          setCompetencyRatings(data.competencyRatings || {})
+          setValueRatings(data.valueRatings || {})
+          setSaveStatus(data.lastSavedAt ? `Saved at ${formatDateTime(data.lastSavedAt)}` : '')
+        } else {
+          // Defaults
+          const compInit: Record<string, { rating: number; comment: string }> = {}
+          COMPETENCIES.forEach((c) => {
+            compInit[c.id] = { rating: 4.0, comment: '' }
+          })
+          const valInit: Record<string, { rating: number; comment: string }> = {}
+          VALUES.forEach((v) => {
+            valInit[v.id] = { rating: 4.0, comment: '' }
+          })
+          setCompetencyRatings(compInit)
+          setValueRatings(valInit)
+        }
+      } catch (err) {
+        console.warn('Error loading self-review:', err)
+      } finally {
+        if (isMounted) {
+          setLoading(false)
+          clearTimeout(safetyTimer)
+        }
       }
-      setLoading(false)
     }
 
     fetchSelfReview()
-  }, [currentUser.id, activeCycle.id])
+
+    return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
+    }
+  }, [currentUser?.id, activeCycle?.id])
 
   const handleSaveDraft = async () => {
     try {
@@ -138,7 +164,7 @@ export const EmployeeSelfReview: React.FC = () => {
   const isSubmitted = selfReview?.status === 'submitted'
 
   if (loading) {
-    return <div className="p-12 text-center text-xs text-slate-400">Loading self-review...</div>
+    return <LoadingState message="Loading self-review workspace..." variant="page" />
   }
 
   return (
@@ -415,4 +441,3 @@ export const EmployeeSelfReview: React.FC = () => {
     </div>
   )
 }
-

@@ -11,6 +11,7 @@ import { RatingBadge } from '../../components/ui/Badge'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import { Modal } from '../../components/ui/Modal'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { getManagerWorkflowState } from '../../lib/workflow'
 import { formatDate, STAGE_ORDER } from '../../lib/formatters'
 import {
@@ -36,7 +37,7 @@ import {
 } from 'lucide-react'
 
 export const ManagerDashboard: React.FC = () => {
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, refreshData } = useApp()
   const { success, error } = useToast()
   const navigate = useNavigate()
 
@@ -87,14 +88,23 @@ export const ManagerDashboard: React.FC = () => {
   }, [currentUser.id, activeCycle.id])
 
   useEffect(() => {
-    fetchData()
+    let isMounted = true
+    const safetyTimer = setTimeout(() => {
+      if (isMounted) setLoading(false)
+    }, 4500)
+
+    fetchData().finally(() => {
+      clearTimeout(safetyTimer)
+    })
 
     // Subscribe to state changes so the manager dashboard immediately synchronizes
     const unsubscribe = storageService.subscribe(() => {
-      fetchData()
+      if (isMounted) fetchData()
     })
 
     return () => {
+      isMounted = false
+      clearTimeout(safetyTimer)
       unsubscribe()
     }
   }, [fetchData])
@@ -105,6 +115,7 @@ export const ManagerDashboard: React.FC = () => {
       await goalService.decide(goalId, 'approved')
       success('Goal approved', `Approved "${goalTitle}". Target is now active.`)
       await fetchData()
+      await refreshData()
     } catch (err: any) {
       error('Approval failed', err.message || 'Could not approve goal')
     } finally {
@@ -130,6 +141,7 @@ export const ManagerDashboard: React.FC = () => {
       setSelectedGoalForReturn(null)
       setReturnReason('')
       await fetchData()
+      await refreshData()
     } catch (err: any) {
       error('Action failed', err.message || 'Could not return goal')
     } finally {
@@ -442,7 +454,7 @@ export const ManagerDashboard: React.FC = () => {
         <MetricCard
           title="Manager Reviews"
           value={`${submittedReviewsCount} / ${teamSummaries.length}`}
-          subtitle={`Due ${formatDate(activeCycle.deadlines.managerReviewDue)}`}
+          subtitle={`Due ${formatDate(activeCycle?.deadlines?.managerReviewDue)}`}
           trend={{
             value: `${Math.round((submittedReviewsCount / (teamSummaries.length || 1)) * 100)}% complete`,
             neutral: true,
@@ -514,9 +526,7 @@ export const ManagerDashboard: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="py-16 text-center text-xs text-slate-400 font-sans">
-            Loading team evaluation roster...
-          </div>
+          <LoadingState message="Loading team evaluation roster..." variant="card" />
         ) : filteredSummaries.length === 0 ? (
           <div className="py-16 text-center text-xs text-slate-500 dark:text-zinc-300 font-sans bg-slate-50/50 dark:bg-white/[0.015] rounded-2xl border border-dashed border-slate-200 dark:border-white/10">
             No team members match the selected filter.
@@ -619,7 +629,12 @@ export const ManagerDashboard: React.FC = () => {
                       {/* Column 4: Manager Appraisal Status */}
                       <td className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
-                          {isMrSubmitted ? (
+                          {summary.isReleased || summary.adminApproved ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50 font-sans">
+                              <CheckCircle2 className="w-3 h-3 text-current" />
+                              Released
+                            </span>
+                          ) : isMrSubmitted ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-sans">
                               <CheckCircle2 className="w-3 h-3 text-current" />
                               Evaluated
@@ -640,7 +655,14 @@ export const ManagerDashboard: React.FC = () => {
                       {/* Column 5: Appraisal Score */}
                       <td className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
                         {summary.compositeScore ? (
-                          <RatingBadge score={summary.compositeScore} />
+                          <div className="flex items-center gap-1.5">
+                            <RatingBadge score={summary.compositeScore} />
+                            {(summary.isReleased || summary.adminApproved) && (
+                              <span className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-950/30 px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-800/40">
+                                Official
+                              </span>
+                            )}
+                          </div>
                         ) : (
                           <span className="text-slate-400 dark:text-zinc-600 font-mono text-xs">
                             —
@@ -657,12 +679,14 @@ export const ManagerDashboard: React.FC = () => {
                             navigate(`/manager/reviews/${emp.id}`)
                           }}
                           className={
-                            isMrSubmitted
+                            summary.isReleased || summary.adminApproved
+                              ? 'inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-800 dark:text-emerald-300 hover:bg-emerald-100/50 dark:hover:bg-emerald-900/40 transition-all text-xs font-semibold cursor-pointer shadow-2xs'
+                              : isMrSubmitted
                               ? 'inline-flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/[0.04] text-slate-700 dark:text-zinc-200 hover:bg-slate-50 dark:hover:bg-white/[0.08] transition-all text-xs font-semibold cursor-pointer shadow-2xs'
                               : 'premium-glow-btn text-xs font-semibold px-3.5 py-1.5 cursor-pointer inline-flex items-center gap-1'
                           }
                         >
-                          <span>{isMrSubmitted ? 'View' : 'Evaluate'}</span>
+                          <span>{summary.isReleased || summary.adminApproved ? 'View Outcome' : isMrSubmitted ? 'View' : 'Evaluate'}</span>
                           <ArrowRight className="w-3 h-3" />
                         </button>
                       </td>
@@ -842,7 +866,7 @@ export const ManagerDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-200/80 dark:bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         goalApprovalStatus === 'completed'
@@ -896,7 +920,7 @@ export const ManagerDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-200/80 dark:bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         selfReviewStageStatus === 'completed'
@@ -950,7 +974,7 @@ export const ManagerDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-200/80 dark:bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2 overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-500 ${
                         managerReviewStageStatus === 'completed'
@@ -981,11 +1005,15 @@ export const ManagerDashboard: React.FC = () => {
 
                     <div className="flex items-center gap-2 shrink-0">
                       <span className="text-[11px] font-mono font-medium text-slate-500 dark:text-zinc-400">
-                        {isReleased ? `${resultsReleasedCount}/${totalReports} Released` : isCalibration ? 'In Calibration' : 'Pending'}
+                        {resultsReleasedCount > 0
+                          ? `${resultsReleasedCount}/${totalReports} Released`
+                          : isCalibration
+                          ? 'In Calibration'
+                          : 'Pending'}
                       </span>
-                      {calibrationStageStatus === 'completed' ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-                          Released
+                      {resultsReleasedCount > 0 ? (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-700 text-white dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-600/30">
+                          {resultsReleasedCount === totalReports ? 'Released' : 'Active'}
                         </span>
                       ) : calibrationStageStatus === 'in_progress' ? (
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-amber-50 text-amber-800 dark:bg-[#FFB454]/10 dark:text-[#FFB454] border border-amber-200 dark:border-[#FFB454]/20">
@@ -1000,10 +1028,16 @@ export const ManagerDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="w-full bg-slate-200/80 dark:bg-white/[0.08] rounded-full h-1.5 overflow-hidden">
+                  <div className="w-full bg-slate-200 dark:bg-zinc-800 border border-slate-300/80 dark:border-zinc-700 rounded-full h-2 overflow-hidden">
                     <div
-                      className="h-full rounded-full transition-all duration-500 bg-slate-900 dark:bg-white"
-                      style={{ width: `${calibrationPct}%` }}
+                      className="h-full rounded-full transition-all duration-500 bg-emerald-600 dark:bg-emerald-400"
+                      style={{
+                        width: `${
+                          totalReports > 0
+                            ? Math.round((resultsReleasedCount / totalReports) * 100)
+                            : calibrationPct
+                        }%`,
+                      }}
                     />
                   </div>
                 </div>
@@ -1355,7 +1389,7 @@ export const ManagerDashboard: React.FC = () => {
                             </span>
                           )}
                           <span>•</span>
-                          <span>Due {formatDate(activeCycle.deadlines.managerReviewDue)}</span>
+                          <span>Due {formatDate(activeCycle?.deadlines?.managerReviewDue)}</span>
                         </div>
 
                         <button
@@ -1407,8 +1441,31 @@ export const ManagerDashboard: React.FC = () => {
         }}
         title="Return Goal for Revision"
         subtitle={`Provide feedback notes for ${selectedGoalForReturn?.employee.name}`}
+        maxWidth="md"
+        onSubmit={handleConfirmReturn}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedGoalForReturn(null)
+                setReturnReason('')
+              }}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isReturning || returnReason.trim().length < 5}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+            >
+              {isReturning ? 'Returning...' : 'Return for Revision'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleConfirmReturn} className="space-y-4">
+        <div className="space-y-4 font-sans text-xs">
           <div>
             <label className="block text-xs font-semibold text-slate-700 dark:text-zinc-300 mb-1">
               Goal Commitment
@@ -1434,27 +1491,7 @@ export const ManagerDashboard: React.FC = () => {
               required
             />
           </div>
-
-          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100 dark:border-zinc-800">
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedGoalForReturn(null)
-                setReturnReason('')
-              }}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 text-xs font-medium text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isReturning || returnReason.trim().length < 5}
-              className="px-3.5 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
-            >
-              {isReturning ? 'Returning...' : 'Return for Revision'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
     </div>
   )

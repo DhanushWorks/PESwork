@@ -6,6 +6,7 @@ import { EvaluationResult, ReviewCycle, ManagerReview, SelfReview, CycleStage } 
 import { StageStepper } from '../../components/ui/StageStepper'
 import { RatingBadge } from '../../components/ui/Badge'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
+import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate, formatDateTime, STAGE_ORDER } from '../../lib/formatters'
 import {
   AlertTriangle,
@@ -133,7 +134,7 @@ export const EmployeeResults: React.FC = () => {
   })()
 
   if (loading) {
-    return <div className="p-12 text-center text-xs text-slate-400">Loading evaluation results...</div>
+    return <LoadingState message="Loading evaluation results..." variant="page" />
   }
 
   return (
@@ -380,9 +381,28 @@ export const EmployeeResults: React.FC = () => {
         title="Submit Evaluation Inquiry or Dispute"
         subtitle="Inquiries are submitted confidentially to People Operations leadership"
         maxWidth="md"
+        onSubmit={handleDispute}
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowDisputeModal(false)}
+              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors cursor-pointer text-xs font-medium"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={isProcessing}
+              className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors shadow-xs cursor-pointer text-xs disabled:opacity-60"
+            >
+              {isProcessing ? 'Submitting...' : 'Submit Inquiry'}
+            </button>
+          </>
+        }
       >
-        <form onSubmit={handleDispute} className="space-y-4 text-xs">
-          <p className="text-slate-600 dark:text-zinc-300">
+        <div className="space-y-4 text-xs font-sans">
+          <p className="text-slate-600 dark:text-zinc-300 leading-relaxed">
             If you believe your evaluation ratings or component calculations do not reflect your delivered accomplishments, please provide a detailed explanation.
           </p>
 
@@ -396,27 +416,10 @@ export const EmployeeResults: React.FC = () => {
               value={disputeReason}
               onChange={(e) => setDisputeReason(e.target.value)}
               placeholder="Detail specific evidence, misaligned goal metrics, or feedback points to be reviewed..."
-              className="w-full p-3 rounded-lg border border-slate-300 dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-slate-400/30 dark:focus:ring-zinc-600/30 focus:border-slate-400 dark:focus:border-zinc-500 bg-white dark:bg-[#18181b] text-slate-900 dark:text-[#F0F3FA]"
+              className="w-full p-3 rounded-xl border border-slate-300 dark:border-zinc-700/80 focus:outline-hidden focus:ring-2 focus:ring-slate-400/30 dark:focus:ring-zinc-600/30 focus:border-slate-400 dark:focus:border-zinc-500 bg-white dark:bg-[#18181b] text-slate-900 dark:text-[#F0F3FA] font-sans text-xs"
             />
           </div>
-
-          <div className="pt-3 border-t border-slate-200 dark:border-white/[0.08] flex items-center justify-end gap-2">
-            <button
-              type="button"
-              onClick={() => setShowDisputeModal(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-300 hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={isProcessing}
-              className="px-4 py-2 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold transition-colors shadow-xs"
-            >
-              {isProcessing ? 'Submitting...' : 'Submit Inquiry'}
-            </button>
-          </div>
-        </form>
+        </div>
       </Modal>
     </div>
   )

@@ -2,6 +2,8 @@ import React from 'react'
 import { Navigate, Outlet } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { Role } from '../../types'
+import { storageService } from '../../services'
+import { matchesUser } from '../../lib/workflow'
 
 interface RoleRouteGuardProps {
   allowedRole: Role
@@ -19,8 +21,18 @@ interface RoleRouteGuardProps {
 export const RoleRouteGuard: React.FC<RoleRouteGuardProps> = ({ allowedRole, children }) => {
   const { currentUser } = useApp()
 
-  if (currentUser.role !== allowedRole) {
-    return <Navigate to={`/${currentUser.role}`} replace />
+  // Guard against transient state de-synchronization during navigation:
+  // Check storageService synchronously to verify if user was just switched
+  const state = storageService.getState()
+  const activeUser =
+    currentUser && (currentUser.id === state.currentUserId || matchesUser(currentUser.id, state.currentUserId))
+      ? currentUser
+      : state.users.find((u) => u.id === state.currentUserId || matchesUser(u.id, state.currentUserId)) || currentUser
+
+  const effectiveRole = activeUser?.role || currentUser?.role || 'employee'
+
+  if (effectiveRole !== allowedRole) {
+    return <Navigate to={`/${effectiveRole}`} replace />
   }
 
   return children ? <>{children}</> : <Outlet />
@@ -32,6 +44,13 @@ export const RoleRouteGuard: React.FC<RoleRouteGuardProps> = ({ allowedRole, chi
  */
 export const RootRedirect: React.FC = () => {
   const { currentUser } = useApp()
-  return <Navigate to={`/${currentUser.role}`} replace />
+  const state = storageService.getState()
+  const activeUser =
+    currentUser && (currentUser.id === state.currentUserId || matchesUser(currentUser.id, state.currentUserId))
+      ? currentUser
+      : state.users.find((u) => u.id === state.currentUserId || matchesUser(u.id, state.currentUserId)) || currentUser
+
+  const effectiveRole = activeUser?.role || currentUser?.role || 'employee'
+  return <Navigate to={`/${effectiveRole}`} replace />
 }
 

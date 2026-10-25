@@ -1,7 +1,6 @@
-import { supabase, isSupabaseConfigured } from '../../lib/supabase'
+import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { AuditLog } from '../../types'
 import { auditService as mockAuditService } from '../mock/auditService'
-import { storageService } from '../mock/storageService'
 
 async function getTenantId(userId?: string): Promise<string> {
   if (!isSupabaseConfigured) return '00000000-0000-0000-0000-000000000001'
@@ -22,7 +21,7 @@ export const supabaseAuditService = {
    * List recent immutable administrative and evaluation audit logs
    */
   async list(): Promise<AuditLog[]> {
-    if (!isSupabaseConfigured) return mockAuditService.list()
+    if (!isSupabaseReady()) return mockAuditService.list()
 
     try {
       const { data, error } = await supabase
@@ -63,7 +62,8 @@ export const supabaseAuditService = {
       return combined.sort(
         (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
       )
-    } catch {
+    } catch (err) {
+      markSupabaseOffline(err)
       return mockAuditService.list()
     }
   },

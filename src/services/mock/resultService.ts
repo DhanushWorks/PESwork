@@ -199,7 +199,9 @@ export const resultService = {
   },
 
   async getAllResults(cycleId: string): Promise<EvaluationResult[]> {
-    return storageService.getState().results.filter((r) => r.cycleId === cycleId)
+    return storageService
+      .getState()
+      .results.filter((r) => r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))
   },
 }
 
