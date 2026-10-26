@@ -499,7 +499,7 @@ export const EmployeeDashboard: React.FC = () => {
       {/* Workflow Tracking: Progression Stepper */}
       <section>
         {isEnrolledInCycle ? (
-          <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+          <StageStepper currentStage={currentCycle?.stage || 'draft'} cycle={currentCycle} />
         ) : (
           <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-3 shadow-xs dark:shadow-md transition-all">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">

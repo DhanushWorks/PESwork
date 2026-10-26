@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { isSupabaseConfigured, isSupabaseOnline } from '../lib/supabase'
 import { Notification, ReviewCycle, Role, User } from '../types'
-import { matchesUser, matchesCycle } from '../lib/workflow'
+import { matchesUser, matchesCycle, isUserCycleParticipant } from '../lib/workflow'
 import {
   cycleService,
   notificationService,
@@ -208,9 +208,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       }
 
+      // Determine the best activeCycle for this user: prioritize enrolled open cycles
+      let cycleToSet = currentActiveCycle
+      if (foundUser?.id && cycles && cycles.length > 0) {
+        const userEnrolledOpenCycle = cycles.find(
+          (c) => c.stage !== 'closed' && isUserCycleParticipant(c, foundUser?.id)
+        )
+        if (userEnrolledOpenCycle) {
+          cycleToSet = userEnrolledOpenCycle
+        } else if (cycleToSet.stage === 'closed') {
+          const anyOpenCycle = cycles.find((c) => c.stage !== 'closed')
+          if (anyOpenCycle) {
+            cycleToSet = anyOpenCycle
+          }
+        }
+      }
+
       setAllUsers(users)
       setAllCycles(cycles)
-      setActiveCycle(currentActiveCycle)
+      setActiveCycle(cycleToSet)
       setCurrentUser((prev) => {
         if (
           prev &&
@@ -293,7 +309,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const state = storageService.getState()
       if (state.cycles && state.cycles.length > 0) {
         setAllCycles(state.cycles)
-        const current = state.cycles.find((c) => c.id === state.activeCycleId || matchesCycle(c.id, state.activeCycleId)) || state.cycles[0]
+        const activeUserId = currentUserRef.current?.id
+        const userEnrolled = state.cycles.find(
+          (c) => c.stage !== 'closed' && isUserCycleParticipant(c, activeUserId)
+        )
+        const targetId = userEnrolled ? userEnrolled.id : state.activeCycleId
+        const current =
+          state.cycles.find((c) => c.id === targetId || matchesCycle(c.id, targetId)) ||
+          state.cycles.find((c) => c.stage !== 'closed') ||
+          state.cycles[0]
         if (current) {
           setActiveCycle((prev) => {
             if (prev.id === current.id && prev.stage === current.stage && prev.name === current.name) return prev
@@ -349,10 +373,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCurrentUser(targetUser)
       setActiveWorkspaceRole(targetUser.role)
 
+      try {
+        const cycles = await cycleService.list()
+        const enrolledOpen = cycles.find((c) => c.stage !== 'closed' && isUserCycleParticipant(c, userId))
+        if (enrolledOpen) {
+          await cycleService.setActiveCycle(enrolledOpen.id)
+          setActiveCycle(enrolledOpen)
+        } else {
+          const anyOpen = cycles.find((c) => c.stage !== 'closed')
+          if (anyOpen && activeCycle.stage === 'closed') {
+            await cycleService.setActiveCycle(anyOpen.id)
+            setActiveCycle(anyOpen)
+          }
+        }
+      } catch (e) {
+        console.warn('Switch user active cycle alignment notice:', e)
+      }
+
       const notifs = await notificationService.list(userId)
       setNotifications(notifs)
     },
-    []
+    [activeCycle.stage]
   )
 
   const switchWorkspaceRole = useCallback((role: Role) => {

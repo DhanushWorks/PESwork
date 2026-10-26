@@ -1,6 +1,7 @@
 import { supabase, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { User, Role } from '../../types'
 import { peopleService as mockPeopleService } from '../mock/peopleService'
+import { storageService } from '../mock/storageService'
 import { apiCache } from '../../lib/apiCache'
 import { matchesUser, toDatabaseUserId } from '../../lib/workflow'
 
@@ -160,6 +161,39 @@ export const supabasePeopleService = {
 
     if (isSupabaseReady()) {
       try {
+        // Prevent duplicate profiles: query Supabase if a profile with this email already exists
+        const { data: existing } = await supabase
+          .from('profiles')
+          .select('*')
+          .ilike('email', user.email)
+          .limit(1)
+          .maybeSingle()
+
+        if (existing) {
+          await supabase
+            .from('profiles')
+            .update({
+              name: user.name,
+              role: user.role,
+              department: user.department,
+              designation: user.designation,
+              employee_code: user.employeeCode || existing.employee_code,
+              avatar: user.avatar || existing.avatar,
+              active: user.active !== undefined ? user.active : existing.active,
+            })
+            .eq('id', existing.id)
+
+          const existingUser: User = {
+            ...mockCreated,
+            id: existing.id,
+            employeeCode: existing.employee_code || user.employeeCode,
+          }
+          storageService.updateState((state) => ({
+            users: state.users.map((u) => (u.id === existing.id || u.id === mockCreated.id ? existingUser : u)),
+          }))
+          return existingUser
+        }
+
         const { data: tenant } = await supabase.from('tenants').select('id').limit(1).single()
         const tenantId = tenant?.id || '00000000-0000-0000-0000-000000000001'
 
@@ -181,10 +215,14 @@ export const supabasePeopleService = {
           .single()
 
         if (!error && data) {
-          return {
+          const syncedUser: User = {
             ...mockCreated,
             id: data.id,
           }
+          storageService.updateState((state) => ({
+            users: state.users.map((u) => (u.id === mockCreated.id ? syncedUser : u)),
+          }))
+          return syncedUser
         }
       } catch (err) {
         console.warn('Supabase create profile notice:', err)

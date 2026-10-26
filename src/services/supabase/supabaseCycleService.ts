@@ -32,7 +32,7 @@ export const supabaseCycleService = {
     if (!isSupabaseReady()) return mockCycleService.list()
 
     try {
-      const { data, error } = await supabase.from('review_cycles').select('*')
+      const { data, error } = await supabase.from('review_cycles').select('*').order('created_at', { ascending: false })
       if (error) {
         console.warn('Supabase fetch cycles error, falling back:', error)
         return mockCycleService.list()
@@ -62,13 +62,27 @@ export const supabaseCycleService = {
         }
       })
 
-      // Sync fetched Supabase cycle stages into mock storage to keep UI perfectly aligned
+      // Sync fetched Supabase cycle stages and all cycles into storage to keep UI perfectly aligned
       try {
         storageService.updateState((state) => {
-          const updatedCycles = state.cycles.map((sc) => {
-            const found = cyclesList.find((c) => c.id === sc.id || matchesCycle(c.id, sc.id))
-            return found ? { ...sc, stage: found.stage, name: found.name, deadlines: found.deadlines } : sc
-          })
+          const updatedCycles = [...state.cycles]
+          for (const c of cyclesList) {
+            const idx = updatedCycles.findIndex((sc) => sc.id === c.id || matchesCycle(sc.id, c.id))
+            if (idx >= 0) {
+              updatedCycles[idx] = {
+                ...updatedCycles[idx],
+                id: c.id,
+                stage: c.stage,
+                name: c.name,
+                startDate: c.startDate,
+                endDate: c.endDate,
+                deadlines: c.deadlines,
+                participantIds: c.participantIds,
+              }
+            } else {
+              updatedCycles.push(c)
+            }
+          }
           return { cycles: updatedCycles }
         })
       } catch (e) {
@@ -145,9 +159,16 @@ export const supabaseCycleService = {
       }
     }
     const { activeCycleId } = storageService.getState()
-    const targetId = activeCycleId || list[0]?.id
-    const active = list.find((c) => c.id === targetId || matchesCycle(c.id, targetId)) || list[0]
-    return active
+    if (activeCycleId) {
+      const active = list.find((c) => c.id === activeCycleId || matchesCycle(c.id, activeCycleId))
+      if (active) return active
+    }
+
+    // Prioritize an open, active review cycle (stage !== 'closed')
+    const openCycle = list.find((c) => c.stage !== 'closed')
+    if (openCycle) return openCycle
+
+    return list[0]
   },
 
   async setActiveCycle(id: string): Promise<ReviewCycle> {

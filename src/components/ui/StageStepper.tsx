@@ -30,8 +30,8 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   const isActiveWorkspace = effectiveCycle?.id === activeCycle?.id
 
   const currentIndex = STAGE_ORDER.indexOf(currentStage)
-  // When stage is 'released' or 'closed', the evaluation outcomes have been released and the cycle has reached full completion
-  const isCycleFinished = isFinished || currentStage === 'closed' || currentStage === 'released'
+  // The cycle is only finished when explicitly closed (or isFinished flag is true)
+  const isCycleFinished = isFinished || currentStage === 'closed'
   const [containerRef, isInView] = useInView<HTMLDivElement>({ threshold: 0.15, triggerOnce: true })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const activeStepRef = useRef<HTMLDivElement>(null)

@@ -2,10 +2,11 @@ import React, { useState, useRef, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../app/AppContext'
 import { useToast } from '../components/ui/Toast'
-import { peopleService, storageService, supabaseAuthService } from '../services'
-import { isSupabaseConfigured, isSupabaseOnline } from '../lib/supabase'
+import { peopleService, storageService, supabaseAuthService, cycleService } from '../services'
+import { isSupabaseConfigured, isSupabaseOnline, isSupabaseReady, supabase } from '../lib/supabase'
 import { Role, User } from '../types'
 import { SEED_USERS } from '../data/seedData'
+import { matchesUser, isUserCycleParticipant } from '../lib/workflow'
 import {
   AlertCircle,
   Eye,
@@ -33,11 +34,34 @@ export function resolvePersonaUser(identifier: string, availableUsers: User[]): 
   const target = normalizeText(identifier)
   if (!target) return undefined
 
-  // 1. Direct email match
-  let found = availableUsers.find((u) => normalizeText(u.email) === target)
+  // 1. Direct ID or UUID match (handles matching both seed IDs and Supabase UUIDs)
+  let found = availableUsers.find(
+    (u) => u.id === identifier || normalizeText(u.id) === target || matchesUser(u.id, identifier)
+  )
   if (found) return found
 
-  // 2. Admin persona aliases (Eleanor Vance)
+  // 2. Direct email match
+  found = availableUsers.find((u) => normalizeText(u.email) === target)
+  if (found) return found
+
+  // 3. Match by Employee Code (e.g. 'EMP-722', 'emp-722', '722')
+  const cleanTarget = target.replace(/[^a-z0-9]/gi, '')
+  found = availableUsers.find((u) => {
+    if (!u.employeeCode) return false
+    const cleanCode = normalizeText(u.employeeCode).replace(/[^a-z0-9]/gi, '')
+    return cleanCode === cleanTarget || normalizeText(u.employeeCode) === target
+  })
+  if (found) return found
+
+  // 4. Username prefix match (e.g. 'tharun' matches 'tharun@gmail.com')
+  found = availableUsers.find((u) => {
+    if (!u.email) return false
+    const prefix = normalizeText(u.email.split('@')[0])
+    return prefix === target
+  })
+  if (found) return found
+
+  // 5. Admin persona aliases (Eleanor Vance)
   if (
     target === 'eleanor.vance@performiq.internal' ||
     target === 'admin@performiq.internal' ||
@@ -57,7 +81,7 @@ export function resolvePersonaUser(identifier: string, availableUsers: User[]): 
     if (found) return { ...found, role: 'admin' as const }
   }
 
-  // 3. Manager persona aliases (Marcus Chen)
+  // 6. Manager persona aliases (Marcus Chen)
   if (
     target === 'marcus.chen@performiq.internal' ||
     target === 'marcus@performiq.internal' ||
@@ -75,7 +99,7 @@ export function resolvePersonaUser(identifier: string, availableUsers: User[]): 
     if (found) return { ...found, role: 'manager' as const }
   }
 
-  // 4. Employee persona aliases (Alex Rivera)
+  // 7. Employee persona aliases (Alex Rivera)
   if (
     target === 'alex.rivera@performiq.internal' ||
     target === 'alex@performiq.internal' ||
@@ -93,11 +117,11 @@ export function resolvePersonaUser(identifier: string, availableUsers: User[]): 
     if (found) return { ...found, role: 'employee' as const }
   }
 
-  // 5. Match by role name directly ('admin', 'manager', 'employee')
+  // 8. Match by role name directly ('admin', 'manager', 'employee')
   found = availableUsers.find((u) => normalizeText(u.role) === target)
   if (found) return found
 
-  // 6. Match by user's full name
+  // 9. Match by user's full name
   found = availableUsers.find((u) => normalizeText(u.name) === target || normalizeText(u.name).includes(target))
   if (found) return found
 
@@ -204,12 +228,17 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
     e.preventDefault()
 
     const newErrors: { [key: string]: string } = {}
-    const trimmedEmail = email.trim()
+    const trimmedInput = email.trim()
+    const isEmpCode = /^EMP-?\d+/i.test(trimmedInput) || /^\d+$/.test(trimmedInput)
+    const isEmail = trimmedInput.includes('@') && trimmedInput.includes('.')
+    const isKnownPersona = ['admin', 'manager', 'employee', 'eleanor', 'marcus', 'alex', 'tharun', 'aadityaa'].some((p) =>
+      trimmedInput.toLowerCase().includes(p)
+    )
 
-    if (!trimmedEmail) {
+    if (!trimmedInput) {
       newErrors.email = 'Please fill out this field.'
-    } else if (!trimmedEmail.includes('@') || !trimmedEmail.includes('.')) {
-      newErrors.email = 'Please enter a valid email address.'
+    } else if (!isEmail && !isEmpCode && !isKnownPersona && trimmedInput.length < 2) {
+      newErrors.email = 'Please enter a valid work email or Employee ID.'
     }
 
     if (!password) {
@@ -229,10 +258,10 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
     setErrors({})
     setIsLoading(true)
     try {
-      const normalized = trimmedEmail.toLowerCase()
+      const normalized = trimmedInput.toLowerCase()
 
       // 1. Try Supabase Auth first if real password is provided AND Supabase is configured
-      if (isSupabaseConfigured && isSupabaseOnline() && password && password !== '••••••••') {
+      if (isSupabaseConfigured && isSupabaseOnline() && password && password !== '••••••••' && isEmail) {
         const { user: authUser, session, error: authError } = await supabaseAuthService.signIn(normalized, password)
         if (authUser && session) {
           success('Welcome back!', `Logged in via Supabase as ${authUser.name}`)
@@ -273,11 +302,17 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
         }
       }
 
-      // 2. Local / Persona authentication & Auto-Provisioning fallback
+      // 2. Local / Persona authentication & User matching
       let userPool = allUsers && allUsers.length > 0 ? allUsers : []
-      if (userPool.length === 0) {
+      if (
+        userPool.length === 0 ||
+        !userPool.some((u) => normalizeText(u.email) === normalized || normalizeText(u.employeeCode) === normalized)
+      ) {
         try {
-          userPool = await peopleService.list()
+          const freshList = await peopleService.list()
+          if (freshList && freshList.length > 0) {
+            userPool = freshList
+          }
         } catch {
           userPool = storageService.getState().users
         }
@@ -287,6 +322,61 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
         resolvePersonaUser(normalized, userPool) ||
         resolvePersonaUser(normalized, storageService.getState().users) ||
         resolvePersonaUser(normalized, SEED_USERS)
+
+      // 3. Fallback direct query to Supabase if not matched yet
+      if (!matchedUser && isSupabaseReady()) {
+        try {
+          // Check by email first
+          const { data: dbUser } = await supabase
+            .from('profiles')
+            .select('*')
+            .ilike('email', normalized)
+            .limit(1)
+            .maybeSingle()
+
+          if (dbUser) {
+            matchedUser = {
+              id: dbUser.id,
+              name: dbUser.name,
+              email: dbUser.email,
+              role: dbUser.role as Role,
+              department: dbUser.department,
+              designation: dbUser.designation,
+              employeeCode: dbUser.employee_code || `EMP-001`,
+              avatar:
+                dbUser.avatar ||
+                'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+              active: dbUser.active !== undefined ? dbUser.active : true,
+              joinedDate: dbUser.join_date,
+            }
+          } else if (isEmpCode) {
+            const codeNum = trimmedInput.replace(/[^0-9]/g, '')
+            const { data: codeMatches } = await supabase.from('profiles').select('*')
+            const matchedProfile = codeMatches?.find((p) => {
+              const c = (p.employee_code || '').replace(/[^0-9]/g, '')
+              return c && c === codeNum
+            })
+            if (matchedProfile) {
+              matchedUser = {
+                id: matchedProfile.id,
+                name: matchedProfile.name,
+                email: matchedProfile.email,
+                role: matchedProfile.role as Role,
+                department: matchedProfile.department,
+                designation: matchedProfile.designation,
+                employeeCode: matchedProfile.employee_code || `EMP-001`,
+                avatar:
+                  matchedProfile.avatar ||
+                  'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+                active: matchedProfile.active !== undefined ? matchedProfile.active : true,
+                joinedDate: matchedProfile.join_date,
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Direct Supabase profile lookup fallback:', e)
+        }
+      }
 
       if (!matchedUser) {
         // Auto-provision user account seamlessly with their custom email
@@ -304,7 +394,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
 
         const newUser = await peopleService.create({
           name: formattedName,
-          email: normalized,
+          email: normalized.includes('@') ? normalized : `${normalized}@performiq.internal`,
           role: assignedRole,
           department: assignedRole === 'admin' ? 'People Operations' : 'Engineering',
           designation:
@@ -328,6 +418,25 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       }
 
       await switchUser(matchedUser.id)
+
+      // Ensure active cycle aligns to user's enrolled cycle
+      try {
+        const cycles = await cycleService.list()
+        const enrolledCycle = cycles.find(
+          (c) => c.stage !== 'closed' && isUserCycleParticipant(c, matchedUser!.id)
+        )
+        if (enrolledCycle) {
+          await cycleService.setActiveCycle(enrolledCycle.id)
+        } else {
+          const anyOpenCycle = cycles.find((c) => c.stage !== 'closed')
+          if (anyOpenCycle) {
+            await cycleService.setActiveCycle(anyOpenCycle.id)
+          }
+        }
+      } catch (e) {
+        console.warn('Active cycle alignment notice:', e)
+      }
+
       await refreshData()
       navigate(`/${matchedUser.role}`)
     } catch (err: any) {
@@ -535,13 +644,13 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
               <div>
                 <input
                   id="signin-email"
-                  type="email"
+                  type="text"
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value)
                     clearError('email')
                   }}
-                  placeholder="E-mail Address *"
+                  placeholder="E-mail Address or Employee ID *"
                   className={`w-full px-3.5 py-2.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-[#181922] border text-white placeholder:text-zinc-500 focus:outline-hidden ${
                     errors.email
                       ? 'border-rose-500/80 focus:border-rose-500 focus:ring-1 focus:ring-rose-500/30'

@@ -47,31 +47,8 @@ export function getEmployeeWorkflowState(params: {
   const hasPendingGoals = goals.some((g) => g.status === 'pending_approval' || g.status === 'draft' || g.status === 'returned')
   const allGoalsApproved = goals.length > 0 && goals.every((g) => g.status === 'approved' || g.status === 'completed')
 
-  let effectiveStage: CycleStage
-
-  if (cycle.stage === 'closed') {
-    effectiveStage = 'closed'
-  } else if (isResultReleased) {
-    effectiveStage = 'released'
-  } else if (isManagerReviewSubmitted || cycle.stage === 'calibration') {
-    effectiveStage = 'calibration'
-  } else if (isSelfReviewSubmitted || selfReview || cycle.stage === 'manager_review') {
-    effectiveStage = 'manager_review'
-  } else if (cycle.stage === 'self_review') {
-    effectiveStage = 'self_review'
-  } else if (allGoalsApproved || cycle.stage === 'tracking' || (hasApprovedGoals && !hasPendingGoals)) {
-    effectiveStage = 'tracking'
-  } else if (hasPendingGoals || cycle.stage === 'goals_open') {
-    effectiveStage = 'goals_open'
-  } else {
-    effectiveStage = cycle.stage
-  }
-
-  const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
-  const effectiveStageIdx = STAGE_ORDER.indexOf(effectiveStage)
-  if (cycleStageIdx > effectiveStageIdx) {
-    effectiveStage = cycle.stage
-  }
+  // The cycle stage is the master authority for the workflow stage
+  const effectiveStage: CycleStage = cycle.stage
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
   const stepNumber = stageIndex >= 0 ? stageIndex + 1 : 1
@@ -205,38 +182,8 @@ export function getManagerWorkflowState(params: {
       ? teamSummaries.every((t) => t.goalsCount > 0 && t.goalsApprovedCount >= t.goalsCount)
       : pendingGoals.length === 0
 
-  let effectiveStage: CycleStage
-
-  if (cycle.stage === 'closed') {
-    effectiveStage = 'closed'
-  } else if (cycle.stage === 'released' || hasReleasedResults) {
-    effectiveStage = 'released'
-  } else if (
-    cycle.stage === 'calibration' ||
-    (totalReports > 0 && submittedManagerReviews.length === totalReports) ||
-    submittedManagerReviews.length > 0
-  ) {
-    effectiveStage = 'calibration'
-  } else if (pendingManagerReviews.length > 0 || cycle.stage === 'manager_review') {
-    effectiveStage = 'manager_review'
-  } else if (submittedSelfReviews.length > 0 || cycle.stage === 'self_review') {
-    effectiveStage = submittedSelfReviews.length > 0 ? 'manager_review' : 'self_review'
-  } else if (pendingGoals.length > 0) {
-    effectiveStage = 'goals_open'
-  } else if (allTeamGoalsApproved || cycle.stage === 'tracking') {
-    effectiveStage = 'tracking'
-  } else if (cycle.stage === 'goals_open') {
-    const hasAnyGoals = teamSummaries.some((t) => t.goalsCount > 0)
-    effectiveStage = hasAnyGoals ? 'tracking' : 'goals_open'
-  } else {
-    effectiveStage = cycle.stage
-  }
-
-  const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
-  const effectiveStageIdx = STAGE_ORDER.indexOf(effectiveStage)
-  if (cycleStageIdx > effectiveStageIdx) {
-    effectiveStage = cycle.stage
-  }
+  // The cycle stage is the master authority for the manager workflow
+  const effectiveStage: CycleStage = cycle.stage
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
   const stepNumber = stageIndex >= 0 ? stageIndex + 1 : 1
@@ -371,31 +318,8 @@ export function getAdminWorkflowState(params: {
     approvedCals.length > 0 ||
     cycleResults.length > 0
 
-  let effectiveStage: CycleStage
-
-  if (cycle.stage === 'closed') {
-    effectiveStage = 'closed'
-  } else if (isFormallyReleased) {
-    effectiveStage = 'released'
-  } else if (cycle.stage === 'calibration' || cycleMgr.length > 0) {
-    effectiveStage = 'calibration'
-  } else if (cycleSelf.length > 0 || cycle.stage === 'manager_review') {
-    effectiveStage = 'manager_review'
-  } else if (cycle.stage === 'self_review') {
-    effectiveStage = 'self_review'
-  } else if (cycle.stage === 'tracking' || allGoalsApproved) {
-    effectiveStage = 'tracking'
-  } else if (cycle.stage === 'goals_open') {
-    effectiveStage = allGoalsApproved ? 'tracking' : 'goals_open'
-  } else {
-    effectiveStage = cycle.stage
-  }
-
-  const cycleStageIdx = STAGE_ORDER.indexOf(cycle.stage)
-  const effectiveStageIdx = STAGE_ORDER.indexOf(effectiveStage)
-  if (cycleStageIdx > effectiveStageIdx) {
-    effectiveStage = cycle.stage
-  }
+  // The cycle stage is the master authority for the admin workflow
+  const effectiveStage: CycleStage = cycle.stage
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
   const stepNumber = stageIndex >= 0 ? stageIndex + 1 : 1

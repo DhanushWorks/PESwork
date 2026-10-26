@@ -484,7 +484,7 @@ export const ManagerDashboard: React.FC = () => {
 
       {/* Workflow Tracking: Progression Stepper */}
       <section>
-        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+        <StageStepper currentStage={currentCycle?.stage || 'draft'} cycle={currentCycle} />
       </section>
 
       {/* Direct Reports Appraisal Roster (Moved to top under Stepper) */}
