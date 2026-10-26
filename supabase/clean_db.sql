@@ -118,3 +118,11 @@ CREATE POLICY "notifications_all" ON public.notifications FOR ALL USING (true) W
 DROP POLICY IF EXISTS "audit_logs_all" ON public.audit_logs;
 CREATE POLICY "audit_logs_all" ON public.audit_logs FOR ALL USING (true) WITH CHECK (true);
 
+
+DROP POLICY IF EXISTS "profiles_select" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_read_all" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_update_self" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_admin_update" ON public.profiles;
+DROP POLICY IF EXISTS "profiles_all" ON public.profiles;
+CREATE POLICY "profiles_all" ON public.profiles FOR ALL USING (true) WITH CHECK (true);
+
