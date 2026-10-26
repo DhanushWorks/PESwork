@@ -4,7 +4,6 @@ import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import {
   Bell,
-  Search,
   CheckCircle2,
   Calendar,
   Layers,
@@ -162,25 +161,15 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   const [showNotifMenu, setShowNotifMenu] = useState(false)
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [showSearchResults, setShowSearchResults] = useState(false)
-  const [goalsList, setGoalsList] = useState<Goal[]>([])
   const [selectedNotif, setSelectedNotif] = useState<Notification | null>(null)
 
   const userMenuRef = useRef<HTMLDivElement>(null)
   const notifMenuRef = useRef<HTMLDivElement>(null)
-  const searchRef = useRef<HTMLDivElement>(null)
 
   // Dedicated refs for isolating dropdown scroll from background UI
   const userDropdownRef = useRef<HTMLDivElement>(null)
   const notifDropdownRef = useRef<HTMLDivElement>(null)
   const notifListRef = useRef<HTMLDivElement>(null)
-  const searchDropdownRef = useRef<HTMLDivElement>(null)
-  const searchListRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    setGoalsList(storageService.getState().goals || [])
-  }, [])
 
   // Isolate wheel scrolling inside User Menu: wheeling over dropdown will never scroll background UI
   useEffect(() => {
@@ -218,29 +207,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     }
   }, [showNotifMenu])
 
-  // Isolate wheel scrolling inside Live Search Quick Results
-  useEffect(() => {
-    if (!showSearchResults) return
-    const dropdownEl = searchDropdownRef.current
-    if (!dropdownEl) return
-
-    const handleWheel = (e: WheelEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      if (searchListRef.current) {
-        searchListRef.current.scrollTop += e.deltaY
-      }
-    }
-
-    dropdownEl.addEventListener('wheel', handleWheel, { passive: false })
-    return () => {
-      dropdownEl.removeEventListener('wheel', handleWheel)
-    }
-  }, [showSearchResults])
-
-  const [isSearchOpen, setIsSearchOpen] = useState(false)
-  const searchInputRef = useRef<HTMLInputElement>(null)
-
   // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -250,42 +216,22 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       if (notifMenuRef.current && !notifMenuRef.current.contains(e.target as Node)) {
         setShowNotifMenu(false)
       }
-      if (searchRef.current && !searchRef.current.contains(e.target as Node)) {
-        setIsSearchOpen(false)
-        setShowSearchResults(false)
-      }
     }
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
 
-  // Close search and dropdowns on Escape key, or toggle on Ctrl+K / Cmd+K
+  // Close dropdowns on Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        setShowSearchResults(false)
-        setIsSearchOpen(false)
         setShowUserMenu(false)
         setShowNotifMenu(false)
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        setIsSearchOpen((prev) => !prev)
-        setShowSearchResults(true)
       }
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
-
-  // Focus search input when opened
-  useEffect(() => {
-    if (isSearchOpen) {
-      setTimeout(() => {
-        searchInputRef.current?.focus()
-      }, 50)
-    }
-  }, [isSearchOpen])
 
   const handleReset = async () => {
     setIsResetting(true)
@@ -296,103 +242,6 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
   }
 
   const stageInfo = CYCLE_STAGE_DETAILS[activeCycle?.stage || 'tracking']
-
-  const queryLower = searchQuery.trim().toLowerCase()
-  const matchedPeople = queryLower
-    ? allUsers.filter((u) => u.name.toLowerCase().includes(queryLower) || u.department.toLowerCase().includes(queryLower))
-    : []
-  const matchedGoals = queryLower
-    ? goalsList.filter((g) => g.title.toLowerCase().includes(queryLower))
-    : []
-
-  const handleSelectPerson = (u: any) => {
-    if (currentUser.role === 'admin') {
-      navigate('/admin/users')
-    } else if (currentUser.role === 'manager') {
-      navigate('/manager/approvals')
-    } else {
-      navigate('/employee/feedback')
-    }
-    setShowSearchResults(false)
-    setIsSearchOpen(false)
-    setSearchQuery('')
-  }
-
-  const handleSelectGoal = (g: Goal) => {
-    if (currentUser.role === 'admin') {
-      navigate('/admin/cycles')
-    } else if (currentUser.role === 'manager') {
-      navigate('/manager/approvals')
-    } else {
-      navigate(`/employee/goals/${g.id}`)
-    }
-    setShowSearchResults(false)
-    setIsSearchOpen(false)
-    setSearchQuery('')
-  }
-
-  const renderSearchResults = () => (
-    <>
-      <div className="px-3.5 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-zinc-500 border-b border-slate-100 dark:border-zinc-800/80 flex items-center justify-between">
-        <span>Search Results</span>
-        <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-normal">
-          {matchedPeople.length + matchedGoals.length} results
-        </span>
-      </div>
-      {matchedPeople.length === 0 && matchedGoals.length === 0 ? (
-        <div className="px-3 py-4 text-slate-400 dark:text-zinc-500 text-center text-xs">
-          No results for "{searchQuery}"
-        </div>
-      ) : (
-        <div
-          ref={searchListRef}
-          className="divide-y divide-slate-100 dark:divide-zinc-800/80 max-h-64 overflow-y-auto no-scrollbar overscroll-contain"
-        >
-          {matchedPeople.length > 0 && (
-            <div className="p-1.5">
-              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
-                Teammates
-              </div>
-              {matchedPeople.slice(0, 3).map((u) => (
-                <div
-                  key={u.id}
-                  onClick={() => handleSelectPerson(u)}
-                  className="flex items-center gap-2.5 p-2 hover:bg-slate-50 dark:hover:bg-zinc-800/70 rounded-xl cursor-pointer transition-colors group"
-                >
-                  <img src={u.avatar} alt={u.name} className="w-6 h-6 rounded-full object-cover ring-1 ring-slate-200 dark:ring-zinc-700" />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold text-slate-900 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                      {u.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400 dark:text-zinc-400 truncate">{u.designation}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {matchedGoals.length > 0 && (
-            <div className="p-1.5">
-              <div className="px-2 py-1 text-[10px] font-bold text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
-                Goals
-              </div>
-              {matchedGoals.slice(0, 3).map((g) => (
-                <div
-                  key={g.id}
-                  onClick={() => handleSelectGoal(g)}
-                  className="p-2 hover:bg-slate-50 dark:hover:bg-zinc-800/70 rounded-xl cursor-pointer transition-colors group"
-                >
-                  <div className="font-semibold text-slate-900 dark:text-zinc-100 truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
-                    {g.title}
-                  </div>
-                  <div className="text-[10px] text-slate-400 dark:text-zinc-400">Progress: {g.progress}%</div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </>
-  )
 
   return (
     <>
@@ -426,79 +275,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </h1>
         </div>
 
-        {/* Right Actions: Search Icon Button + Theme Toggle + Bell 🔔 + Avatar */}
+        {/* Right Actions: Fullscreen + Theme Toggle + Bell 🔔 + Avatar */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-          {/* Search Icon Trigger & Dropdown */}
-          <div className="relative" ref={searchRef}>
-            <button
-              type="button"
-              onClick={() => {
-                setIsSearchOpen(!isSearchOpen)
-                setShowSearchResults(true)
-              }}
-              className={`relative p-2 rounded-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
-                isSearchOpen
-                  ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white border-slate-300 dark:border-white ring-2 ring-slate-900/10 dark:ring-white/40 dark:shadow-[0_0_16px_rgba(255,255,255,0.4)]'
-                  : 'bg-slate-50 dark:bg-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.16] text-slate-700 dark:text-white border-slate-200 dark:border-white/30 hover:border-slate-300 dark:hover:border-white/60 dark:shadow-[0_0_12px_rgba(255,255,255,0.1)]'
-              }`}
-              title="Search directory (Ctrl+K)"
-              aria-label="Search directory"
-            >
-              <Search
-                strokeWidth={2.4}
-                className={`w-4 h-4 transition-all duration-300 text-slate-800 dark:text-white dark:stroke-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] ${
-                  isSearchOpen ? 'scale-105' : 'group-hover:scale-110'
-                }`}
-              />
-            </button>
-
-            {/* Live Search Quick Results Popover Dropdown */}
-            {isSearchOpen && (
-              <div
-                ref={searchDropdownRef}
-                className="fixed left-3 right-3 sm:left-auto sm:right-0 sm:absolute top-13 sm:top-full mt-2 sm:w-84 md:w-96 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200 dark:border-zinc-700/80 p-3 z-50 text-xs text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 overscroll-contain"
-                role="dialog"
-                aria-label="Search directory"
-              >
-                <div className="relative flex items-center">
-                  <Search className="absolute left-3 w-4 h-4 text-slate-400 dark:text-zinc-400 pointer-events-none" />
-                  <input
-                    ref={searchInputRef}
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value)
-                      setShowSearchResults(true)
-                    }}
-                    placeholder="Search directory..."
-                    className="w-full pl-9 pr-8 py-2 bg-slate-50 dark:bg-zinc-800/80 border border-slate-200 dark:border-zinc-700 rounded-xl text-xs text-slate-900 dark:text-zinc-100 placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:ring-2 focus:ring-slate-400/30 dark:focus:ring-zinc-600/30 focus:border-slate-400 dark:focus:border-zinc-500 transition-all"
-                  />
-                  {searchQuery ? (
-                    <button
-                      type="button"
-                      onClick={() => setSearchQuery('')}
-                      className="absolute right-2.5 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-                      title="Clear search"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  ) : (
-                    <span className="absolute right-2.5 text-[10px] text-slate-400 dark:text-zinc-500 font-mono hidden sm:inline-block border border-slate-200 dark:border-zinc-700 rounded px-1.5 py-0.5">
-                      ESC
-                    </span>
-                  )}
-                </div>
-
-                {/* Live Search Quick Results */}
-                {showSearchResults && queryLower.length > 0 && (
-                  <div className="mt-2.5 pt-2 border-t border-slate-100 dark:border-zinc-800/80">
-                    {renderSearchResults()}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-
           {/* Full Screen Mode Toggle (Hidden on mobile viewport to maximize header space) */}
           <div className="hidden sm:inline-flex">
             <FullscreenToggle />
