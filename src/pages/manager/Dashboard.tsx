@@ -219,6 +219,7 @@ export const ManagerDashboard: React.FC = () => {
   ).length
   const isReleased =
     activeCycle.stage === 'released' ||
+    activeCycle.stage === 'closed' ||
     (totalReports > 0 && resultsReleasedCount >= totalReports)
   const isCalibration = activeCycle.stage === 'calibration'
   const calibrationPct = isReleased
@@ -420,7 +421,7 @@ export const ManagerDashboard: React.FC = () => {
   })
 
   return (
-    <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
+    <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 animate-fade-in font-sans">
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
@@ -1018,7 +1019,7 @@ export const ManagerDashboard: React.FC = () => {
                       </span>
                       {resultsReleasedCount > 0 ? (
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-emerald-700 text-white dark:bg-emerald-500/20 dark:text-emerald-300 border border-emerald-600/30">
-                          {resultsReleasedCount === totalReports ? 'Released' : 'Active'}
+                          {activeCycle.stage === 'closed' ? 'Closed' : resultsReleasedCount === totalReports ? 'Released' : 'Active'}
                         </span>
                       ) : calibrationStageStatus === 'in_progress' ? (
                         <span className="text-[10px] px-2 py-0.5 rounded font-semibold bg-amber-50 text-amber-800 dark:bg-[#FFB454]/10 dark:text-[#FFB454] border border-amber-200 dark:border-[#FFB454]/20">

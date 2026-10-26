@@ -11,6 +11,7 @@ import {
   isImageFile,
   isPdfFile,
 } from '../mock/calibrationService'
+import { storageService } from '../mock/storageService'
 
 export type { CalibrationItem, EvidencePdfMeta, GoalEvidenceItem }
 export { isImageFile, isPdfFile }
@@ -61,10 +62,10 @@ export const supabaseCalibrationService = {
       const { data: cycleData } = await supabase
         .from('review_cycles')
         .select('*')
-        .eq('id', cycleId)
+        .or(`id.eq.${resolveCycleUuid(cycleId)},id.eq.${cycleId}`)
         .single()
       const targetCycleUuid = resolveCycleUuid(cycleId)
-      const cycleName = cycleData?.name || 'FY26 Performance & Growth Cycle'
+      const cycleName = cycleData?.name || (await mockCalibrationService.listForCycle(cycleId))?.[0]?.cycleName || 'FY 2026 H2 Performance Review'
 
       // 2. Fetch manager reviews for this cycle
       const { data: reviewsData, error: reviewsErr } = await supabase
@@ -74,10 +75,10 @@ export const supabaseCalibrationService = {
 
       if (reviewsErr) {
         console.warn('Notice in supabaseCalibrationService.listForCycle:', reviewsErr.message)
-        return []
+        return mockCalibrationService.listForCycle(cycleId)
       }
       if (!reviewsData || reviewsData.length === 0) {
-        return []
+        return mockCalibrationService.listForCycle(cycleId)
       }
 
       // 3. Fetch profiles for employees & managers
@@ -112,7 +113,7 @@ export const supabaseCalibrationService = {
       const { data: goalsData } = await supabase
         .from('goals')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .or(`cycle_id.eq.${targetCycleUuid},cycle_id.eq.${cycleId}`)
         .in('user_id', employeeIds)
 
       const goalIds = goalsData ? goalsData.map((g) => g.id) : []
@@ -128,19 +129,19 @@ export const supabaseCalibrationService = {
       const { data: calibrationsData } = await supabase
         .from('calibrations')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .or(`cycle_id.eq.${targetCycleUuid},cycle_id.eq.${cycleId}`)
         .in('user_id', employeeIds)
 
       const { data: selfAssessData } = await supabase
         .from('self_assessments')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .or(`cycle_id.eq.${targetCycleUuid},cycle_id.eq.${cycleId}`)
         .in('user_id', employeeIds)
 
       const { data: resultsData } = await supabase
         .from('final_results')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .or(`cycle_id.eq.${targetCycleUuid},cycle_id.eq.${cycleId}`)
         .in('user_id', employeeIds)
 
       // Group goal updates by goal_id
@@ -239,14 +240,23 @@ export const supabaseCalibrationService = {
           : undefined
 
         // Goals
-        const userGoals = (goalsData || []).filter((g) => g.user_id === mr.user_id)
+        const localEmpGoals = storageService
+          .getState()
+          .goals.filter(
+            (g) =>
+              (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId)) &&
+              (g.userId === mr.user_id || matchesUser(g.userId, mr.user_id))
+          )
+        const userGoals = (goalsData && goalsData.length > 0)
+          ? goalsData.filter((g) => g.user_id === mr.user_id)
+          : localEmpGoals
         const mappedGoals: Goal[] = userGoals.map((g) => {
           const history = updatesByGoal[g.id] || []
           const latestEvidence = history.find((h) => h.evidenceFileName || h.evidenceUrl)
           return {
             id: g.id,
-            userId: g.user_id,
-            cycleId: g.cycle_id,
+            userId: g.userId || g.user_id,
+            cycleId: g.cycleId || g.cycle_id,
             title: g.title,
             description: g.description || '',
             metric: g.metric,
@@ -255,14 +265,14 @@ export const supabaseCalibrationService = {
             unit: g.unit,
             weight: Number(g.weight),
             progress: Number(g.progress),
-            dueDate: g.due_date,
+            dueDate: g.dueDate || g.due_date,
             status: g.status,
-            returnReason: g.rejection_reason,
-            evidenceFileName: latestEvidence?.evidenceFileName,
-            evidenceUrl: latestEvidence?.evidenceUrl,
-            progressHistory: history,
-            createdAt: g.created_at,
-            updatedAt: g.updated_at,
+            returnReason: g.returnReason || g.rejection_reason,
+            evidenceFileName: g.evidenceFileName || latestEvidence?.evidenceFileName,
+            evidenceUrl: g.evidenceUrl || latestEvidence?.evidenceUrl,
+            progressHistory: (g.progressHistory && g.progressHistory.length > 0) ? g.progressHistory : history,
+            createdAt: g.createdAt || g.created_at,
+            updatedAt: g.updatedAt || g.updated_at,
           }
         })
 
@@ -331,6 +341,21 @@ export const supabaseCalibrationService = {
           : undefined
 
         // Calibration record
+        // Calibration record fallback to mock storage if Supabase is offline/empty
+        const localCal = storageService
+          .getState()
+          .calibrations.find(
+            (c) =>
+              (c.cycleId === cycleId || matchesCycle(c.cycleId, cycleId)) &&
+              (c.employeeId === mr.user_id || matchesUser(c.employeeId, mr.user_id))
+          )
+        const localResult = storageService
+          .getState()
+          .results.find(
+            (r) =>
+              (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId)) &&
+              (r.employeeId === mr.user_id || matchesUser(r.employeeId, mr.user_id))
+          )
         const cal = calibrationsData?.find((c) => c.user_id === mr.user_id)
         const calibrationRecord: CalibrationRecord | undefined = cal
           ? {
@@ -345,15 +370,20 @@ export const supabaseCalibrationService = {
               adminApproved: true,
               status: 'approved',
             }
-          : undefined
+          : localCal
 
         const currentScore = calibrationRecord ? calibrationRecord.adjustedScore : compositeScore
         const bandInfo = getRatingBand(currentScore)
 
         const hasApprovedResult = (resultsData || []).some(
-          (r) => r.user_id === mr.user_id && r.status === 'approved'
+          (r) => r.user_id === mr.user_id && (r.status === 'approved' || r.status === 'released')
         )
-        const adminApproved = !!(calibrationRecord?.adminApproved || hasApprovedResult)
+        const adminApproved = !!(
+          calibrationRecord?.adminApproved ||
+          localCal?.adminApproved ||
+          hasApprovedResult ||
+          localResult
+        )
 
         return {
           employee,
@@ -466,7 +496,7 @@ export const supabaseCalibrationService = {
             released_at: null,
             updated_at: new Date().toISOString(),
           })
-          .eq('cycle_id', cycleId)
+          .or(`cycle_id.eq.${targetCycleUuid},cycle_id.eq.${cycleId}`)
           .eq('user_id', employeeId)
       } catch (e) {
         console.warn('Notice in supabase revokePermission:', e)

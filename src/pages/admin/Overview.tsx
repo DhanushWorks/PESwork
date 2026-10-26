@@ -193,11 +193,21 @@ export const AdminOverview: React.FC = () => {
 
     const isSelfDone = selfRev?.status === 'submitted'
     const isMgrDone = mgrRev?.status === 'submitted'
-    const isCalibratedApproved = Boolean(calItem?.adminApproved || calRec?.adminApproved || (calRec as any)?.status === 'approved' || res)
-    const isCalibrated = Boolean(isCalibratedApproved || calItem?.calibrationRecord || calRec)
-    // Only mark as Released if the cycle is at Stage 7/8 or result exists or result has status 'released'
+    const isCalibratedApproved = Boolean(
+      calItem?.adminApproved ||
+      calRec?.adminApproved ||
+      (calRec as any)?.status === 'approved' ||
+      (res && ((res as any)?.status === 'released' || currentCycle.stage === 'released' || currentCycle.stage === 'closed'))
+    )
+    const isCalibrated = Boolean(
+      isCalibratedApproved ||
+      calItem?.calibrationRecord ||
+      calRec ||
+      (calItem?.currentScore !== undefined && calItem.currentScore !== mgrRev?.compositeScore)
+    )
+    // Only mark as Released if the cycle is at Stage 7/8 or result is formally released
     const isReleased = Boolean(
-      (currentCycle.stage === 'released' || currentCycle.stage === 'closed' || (res as any)?.status === 'released' || Boolean(res)) &&
+      (currentCycle.stage === 'released' || currentCycle.stage === 'closed' || (res as any)?.status === 'released') &&
       isCalibratedApproved
     )
     const score = res?.compositeScore ?? calRec?.adjustedScore ?? calItem?.currentScore ?? mgrRev?.compositeScore ?? selfRev?.overallRating
@@ -470,7 +480,7 @@ export const AdminOverview: React.FC = () => {
   }, [cycles, activeCycle])
 
   return (
-    <div className="space-y-4 w-full pb-2 font-sans">
+    <div className="space-y-4 sm:space-y-5 w-full pb-24 sm:pb-28 lg:pb-20 font-sans">
       {/* Metric Cards Row */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
@@ -881,71 +891,131 @@ export const AdminOverview: React.FC = () => {
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto no-scrollbar -mx-1 sm:mx-0">
-            <table className="w-full text-left text-xs border-collapse min-w-[560px]">
-              <thead>
-                <tr className="border-b border-slate-100 dark:border-white/[0.08] text-[10.5px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider font-sans select-none">
-                  <th className="pb-2.5 font-bold">Employee</th>
-                  <th className="pb-2.5 font-bold">Review Cycle</th>
-                  <th className="pb-2.5 font-bold">Approval Type</th>
-                  <th className="pb-2.5 font-bold">Submitted</th>
-                  <th className="pb-2.5 font-bold">Status</th>
-                  <th className="pb-2.5 font-bold text-right">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] font-sans">
-                {pendingApprovals.map((item) => (
-                  <tr key={item.id} className="group hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors">
-                    <td className="py-3 pr-2">
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        <img
-                          src={item.employee.avatar}
-                          alt={item.employee.name}
-                          className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
-                        />
-                        <div className="min-w-0">
-                          <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                            {item.employee.name}
-                          </div>
-                          <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
-                            {item.employee.employeeCode}
-                          </div>
+          <>
+            {/* Mobile Adaptive Card View (Zero horizontal or vertical clipping on narrow screens) */}
+            <div className="block sm:hidden space-y-3 font-sans">
+              {pendingApprovals.map((item) => (
+                <div
+                  key={item.id}
+                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/60 dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors space-y-2.5 shadow-2xs"
+                >
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={item.employee.avatar}
+                        alt={item.employee.name}
+                        className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                          {item.employee.name}
+                        </div>
+                        <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
+                          {item.employee.employeeCode}
                         </div>
                       </div>
-                    </td>
-                    <td className="py-3 px-2">
-                      <span className="text-[11px] text-slate-700 dark:text-zinc-300 font-medium truncate block max-w-[180px]" title={item.cycleName}>
+                    </div>
+                    <Link
+                      to={item.reviewUrl}
+                      className="h-7 px-2.5 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-white/[0.06] hover:bg-slate-100 dark:hover:bg-white/[0.12] text-slate-800 dark:text-zinc-100 text-xs font-semibold inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
+                    >
+                      <span>Review</span>
+                      <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white" />
+                    </Link>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200/60 dark:border-white/[0.05] text-[11px]">
+                    <div className="min-w-0 truncate">
+                      <span className="text-slate-400 dark:text-zinc-500">Cycle: </span>
+                      <span className="font-medium text-slate-700 dark:text-zinc-300 truncate" title={item.cycleName}>
                         {item.cycleName}
                       </span>
-                    </td>
-                    <td className="py-3 px-2 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700">
-                        {item.approvalType}
-                      </span>
-                    </td>
-                    <td className="py-3 px-2 whitespace-nowrap text-[11px] text-slate-500 dark:text-zinc-400 font-mono">
+                    </div>
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700 shrink-0">
+                      {item.approvalType}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 text-[10.5px]">
+                    <span className="text-slate-500 dark:text-zinc-400 font-mono">
                       {formatDate(item.submissionDate)}
-                    </td>
-                    <td className="py-3 px-2 whitespace-nowrap">
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50">
-                        <Clock className="w-3 h-3" />
-                        <span>{item.status}</span>
-                      </span>
-                    </td>
-                    <td className="py-3 pl-2 text-right whitespace-nowrap">
-                      <Link
-                        to={item.reviewUrl}
-                        className="h-7 px-2.5 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-slate-700 dark:text-zinc-200 text-xs font-semibold inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0"
-                      >
-                        <span>Review</span>
-                        <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
-                      </Link>
-                    </td>
+                    </span>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50 shrink-0">
+                      <Clock className="w-2.5 h-2.5" />
+                      <span>{item.status}</span>
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop & Tablet Table View */}
+            <div className="hidden sm:block overflow-x-auto no-scrollbar -mx-1 sm:mx-0">
+              <table className="w-full text-left text-xs border-collapse min-w-[560px]">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-white/[0.08] text-[10.5px] uppercase font-bold text-slate-500 dark:text-zinc-400 tracking-wider font-sans select-none">
+                    <th className="pb-2.5 font-bold">Employee</th>
+                    <th className="pb-2.5 font-bold">Review Cycle</th>
+                    <th className="pb-2.5 font-bold">Approval Type</th>
+                    <th className="pb-2.5 font-bold">Submitted</th>
+                    <th className="pb-2.5 font-bold">Status</th>
+                    <th className="pb-2.5 font-bold text-right">Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] font-sans">
+                  {pendingApprovals.map((item) => (
+                    <tr key={item.id} className="group hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors">
+                      <td className="py-3 pr-2">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <img
+                            src={item.employee.avatar}
+                            alt={item.employee.name}
+                            className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                              {item.employee.name}
+                            </div>
+                            <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
+                              {item.employee.employeeCode}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3 px-2">
+                        <span className="text-[11px] text-slate-700 dark:text-zinc-300 font-medium truncate block max-w-[180px]" title={item.cycleName}>
+                          {item.cycleName}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10.5px] font-semibold bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200 dark:border-zinc-700">
+                          {item.approvalType}
+                        </span>
+                      </td>
+                      <td className="py-3 px-2 whitespace-nowrap text-[11px] text-slate-500 dark:text-zinc-400 font-mono">
+                        {formatDate(item.submissionDate)}
+                      </td>
+                      <td className="py-3 px-2 whitespace-nowrap">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10.5px] font-semibold bg-amber-50 text-amber-800 border border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/50">
+                          <Clock className="w-3 h-3" />
+                          <span>{item.status}</span>
+                        </span>
+                      </td>
+                      <td className="py-3 pl-2 text-right whitespace-nowrap">
+                        <Link
+                          to={item.reviewUrl}
+                          className="h-7 px-2.5 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-white/[0.04] hover:bg-slate-50 dark:hover:bg-white/[0.08] text-slate-700 dark:text-zinc-200 text-xs font-semibold inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0"
+                        >
+                          <span>Review</span>
+                          <ArrowRight className="w-3 h-3 text-slate-400 group-hover:text-slate-900 dark:group-hover:text-white transition-colors" />
+                        </Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </section>
     </div>

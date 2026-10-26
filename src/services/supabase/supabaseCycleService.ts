@@ -42,7 +42,7 @@ export const supabaseCycleService = {
       // Query participants count or mapping
       const { data: participants } = await supabase.from('cycle_participants').select('cycle_id, user_id')
 
-      return data.map((c) => {
+      const cyclesList: ReviewCycle[] = data.map((c) => {
         const cycleParticipants = participants
           ? participants.filter((p) => p.cycle_id === c.id).map((p) => p.user_id)
           : []
@@ -59,6 +59,21 @@ export const supabaseCycleService = {
           participantIds: cycleParticipants,
         }
       })
+
+      // Sync fetched Supabase cycle stages into mock storage to keep UI perfectly aligned
+      try {
+        storageService.updateState((state) => {
+          const updatedCycles = state.cycles.map((sc) => {
+            const found = cyclesList.find((c) => c.id === sc.id || matchesCycle(c.id, sc.id))
+            return found ? { ...sc, stage: found.stage, name: found.name, deadlines: found.deadlines } : sc
+          })
+          return { cycles: updatedCycles }
+        })
+      } catch (e) {
+        console.warn('Sync storage from Supabase failed', e)
+      }
+
+      return cyclesList
     } catch (err) {
       markSupabaseOffline(err)
       return mockCycleService.list()

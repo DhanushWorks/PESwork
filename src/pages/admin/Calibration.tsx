@@ -386,7 +386,7 @@ export const AdminCalibration: React.FC = () => {
   const previewBand = getRatingBand(adjustedScore)
 
   return (
-    <div className="space-y-4 w-full pb-3 animate-fade-in font-sans">
+    <div className="space-y-4 w-full pb-20 sm:pb-24 lg:pb-16 animate-fade-in font-sans">
       {/* Stage Notice Banner if not in calibration */}
       {!isCalibrationStage && !isReleased && (
         <div className="p-4 sm:p-4.5 rounded-2xl bg-slate-100/90 dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-xs text-slate-800 dark:text-zinc-200 flex items-start justify-between gap-3 shadow-2xs">

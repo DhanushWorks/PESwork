@@ -121,7 +121,7 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 w-full pb-12 font-sans">
+    <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
       {/* Clean Dashboard Standard Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
         <div>

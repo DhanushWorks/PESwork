@@ -56,7 +56,7 @@ export const AppLayout: React.FC = () => {
   }, [])
 
   return (
-    <div className="h-screen bg-[#f3f4f6] dark:bg-[#000000] flex flex-col font-sans text-slate-900 dark:text-[#EEF1F7] relative selection:bg-indigo-100 dark:selection:bg-indigo-950/70 selection:text-indigo-900 dark:selection:text-indigo-300 w-full max-w-full overflow-hidden overscroll-none">
+    <div className="h-screen h-[100dvh] max-h-[100dvh] bg-[#f3f4f6] dark:bg-[#000000] flex flex-col font-sans text-slate-900 dark:text-[#EEF1F7] relative selection:bg-indigo-100 dark:selection:bg-indigo-950/70 selection:text-indigo-900 dark:selection:text-indigo-300 w-full max-w-full overflow-hidden overscroll-none">
       {/* Crisp subtle micro-texture for pure black UI - zero blue glow */}
       <div className="hidden dark:block pointer-events-none fixed inset-0 overflow-hidden z-0" aria-hidden="true">
         <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.035)_1px,transparent_1px)] [background-size:28px_28px] [mask-image:linear-gradient(to_bottom,#000_0%,transparent_85%)]" />
@@ -67,7 +67,7 @@ export const AppLayout: React.FC = () => {
         <DemoBanner />
       </div>
 
-      <div className="flex-1 flex relative z-10 w-full max-w-full overflow-hidden">
+      <div className="flex-1 min-h-0 flex relative z-10 w-full max-w-full overflow-hidden">
         {/* Collapsible Sidebar / Mobile Drawer */}
         <AppSidebar
           isOpen={sidebarOpen}
@@ -78,7 +78,7 @@ export const AppLayout: React.FC = () => {
 
         {/* Main Content Area: adjusts left padding based on collapsed state in lockstep */}
         <div
-          className={`flex-1 flex flex-col h-full min-w-0 w-full overflow-hidden transition-[padding] duration-200 ease-in-out ${
+          className={`flex-1 min-h-0 flex flex-col h-full min-w-0 w-full overflow-hidden transition-[padding] duration-200 ease-in-out ${
             isCollapsed ? 'lg:pl-12' : 'lg:pl-60'
           }`}
         >
@@ -88,8 +88,8 @@ export const AppLayout: React.FC = () => {
             onToggleCollapse={toggleCollapse}
           />
 
-          <main className="flex-1 overflow-y-auto overscroll-none px-4 sm:px-6 lg:px-8 py-3 w-full max-w-full">
-            <div key={location.pathname} className="page-transition-enter w-full max-w-full pb-4">
+          <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-6 lg:px-8 pt-3 pb-10 sm:pb-14 w-full max-w-full">
+            <div key={location.pathname} className="page-transition-enter w-full max-w-full pb-8 sm:pb-12">
               <Outlet />
             </div>
           </main>

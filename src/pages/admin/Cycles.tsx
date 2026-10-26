@@ -352,7 +352,7 @@ export const AdminCycles: React.FC = () => {
   })
 
   return (
-    <div className="space-y-4 w-full pb-3 font-sans">
+    <div className="space-y-4 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
       {/* Search Toolbar */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <AnimatedSearchBar

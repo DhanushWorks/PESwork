@@ -271,7 +271,7 @@ export const AdminReports: React.FC = () => {
   }
 
   return (
-    <div className="space-y-4 w-full pb-3 font-sans">
+    <div className="space-y-4 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
       {/* Top Filter Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
         <span className="text-xs font-sans font-medium text-slate-500 dark:text-zinc-400">

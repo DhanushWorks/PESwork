@@ -531,7 +531,7 @@ export const AdminCycleDetail: React.FC = () => {
   const totalEditWeights = Number(editGoalsWeight) + Number(editCompWeight) + Number(editValuesWeight)
 
   return (
-    <div className="space-y-4 w-full pb-3 font-sans">
+    <div className="space-y-4 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
       {/* Top Breadcrumb & Actions Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <button

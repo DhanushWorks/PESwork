@@ -387,12 +387,19 @@ export const calibrationService = {
 
       return {
         cycles: updatedCycles,
+        activeCycleId: cycleId,
         calibrations: [...filteredCals, approvedCal],
         results: [...filteredResults, evaluationResult],
         notifications: [empNotif, mgrNotif, ...s.notifications],
         auditLogs: [audit, ...s.auditLogs],
       }
     })
+
+    try {
+      await cycleService.setStage(cycleId, 'released')
+    } catch (e) {
+      console.warn('Notice setting cycle stage in approveAndRelease:', e)
+    }
 
     return { calibration: approvedCal, result: evaluationResult }
   },

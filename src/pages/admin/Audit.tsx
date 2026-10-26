@@ -464,7 +464,7 @@ export const AdminAudit: React.FC = () => {
   }
 
   return (
-    <div className="space-y-3.5 w-full pb-3 animate-fade-in font-sans">
+    <div className="space-y-3.5 w-full pb-20 sm:pb-24 lg:pb-16 animate-fade-in font-sans">
       {/* Search & Action Controls Toolbar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
         {/* Normal Search Input */}

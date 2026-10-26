@@ -397,7 +397,7 @@ export const EmployeeDashboard: React.FC = () => {
   }, [historicalResults, releasedResult, activeCycle])
 
   return (
-    <div className="space-y-6 w-full pb-12 font-sans select-none">
+    <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 font-sans select-none">
       {/* SVG Global Gradients for Radial Gauges */}
       <svg width="0" height="0" className="absolute pointer-events-none" aria-hidden="true">
         <defs>

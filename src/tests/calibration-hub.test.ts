@@ -6,6 +6,7 @@ import {
   cycleService,
   storageService,
 } from '../services'
+import { matchesUser } from '../lib/workflow'
 
 async function runCalibrationHubTests() {
   console.log('=== ADMIN CALIBRATION HUB VERIFICATION TEST ===\n')
@@ -147,7 +148,7 @@ async function runCalibrationHubTests() {
   const items = await calibrationService.listForCycle(cycleId)
   assert(items.length > 0, 'Calibration roster must not be empty')
 
-  const calItem = items.find((i) => i.employee.id === employeeId)
+  const calItem = items.find((i) => i.employee.id === employeeId || matchesUser(i.employee.id, employeeId))
   assert(calItem, `Calibration item for employee ${employeeId} must exist`)
 
   // Check 1: Review Cycle Name
@@ -258,7 +259,7 @@ async function runCalibrationHubTests() {
   )
 
   const itemsAfterCal = await calibrationService.listForCycle(cycleId)
-  const calibratedItem = itemsAfterCal.find((i) => i.employee.id === employeeId)!
+  const calibratedItem = itemsAfterCal.find((i) => i.employee.id === employeeId || matchesUser(i.employee.id, employeeId))!
   assert.strictEqual(calibratedItem.currentScore, 4.8, 'Calibrated score must update to 4.8')
   assert.strictEqual(calibratedItem.calibrationRecord?.reason, committeeRationale)
 
@@ -272,7 +273,7 @@ async function runCalibrationHubTests() {
   )
 
   const itemsAfterPermit = await calibrationService.listForCycle(cycleId)
-  const permittedItem = itemsAfterPermit.find((i) => i.employee.id === employeeId)!
+  const permittedItem = itemsAfterPermit.find((i) => i.employee.id === employeeId || matchesUser(i.employee.id, employeeId))!
   assert.strictEqual(permittedItem.adminApproved, true, 'Admin permission gate must show approved: true')
   assert.strictEqual(permittedItem.goals.length, 3, 'All 3 goals must remain preserved after permit')
   assert(permittedItem.allEvidence.length >= 4, 'All evidence files must remain preserved after permit')

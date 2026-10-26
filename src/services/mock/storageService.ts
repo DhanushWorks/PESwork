@@ -11,6 +11,7 @@ import {
   SelfReview,
   User,
 } from '../../types'
+import { matchesCycle } from '../../lib/workflow'
 import {
   SEED_AUDIT_LOGS,
   SEED_CALIBRATIONS,
@@ -58,7 +59,7 @@ const STORAGE_KEY = 'performiq_clean_workflow_v1'
 const BASELINE_CYCLE: ReviewCycle = {
   id: 'bf21ac37-1801-47df-b9ba-b1d05a0d6832',
   name: 'FY 2026 H2 Performance Review',
-  stage: 'released',
+  stage: 'closed',
   startDate: '2026-10-01',
   endDate: '2026-12-31',
   description: 'Evaluation cycle for FY 2026 H2 Performance Review',
@@ -220,15 +221,10 @@ class StorageService {
               : { ...FULL_SEED_DEVELOPMENT_PLANS },
         }
 
-        // Auto-heal: If cycle has approved calibrations & released results, ensure stage is 'released'
-        if (state.calibrations.some((c) => c.adminApproved) && state.results.length > 0) {
-          state.cycles = state.cycles.map((c) => {
-            if (state.calibrations.some((cal) => cal.cycleId === c.id && cal.adminApproved)) {
-              return { ...c, stage: 'released' }
-            }
-            return c
-          })
-        }
+        // Preserve explicit cycle stage: never overwrite or revert user-set stages
+        state.cycles = state.cycles.map((c) => {
+          return c
+        })
 
         this.persist(state)
         return state
