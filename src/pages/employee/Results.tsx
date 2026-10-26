@@ -117,9 +117,9 @@ export const EmployeeResults: React.FC = () => {
   const isSelfReviewSubmitted = selfReview?.status === 'submitted'
 
   const effectiveStage: CycleStage = (() => {
-    if (activeCycle.stage === 'closed' && isReleased) return 'closed'
-    // Evaluation results only advance to 'released' if Admin has formally reviewed & granted permission:
-    if (isReleased) {
+    if (currentCycle.stage === 'closed' || activeCycle.stage === 'closed') return 'closed'
+    // Evaluation results advance to 'released' if Admin granted permission or cycle is released:
+    if (isReleased || currentCycle.stage === 'released' || activeCycle.stage === 'released') {
       return 'released'
     }
     // If manager submitted evaluation, it remains strictly in 'calibration' until Admin grants permission:

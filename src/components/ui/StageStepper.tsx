@@ -30,7 +30,8 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   const isActiveWorkspace = effectiveCycle?.id === activeCycle?.id
 
   const currentIndex = STAGE_ORDER.indexOf(currentStage)
-  const isCycleFinished = isFinished || currentStage === 'closed'
+  // When stage is 'released' or 'closed', the evaluation outcomes have been released and the cycle has reached full completion
+  const isCycleFinished = isFinished || currentStage === 'closed' || currentStage === 'released'
   const [containerRef, isInView] = useInView<HTMLDivElement>({ threshold: 0.15, triggerOnce: true })
   const scrollContainerRef = useRef<HTMLDivElement>(null)
   const activeStepRef = useRef<HTMLDivElement>(null)
@@ -86,10 +87,10 @@ export const StageStepper: React.FC<StageStepperProps> = ({
     // Progressive illumination of step nodes in sync with the traveling line
     const timeouts: number[] = []
     const totalDuration = 1000 // duration of line draw
-    const effectiveIndex = Math.max(0, currentIndex)
+    const effectiveIndex = isCycleFinished ? STAGE_ORDER.length - 1 : Math.max(0, currentIndex)
 
     STAGE_ORDER.forEach((_, idx) => {
-      if (idx <= currentIndex) {
+      if (isCycleFinished || idx <= currentIndex) {
         const delay = 120 + (effectiveIndex > 0 ? (idx / effectiveIndex) * totalDuration : 0)
         const timer = window.setTimeout(() => {
           setActiveStepIndex(idx)
@@ -102,10 +103,12 @@ export const StageStepper: React.FC<StageStepperProps> = ({
       clearTimeout(lineTimer)
       timeouts.forEach(clearTimeout)
     }
-  }, [isInView, currentIndex, currentStage])
+  }, [isInView, currentIndex, currentStage, isCycleFinished])
 
   const targetPercentage =
-    currentIndex >= 0
+    isCycleFinished
+      ? 100
+      : currentIndex >= 0
       ? (Math.min(currentIndex, STAGE_ORDER.length - 1) / (STAGE_ORDER.length - 1)) * 100
       : 0
 
@@ -215,9 +218,9 @@ export const StageStepper: React.FC<StageStepperProps> = ({
           {/* Step Nodes Row */}
           <div className="relative flex justify-between">
             {STAGE_ORDER.map((stage, idx) => {
-              const isCompleted = isCycleFinished ? idx <= currentIndex : idx < currentIndex
+              const isCompleted = isCycleFinished ? true : idx < currentIndex
               const isCurrent = isCycleFinished ? false : idx === currentIndex
-              const isLit = idx <= activeStepIndex
+              const isLit = isCycleFinished ? true : idx <= activeStepIndex
               const details = CYCLE_STAGE_DETAILS[stage]
 
               return (
@@ -256,7 +259,7 @@ export const StageStepper: React.FC<StageStepperProps> = ({
                   {/* Step Label */}
                   <div
                     className={`text-xs transition-colors line-clamp-1 ${
-                      isCurrent || (isCycleFinished && idx === currentIndex)
+                      isCurrent || isCycleFinished
                         ? 'text-slate-950 dark:text-white font-bold'
                         : isCompleted && isLit
                         ? 'text-slate-700 dark:text-[#C9CEDB] font-medium'

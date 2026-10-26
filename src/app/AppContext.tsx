@@ -153,6 +153,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [])
 
   const loadSeqRef = useRef(0)
+  const currentUserRef = useRef(currentUser)
+  currentUserRef.current = currentUser
 
   const loadAll = useCallback(async () => {
     try {
@@ -197,8 +199,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           foundUser = state.users.find((u) => u.id === activeUserId || matchesUser(u.id, activeUserId))
         }
         // 3. If still not found, preserve the currently active user if valid
-        if (!foundUser && currentUser && currentUser.id) {
-          foundUser = currentUser
+        if (!foundUser && currentUserRef.current && currentUserRef.current.id) {
+          foundUser = currentUserRef.current
         }
         // 4. As absolute last resort only, fallback to the first user
         if (!foundUser) {
@@ -230,7 +232,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       console.warn('Notice in AppContext.loadAll:', err)
     }
-  }, [currentUser])
+  }, [])
 
   useEffect(() => {
     loadAll()

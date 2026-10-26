@@ -381,9 +381,13 @@ export const calibrationService = {
       const filteredCals = s.calibrations.filter((c) => !(c.cycleId === cycleId && c.employeeId === employeeId))
       const filteredResults = s.results.filter((r) => !(r.cycleId === cycleId && r.employeeId === employeeId))
 
-      const updatedCycles = s.cycles.map((c) =>
-        c.id === cycleId || matchesCycle(c.id, cycleId) ? { ...c, stage: 'released' as const } : c
-      )
+      const updatedCycles = s.cycles.map((c) => {
+        if (c.id === cycleId || matchesCycle(c.id, cycleId)) {
+          if (c.stage === 'closed') return c
+          return { ...c, stage: 'released' as const }
+        }
+        return c
+      })
 
       return {
         cycles: updatedCycles,
@@ -396,7 +400,10 @@ export const calibrationService = {
     })
 
     try {
-      await cycleService.setStage(cycleId, 'released')
+      const currentC = await cycleService.getById(cycleId)
+      if (currentC?.stage !== 'closed') {
+        await cycleService.setStage(cycleId, 'released')
+      }
     } catch (e) {
       console.warn('Notice setting cycle stage in approveAndRelease:', e)
     }
@@ -496,8 +503,11 @@ export const calibrationService = {
       }
     })
 
-    // Advance cycle stage to 'released'
-    await cycleService.setStage(cycleId, 'released')
+    // Advance cycle stage to 'released' if not already closed
+    const currentC = await cycleService.getById(cycleId)
+    if (currentC?.stage !== 'closed') {
+      await cycleService.setStage(cycleId, 'released')
+    }
 
     // Mark all calibrations for this cycle as approved
     const updatedCals = calibrations.map((c) => {

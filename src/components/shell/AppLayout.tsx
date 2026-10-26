@@ -88,8 +88,8 @@ export const AppLayout: React.FC = () => {
             onToggleCollapse={toggleCollapse}
           />
 
-          <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-6 lg:px-8 pt-3 pb-10 sm:pb-14 w-full max-w-full">
-            <div key={location.pathname} className="page-transition-enter w-full max-w-full pb-8 sm:pb-12">
+          <main className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-3 sm:px-6 lg:px-8 pt-3 pb-20 sm:pb-28 w-full max-w-full">
+            <div className="page-transition-enter w-full max-w-full pb-12 sm:pb-20">
               <Outlet />
             </div>
           </main>

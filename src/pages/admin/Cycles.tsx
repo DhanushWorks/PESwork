@@ -52,9 +52,9 @@ export const AdminCycles: React.FC = () => {
   const { success, error, warning } = useToast()
   const navigate = useNavigate()
 
-  const [cycles, setCycles] = useState<ReviewCycle[]>([])
+  const [cycles, setCycles] = useState<ReviewCycle[]>(allCycles)
   const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(allCycles.length === 0)
 
   // Delete Cycle State
   const [cycleToDelete, setCycleToDelete] = useState<ReviewCycle | null>(null)
@@ -105,7 +105,7 @@ export const AdminCycles: React.FC = () => {
   const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   const fetchCycles = async () => {
-    setLoading(true)
+    if (cycles.length === 0) setLoading(true)
     try {
       const list = await cycleService.list()
       setCycles(list)

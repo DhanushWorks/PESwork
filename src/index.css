@@ -187,7 +187,8 @@ pre {
   }
 
   .page-transition-enter {
-    animation: pageSmoothFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    animation: pageSmoothFadeIn 0.14s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transform: translate3d(0, 0, 0);
     will-change: opacity, transform;
   }
 
@@ -1084,8 +1085,6 @@ html.dark body {
 html.dark .dark-glass-card {
   border: 1px solid rgba(63, 63, 70, 0.8) !important;
   background: #18181b !important;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
   box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.7) !important;
 }
 

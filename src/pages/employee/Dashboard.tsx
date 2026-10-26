@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { goalService, reviewService, feedbackService, resultService, storageService } from '../../services'
+import { apiCache } from '../../lib/apiCache'
 import { Goal, SelfReview, FeedbackItem, EvaluationResult, ManagerReview, CycleStage, ReviewCycle } from '../../types'
 import { StageStepper } from '../../components/ui/StageStepper'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
@@ -28,19 +29,20 @@ import {
 export const EmployeeDashboard: React.FC = () => {
   const { currentUser, activeCycle, allCycles, allUsers } = useApp()
 
-  const [goals, setGoals] = useState<Goal[]>([])
+  const cachedGoals = apiCache.peek<Goal[]>(`goals:user:${currentUser.id}:${activeCycle.id}`) || []
+  const [goals, setGoals] = useState<Goal[]>(cachedGoals)
   const [selfReview, setSelfReview] = useState<SelfReview | null>(null)
   const [managerReview, setManagerReview] = useState<ManagerReview | null>(null)
   const [feedback, setFeedback] = useState<FeedbackItem[]>([])
   const [releasedResult, setReleasedResult] = useState<EvaluationResult | null>(null)
   const [historicalResults, setHistoricalResults] = useState<Array<{ cycle: ReviewCycle; result: EvaluationResult }>>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(cachedGoals.length === 0)
   const [goalFilter, setGoalFilter] = useState<'all' | 'approved' | 'pending'>('all')
 
   useEffect(() => {
     let isMounted = true
     const fetchData = async () => {
-      setLoading(true)
+      if (goals.length === 0) setLoading(true)
       try {
         const [gList, sr, mr, fb, resView, histResults] = await Promise.all([
           goalService.listForUser(currentUser.id, activeCycle.id),

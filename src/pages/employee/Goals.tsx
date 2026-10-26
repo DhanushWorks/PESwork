@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import { goalService } from '../../services'
+import { apiCache } from '../../lib/apiCache'
 import { Goal, GoalStatus } from '../../types'
 import { GoalStatusBadge } from '../../components/ui/Badge'
 import { ProgressBar } from '../../components/ui/MetricCard'
@@ -111,8 +112,9 @@ export const EmployeeGoals: React.FC = () => {
   const { currentUser, activeCycle } = useApp()
   const { success, error, warning } = useToast()
 
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [loading, setLoading] = useState(true)
+  const cachedGoals = apiCache.peek<Goal[]>(`goals:user:${currentUser.id}:${activeCycle.id}`) || []
+  const [goals, setGoals] = useState<Goal[]>(cachedGoals)
+  const [loading, setLoading] = useState(cachedGoals.length === 0)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -161,7 +163,7 @@ export const EmployeeGoals: React.FC = () => {
   const [formDueDate, setFormDueDate] = useState('')
 
   const fetchGoals = async () => {
-    setLoading(true)
+    if (goals.length === 0) setLoading(true)
     try {
       const list = await goalService.listForUser(currentUser.id, activeCycle.id)
       setGoals(list)
@@ -429,44 +431,33 @@ export const EmployeeGoals: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Responsive Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-            Progress Tracking
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400 mt-0.5">
-            Define, track, and submit strategic deliverables for {activeCycle?.name || 'current appraisal cycle'}.
-          </p>
-        </div>
+      {/* Responsive Page Actions */}
+      <div className="flex items-center justify-end gap-2 pb-1">
+        <button
+          type="button"
+          onClick={openCreateModal}
+          className="h-8.5 px-3.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-slate-100 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          <span>Create Goal</span>
+        </button>
 
-        <div className="flex items-center gap-2 self-stretch sm:self-auto shrink-0 flex-wrap sm:flex-nowrap">
+        {goals.some((g) => g.status === 'draft' || g.status === 'returned') && (
           <button
             type="button"
-            onClick={openCreateModal}
-            className="flex-1 sm:flex-initial h-8.5 px-3.5 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-slate-100 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent"
+            onClick={() => {
+              if (!validation.isValid) {
+                warning('Goal plan incomplete', validation.errors[0])
+              } else {
+                setShowSubmitConfirm(true)
+              }
+            }}
+            className="h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 text-slate-800 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Create Goal</span>
+            <Send className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
+            <span>Submit for Approval</span>
           </button>
-
-          {goals.some((g) => g.status === 'draft' || g.status === 'returned') && (
-            <button
-              type="button"
-              onClick={() => {
-                if (!validation.isValid) {
-                  warning('Goal plan incomplete', validation.errors[0])
-                } else {
-                  setShowSubmitConfirm(true)
-                }
-              }}
-              className="flex-1 sm:flex-initial h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 text-slate-800 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all"
-            >
-              <Send className="w-3.5 h-3.5 text-slate-700 dark:text-zinc-300" />
-              <span>Submit for Approval</span>
-            </button>
-          )}
-        </div>
+        )}
       </div>
 
       {/* Goal Plan Balance Card (Matching Reference Screenshot) */}

@@ -355,45 +355,20 @@ export const supabaseGoalService = {
 
   async submitGoalsForApproval(userId: string, cycleId: string): Promise<{ success: boolean; errors?: string[] }> {
     if (isSupabaseReady()) {
-      const { error } = await supabase.rpc('submit_goals', { p_cycle_id: cycleId })
-      if (!error) {
-        try {
-          storageService.updateState((state) => ({
-            goals: state.goals.map((g) => {
-              if (
-                (g.userId === userId || matchesUser(g.userId, userId)) &&
-                (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId))
-              ) {
-                return { ...g, status: 'pending_approval' as GoalStatus }
-              }
-              return g
-            }),
-          }))
-        } catch {}
-        return { success: true }
-      }
-      console.warn('RPC submit_goals notice:', error.message)
-      // Direct update fallback in Supabase
-      await supabase
-        .from('goals')
-        .update({ status: 'pending_approval' })
-        .eq('user_id', userId)
-        .eq('cycle_id', cycleId)
-
       try {
-        storageService.updateState((state) => ({
-          goals: state.goals.map((g) => {
-            if (
-              (g.userId === userId || matchesUser(g.userId, userId)) &&
-              (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId))
-            ) {
-              return { ...g, status: 'pending_approval' as GoalStatus }
-            }
-            return g
-          }),
-        }))
-      } catch {}
-      return { success: true }
+        const { error } = await supabase.rpc('submit_goals', { p_cycle_id: resolveCycleUuid(cycleId) || cycleId })
+        if (error) {
+          console.warn('RPC submit_goals notice:', error.message)
+          // Direct update fallback in Supabase
+          await supabase
+            .from('goals')
+            .update({ status: 'pending_approval' })
+            .eq('user_id', toDatabaseUserId(userId))
+            .eq('cycle_id', resolveCycleUuid(cycleId) || cycleId)
+        }
+      } catch (e) {
+        console.warn('Notice in supabase submitGoalsForApproval:', e)
+      }
     }
     return mockGoalService.submitGoalsForApproval(userId, cycleId)
   },
@@ -403,24 +378,23 @@ export const supabaseGoalService = {
       throw new Error('A descriptive comment is required when returning a goal for revision.')
     }
 
-    if (isSupabaseReady()) {
-      const { data: updatedGoal, error: updateErr } = await supabase
-        .from('goals')
-        .update({
-          status: decision,
-          rejection_reason: decision === 'returned' ? (reason || null) : null,
-          approved_at: decision === 'approved' ? new Date().toISOString() : null,
-        })
-        .eq('id', goalId)
-        .select('*')
-        .maybeSingle()
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(goalId)
+    if (isSupabaseReady() && isUuid) {
+      try {
+        const { data: updatedGoal, error: updateErr } = await supabase
+          .from('goals')
+          .update({
+            status: decision,
+            rejection_reason: decision === 'returned' ? (reason || null) : null,
+            approved_at: decision === 'approved' ? new Date().toISOString() : null,
+          })
+          .eq('id', goalId)
+          .select('*')
+          .maybeSingle()
 
-      if (updateErr) {
-        console.error('Supabase goal decide error:', updateErr)
-        throw new Error(`Failed to update goal in database: ${updateErr.message}`)
-      }
-
-      if (updatedGoal) {
+        if (updateErr) {
+          console.warn('Supabase goal decide warning:', updateErr.message)
+        } else if (updatedGoal) {
         const mappedGoal: Goal = {
           id: updatedGoal.id,
           userId: updatedGoal.user_id,
@@ -525,6 +499,9 @@ export const supabaseGoalService = {
         }
 
         return mappedGoal
+      }
+      } catch (err) {
+        console.warn('Supabase goal decide exception:', err)
       }
     }
 

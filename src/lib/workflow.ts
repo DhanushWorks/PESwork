@@ -198,7 +198,6 @@ export function getManagerWorkflowState(params: {
   const cleanReleasedResults = releasedResults.filter((r) => (r as any).status !== 'pending')
   const hasReleasedResults =
     cycle.stage === 'released' ||
-    (cleanReleasedResults.length > 0 && totalReports > 0 && cleanReleasedResults.length >= totalReports) ||
     cleanReleasedResults.length > 0
 
   const allTeamGoalsApproved =
@@ -210,7 +209,7 @@ export function getManagerWorkflowState(params: {
 
   if (cycle.stage === 'closed') {
     effectiveStage = 'closed'
-  } else if (hasReleasedResults) {
+  } else if (cycle.stage === 'released' || hasReleasedResults) {
     effectiveStage = 'released'
   } else if (
     cycle.stage === 'calibration' ||
@@ -369,8 +368,8 @@ export function getAdminWorkflowState(params: {
   const isFormallyReleased =
     cycle.stage === 'released' ||
     cycle.stage === 'closed' ||
-    cycleResults.length > 0 ||
-    approvedCals.some((c) => c.adminApproved || (c as any).status === 'approved')
+    approvedCals.length > 0 ||
+    cycleResults.length > 0
 
   let effectiveStage: CycleStage
 
@@ -378,7 +377,7 @@ export function getAdminWorkflowState(params: {
     effectiveStage = 'closed'
   } else if (isFormallyReleased) {
     effectiveStage = 'released'
-  } else if (cycleMgr.length > 0 || cycle.stage === 'calibration') {
+  } else if (cycle.stage === 'calibration' || cycleMgr.length > 0) {
     effectiveStage = 'calibration'
   } else if (cycleSelf.length > 0 || cycle.stage === 'manager_review') {
     effectiveStage = 'manager_review'

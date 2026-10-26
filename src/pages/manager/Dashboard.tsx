@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import { reviewService, goalService, peopleService, resultService, storageService } from '../../services'
+import { apiCache } from '../../lib/apiCache'
 import { TeamReviewSummary } from '../../services/mock/reviewService'
 import { Goal, EvaluationResult, User } from '../../types'
 import { StageStepper } from '../../components/ui/StageStepper'
@@ -41,14 +42,15 @@ export const ManagerDashboard: React.FC = () => {
   const { success, error } = useToast()
   const navigate = useNavigate()
 
-  const [teamSummaries, setTeamSummaries] = useState<TeamReviewSummary[]>([])
+  const cachedSummaries = apiCache.peek<TeamReviewSummary[]>(`reviews:team:${currentUser.id}:${activeCycle.id}`) || []
+  const [teamSummaries, setTeamSummaries] = useState<TeamReviewSummary[]>(cachedSummaries)
   const [pendingGoalItems, setPendingGoalItems] = useState<Array<{ goal: Goal; employee: User }>>([])
   const [pendingGoals, setPendingGoals] = useState<Goal[]>([])
   const [releasedResults, setReleasedResults] = useState<EvaluationResult[]>([])
   const [teamFilter, setTeamFilter] = useState<'all' | 'pending' | 'completed'>('all')
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table')
   const [searchQuery, setSearchQuery] = useState('')
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(cachedSummaries.length === 0)
 
   // Quick Action States for Pending Goals
   const [actionInProgress, setActionInProgress] = useState<string | null>(null)
@@ -57,7 +59,7 @@ export const ManagerDashboard: React.FC = () => {
   const [isReturning, setIsReturning] = useState(false)
 
   const fetchData = useCallback(async () => {
-    setLoading(true)
+    if (teamSummaries.length === 0) setLoading(true)
     try {
       const [summaries, directReports, allResults] = await Promise.all([
         reviewService.listTeamReviews(currentUser.id, activeCycle.id),

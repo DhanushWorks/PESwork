@@ -2,6 +2,7 @@ import React, { useEffect, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { peopleService, goalService, storageService, calibrationService, resultService, cycleService, reviewService } from '../../services'
+import { apiCache } from '../../lib/apiCache'
 import { CalibrationItem } from '../../services'
 import { User, Goal, SelfReview, ManagerReview, CalibrationRecord, EvaluationResult, ReviewCycle, CycleStage } from '../../types'
 import { StageStepper } from '../../components/ui/StageStepper'
@@ -29,15 +30,20 @@ import {
 export const AdminOverview: React.FC = () => {
   const { activeCycle } = useApp()
 
-  const [users, setUsers] = useState<User[]>([])
-  const [goals, setGoals] = useState<Goal[]>([])
-  const [selfReviews, setSelfReviews] = useState<SelfReview[]>([])
-  const [managerReviews, setManagerReviews] = useState<ManagerReview[]>([])
-  const [calibrations, setCalibrations] = useState<CalibrationRecord[]>([])
-  const [results, setResults] = useState<EvaluationResult[]>([])
+  const initialState = storageService.getState()
+  const cachedUsers = apiCache.peek<User[]>('people:list') || initialState.users || []
+  const cachedCycles = apiCache.peek<ReviewCycle[]>('cycles:list') || initialState.cycles || []
+  const hasCachedData = cachedUsers.length > 0
+
+  const [users, setUsers] = useState<User[]>(cachedUsers)
+  const [goals, setGoals] = useState<Goal[]>(() => initialState.goals || [])
+  const [selfReviews, setSelfReviews] = useState<SelfReview[]>(() => initialState.selfReviews || [])
+  const [managerReviews, setManagerReviews] = useState<ManagerReview[]>(() => initialState.managerReviews || [])
+  const [calibrations, setCalibrations] = useState<CalibrationRecord[]>(() => initialState.calibrations || [])
+  const [results, setResults] = useState<EvaluationResult[]>(() => initialState.results || [])
   const [calibrationItems, setCalibrationItems] = useState<CalibrationItem[]>([])
-  const [cycles, setCycles] = useState<ReviewCycle[]>([])
-  const [loading, setLoading] = useState(true)
+  const [cycles, setCycles] = useState<ReviewCycle[]>(cachedCycles)
+  const [loading, setLoading] = useState(!hasCachedData)
 
   useEffect(() => {
     let isMounted = true
@@ -46,7 +52,7 @@ export const AdminOverview: React.FC = () => {
     }, 4500)
 
     const fetchData = async () => {
-      setLoading(true)
+      if (users.length === 0) setLoading(true)
       try {
         const [uList, allResults, calList, cycleList, srList, mrList] = await Promise.all([
           peopleService.list(),
@@ -205,11 +211,9 @@ export const AdminOverview: React.FC = () => {
       calRec ||
       (calItem?.currentScore !== undefined && calItem.currentScore !== mgrRev?.compositeScore)
     )
-    // Only mark as Released if the cycle is at Stage 7/8 or result is formally released
-    const isReleased = Boolean(
-      (currentCycle.stage === 'released' || currentCycle.stage === 'closed' || (res as any)?.status === 'released') &&
-      isCalibratedApproved
-    )
+    // Only mark as Released if the cycle is ACTUALLY at Stage 7 (released) or Stage 8 (closed)
+    const isCycleOfficiallyReleased = currentCycle.stage === 'released' || currentCycle.stage === 'closed'
+    const isReleased = Boolean(isCycleOfficiallyReleased && isCalibratedApproved)
     const score = res?.compositeScore ?? calRec?.adjustedScore ?? calItem?.currentScore ?? mgrRev?.compositeScore ?? selfRev?.overallRating
 
     return (
@@ -855,7 +859,7 @@ export const AdminOverview: React.FC = () => {
       </div>
 
       {/* Pending Admin Approvals (Full Width Table) */}
-      <section className="dark-glass-card p-4 sm:p-5 md:p-6 space-y-4">
+      <section className="dark-glass-card p-4 sm:p-5 md:p-6 space-y-4 mb-8 sm:mb-12">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.08]">
           <div className="flex items-center gap-2">
             <h2 className="text-sm font-bold text-slate-900 dark:text-white tracking-tight uppercase">

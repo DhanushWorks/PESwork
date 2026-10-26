@@ -55,8 +55,8 @@ export const AdminUsers: React.FC = () => {
   const { allUsers, refreshData } = useApp()
   const { success, error } = useToast()
 
-  const [users, setUsers] = useState<User[]>([])
-  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState<User[]>(allUsers)
+  const [loading, setLoading] = useState(allUsers.length === 0)
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid')
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -90,7 +90,7 @@ export const AdminUsers: React.FC = () => {
   const [managerId, setManagerId] = useState('')
 
   const fetchUsers = async () => {
-    setLoading(true)
+    if (users.length === 0) setLoading(true)
     try {
       const list = await peopleService.list()
       setUsers(list)

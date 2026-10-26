@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import { calibrationService, CalibrationItem, EvidencePdfMeta, GoalEvidenceItem } from '../../services'
+import { apiCache } from '../../lib/apiCache'
 import { RatingBadge } from '../../components/ui/Badge'
 import { RatingInput } from '../../components/ui/RatingInput'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
@@ -45,8 +46,9 @@ export const AdminCalibration: React.FC = () => {
   const { success, error } = useToast()
   const navigate = useNavigate()
 
-  const [items, setItems] = useState<CalibrationItem[]>([])
-  const [loading, setLoading] = useState(true)
+  const cachedItems = apiCache.peek<CalibrationItem[]>('calibration:cycle:' + activeCycle.id) || []
+  const [items, setItems] = useState<CalibrationItem[]>(cachedItems)
+  const [loading, setLoading] = useState(cachedItems.length === 0)
   const [deptFilter, setDeptFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'approved'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -93,6 +95,29 @@ export const AdminCalibration: React.FC = () => {
       }
     }
   }
+
+  // Native non-passive wireless mouse wheel listener to guarantee horizontal table scroll on PC / wireless mice
+  useEffect(() => {
+    const el = tableContainerRef.current
+    if (!el) return
+
+    const onNativeWheel = (e: WheelEvent) => {
+      if (el.scrollWidth > el.clientWidth) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          const maxScroll = el.scrollWidth - el.clientWidth
+          const atLeft = el.scrollLeft <= 0
+          const atRight = el.scrollLeft >= maxScroll - 1
+          if ((e.deltaY > 0 && !atRight) || (e.deltaY < 0 && !atLeft)) {
+            e.preventDefault()
+            el.scrollLeft += e.deltaY * 1.2
+          }
+        }
+      }
+    }
+
+    el.addEventListener('wheel', onNativeWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onNativeWheel)
+  }, [])
 
   // Mouse click-and-drag panning for any mouse
   const handleTableMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -150,7 +175,7 @@ export const AdminCalibration: React.FC = () => {
   const [itemToRevoke, setItemToRevoke] = useState<CalibrationItem | null>(null)
 
   const fetchItems = async () => {
-    setLoading(true)
+    if (items.length === 0) setLoading(true)
     try {
       const data = await calibrationService.listForCycle(activeCycle.id)
       setItems(data)

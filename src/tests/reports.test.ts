@@ -1,5 +1,5 @@
 import { storageService, cycleService, goalService, reviewService, calibrationService, resultService } from '../services'
-import { SEED_USERS, SEED_CYCLES } from '../data/seedData'
+import { SEED_USERS, FULL_SEED_CYCLES as SEED_CYCLES } from '../data/seedData'
 
 async function runReportsTest() {
   console.log('=== ADMIN CHARTS & REPORTS DYNAMIC VERIFICATION TEST ===\n')
