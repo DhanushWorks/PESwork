@@ -49,6 +49,12 @@ export const SEED_MANAGER_REVIEWS: ManagerReview[] = []
 export const SEED_CALIBRATIONS: CalibrationRecord[] = []
 export const SEED_RESULTS: EvaluationResult[] = []
 export const SEED_FEEDBACK: FeedbackItem[] = []
-export const SEED_DEVELOPMENT_PLANS: Record<string, DevelopmentPlan> = {}
+export const SEED_DEVELOPMENT_PLANS: Record<string, DevelopmentPlan> = {
+  ...FULL_SEED_DEVELOPMENT_PLANS,
+  '11111111-1111-1111-1111-111111111101': {
+    ...FULL_SEED_DEVELOPMENT_PLANS['u-emp-1'],
+    userId: '11111111-1111-1111-1111-111111111101',
+  },
+}
 export const SEED_AUDIT_LOGS: AuditLog[] = []
 export const SEED_NOTIFICATIONS: Notification[] = []

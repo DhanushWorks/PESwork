@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useMemo } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
@@ -12,7 +12,7 @@ import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedContr
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import { Modal } from '../../components/ui/Modal'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { getManagerWorkflowState } from '../../lib/workflow'
+import { getManagerWorkflowState, matchesCycle } from '../../lib/workflow'
 import { formatDate, STAGE_ORDER } from '../../lib/formatters'
 import {
   AlertCircle,
@@ -37,7 +37,7 @@ import {
 } from 'lucide-react'
 
 export const ManagerDashboard: React.FC = () => {
-  const { currentUser, activeCycle, refreshData } = useApp()
+  const { currentUser, activeCycle, allCycles, refreshData } = useApp()
   const { success, error } = useToast()
   const navigate = useNavigate()
 
@@ -392,9 +392,14 @@ export const ManagerDashboard: React.FC = () => {
   // Sort upcoming deadlines by nearest due date ascending
   upcomingDeadlinesList.sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
 
+  // Dynamic active cycle derived from fresh allCycles state
+  const currentCycle = useMemo(() => {
+    return allCycles.find((c) => c.id === activeCycle.id || matchesCycle(c.id, activeCycle.id)) || activeCycle
+  }, [allCycles, activeCycle])
+
   // Synchronized workflow state calculation for Manager role
   const workflowState = getManagerWorkflowState({
-    cycle: activeCycle,
+    cycle: currentCycle,
     teamSummaries,
     pendingGoals,
     releasedResults,
@@ -464,7 +469,7 @@ export const ManagerDashboard: React.FC = () => {
 
       {/* Workflow Tracking: Progression Stepper */}
       <section>
-        <StageStepper currentStage={effectiveStage} cycle={activeCycle} />
+        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
       </section>
 
       {/* Direct Reports Appraisal Roster (Moved to top under Stepper) */}

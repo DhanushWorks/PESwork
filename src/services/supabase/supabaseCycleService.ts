@@ -4,7 +4,7 @@ import { STAGE_ORDER } from '../../lib/formatters'
 import { generateDeterministicDeadlines } from '../../lib/deadlines'
 import { cycleService as mockCycleService } from '../mock/cycleService'
 import { storageService } from '../mock/storageService'
-import { matchesUser, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
+import { matchesUser, matchesCycle, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
 import { supabasePeopleService } from './supabasePeopleService'
 
 export { toDatabaseUserId, resolveCycleUuid }
@@ -124,7 +124,9 @@ export const supabaseCycleService = {
         participantIds: [],
       }
     }
-    const active = list.find((c) => c.stage !== 'closed') || list[0]
+    const { activeCycleId } = storageService.getState()
+    const targetId = activeCycleId || list[0]?.id
+    const active = list.find((c) => c.id === targetId || matchesCycle(c.id, targetId)) || list[0]
     return active
   },
 

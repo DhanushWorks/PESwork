@@ -86,7 +86,7 @@ export function getCleanState(): DemoState {
     calibrations: [],
     results: [],
     feedback: [],
-    developmentPlans: {},
+    developmentPlans: { ...FULL_SEED_DEVELOPMENT_PLANS },
     auditLogs: [],
     notifications: [],
   }
@@ -212,6 +212,12 @@ class StorageService {
           feedback: Array.isArray(parsed.feedback) ? parsed.feedback : [...SEED_FEEDBACK],
           auditLogs: Array.isArray(parsed.auditLogs) ? parsed.auditLogs : [...SEED_AUDIT_LOGS],
           notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [...SEED_NOTIFICATIONS],
+          developmentPlans:
+            parsed.developmentPlans &&
+            Object.keys(parsed.developmentPlans).length > 0 &&
+            Object.values(parsed.developmentPlans).some((p) => p.skills && p.skills.length > 0)
+              ? parsed.developmentPlans
+              : { ...FULL_SEED_DEVELOPMENT_PLANS },
         }
 
         // Auto-heal: If cycle has approved calibrations & released results, ensure stage is 'released'

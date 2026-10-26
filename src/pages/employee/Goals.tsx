@@ -891,21 +891,21 @@ export const EmployeeGoals: React.FC = () => {
         maxWidth="lg"
         onSubmit={handleSaveGoal}
         footer={
-          <>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowGoalModal(false)}
-              className="px-4 py-2 rounded-lg border border-slate-200 dark:border-zinc-700 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-zinc-800 transition-colors font-medium cursor-pointer"
+              className="h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-xs font-semibold cursor-pointer shadow-2xs"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-white font-semibold transition-colors shadow-xs cursor-pointer"
+              className="h-8.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-white text-xs font-semibold transition-colors shadow-xs cursor-pointer"
             >
               {editingGoal ? 'Update Goal' : 'Save Goal'}
             </button>
-          </>
+          </div>
         }
       >
         <div className="space-y-4 text-xs">
@@ -932,40 +932,39 @@ export const EmployeeGoals: React.FC = () => {
             />
           </div>
 
+          <div>
+            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Target Metric *</label>
+            <input
+              type="text"
+              required
+              value={formMetric}
+              onChange={(e) => setFormMetric(e.target.value)}
+              placeholder="e.g. Component adoption rate"
+              className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
+            />
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Target Metric *</label>
+              <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Target Value *</label>
               <input
-                type="text"
+                type="number"
                 required
-                value={formMetric}
-                onChange={(e) => setFormMetric(e.target.value)}
-                placeholder="e.g. Component adoption rate"
+                placeholder="e.g. 100"
+                value={formTarget}
+                onChange={(e) => setFormTarget(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
               />
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Target Value *</label>
-                <input
-                  type="number"
-                  required
-                  placeholder="e.g. 100"
-                  value={formTarget}
-                  onChange={(e) => setFormTarget(e.target.value === '' ? '' : parseFloat(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
-                />
-              </div>
-              <div>
-                <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Unit</label>
-                <input
-                  type="text"
-                  value={formUnit}
-                  onChange={(e) => setFormUnit(e.target.value)}
-                  placeholder="e.g. % or count"
-                  className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
-                />
-              </div>
+            <div>
+              <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">Unit</label>
+              <input
+                type="text"
+                value={formUnit}
+                onChange={(e) => setFormUnit(e.target.value)}
+                placeholder="e.g. % or count"
+                className="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-zinc-700 focus:outline-hidden focus:ring-2 focus:ring-slate-900 dark:focus:ring-white bg-white dark:bg-zinc-900 text-slate-900 dark:text-zinc-100"
+              />
             </div>
           </div>
 
@@ -1010,22 +1009,22 @@ export const EmployeeGoals: React.FC = () => {
         maxWidth="md"
         onSubmit={handleSaveProgress}
         footer={
-          <>
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={() => setShowProgressModal(false)}
-              className="px-4 py-2 rounded-xl border border-slate-200 dark:border-white/12 text-slate-600 dark:text-zinc-400 hover:bg-slate-50 dark:hover:bg-white/[0.06] transition-colors font-sans text-xs cursor-pointer"
+              className="h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors text-xs font-semibold cursor-pointer shadow-2xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isUploading}
-              className="premium-glow-btn h-10 px-5 text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+              className="h-8.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-200 text-white text-xs font-semibold cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed transition-colors shadow-xs"
             >
               {isUploading ? 'Uploading Evidence...' : 'Record Checkpoint'}
             </button>
-          </>
+          </div>
         }
       >
         <div className="space-y-4 text-xs font-sans">

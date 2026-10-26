@@ -15,7 +15,8 @@ export const cycleService = {
 
   async getActiveCycle(): Promise<ReviewCycle> {
     const { cycles, activeCycleId } = storageService.getState()
-    const active = cycles.find((c) => c.id === activeCycleId || matchesCycle(c.id, activeCycleId)) || cycles.find((c) => c.stage !== 'closed') || cycles[0]
+    const targetId = activeCycleId || cycles[0]?.id
+    const active = cycles.find((c) => c.id === targetId || matchesCycle(c.id, targetId)) || cycles[0]
     return active ? { ...active } : null as any
   },
 
@@ -78,7 +79,7 @@ export const cycleService = {
         }
         return c
       })
-      return { cycles }
+      return { cycles, activeCycleId: cycleId }
     })
     return updatedCycle || (await this.getById(cycleId))!
   },

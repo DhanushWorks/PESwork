@@ -8,7 +8,7 @@ import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedContr
 import { MetricCard } from '../../components/ui/MetricCard'
 import { useCountUp } from '../../hooks/useCountUp'
 import { useInView } from '../../hooks/useInView'
-import { getEmployeeWorkflowState } from '../../lib/workflow'
+import { getEmployeeWorkflowState, matchesCycle } from '../../lib/workflow'
 import { formatDate, STAGE_ORDER } from '../../lib/formatters'
 import {
   ArrowRight,
@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 
 export const EmployeeDashboard: React.FC = () => {
-  const { currentUser, activeCycle, allUsers } = useApp()
+  const { currentUser, activeCycle, allCycles, allUsers } = useApp()
 
   const [goals, setGoals] = useState<Goal[]>([])
   const [selfReview, setSelfReview] = useState<SelfReview | null>(null)
@@ -100,9 +100,14 @@ export const EmployeeDashboard: React.FC = () => {
     return true
   })
 
+  // Dynamic active cycle derived from fresh allCycles state
+  const currentCycle = useMemo(() => {
+    return allCycles.find((c) => c.id === activeCycle.id || matchesCycle(c.id, activeCycle.id)) || activeCycle
+  }, [allCycles, activeCycle])
+
   // Synchronized workflow state calculation for Employee role
   const workflowState = getEmployeeWorkflowState({
-    cycle: activeCycle,
+    cycle: currentCycle,
     selfReview,
     managerReview,
     result: releasedResult,
@@ -467,7 +472,7 @@ export const EmployeeDashboard: React.FC = () => {
 
       {/* Workflow Tracking: Progression Stepper */}
       <section>
-        <StageStepper currentStage={effectiveStage} cycle={activeCycle} />
+        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
       </section>
 
       {/* Section 3.5: Pending Tasks & Upcoming Deadlines */}

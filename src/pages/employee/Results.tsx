@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
+import { matchesCycle } from '../../lib/workflow'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import { resultService, reviewService } from '../../services'
@@ -21,7 +22,10 @@ import {
 } from 'lucide-react'
 
 export const EmployeeResults: React.FC = () => {
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, allCycles } = useApp()
+  const currentCycle = useMemo(() => {
+    return allCycles.find((c) => c.id === activeCycle.id || matchesCycle(c.id, activeCycle.id)) || activeCycle
+  }, [allCycles, activeCycle])
   const { success, error } = useToast()
 
   const [loading, setLoading] = useState(true)
@@ -140,7 +144,7 @@ export const EmployeeResults: React.FC = () => {
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
       {/* Cycle Stage Tracker */}
-      <StageStepper currentStage={effectiveStage} cycle={activeCycle} />
+      <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
 
       {/* UNRELEASED STATE: Calm pending view */}
       {!isReleased ? (
