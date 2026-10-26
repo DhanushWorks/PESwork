@@ -212,7 +212,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setAllCycles(cycles)
       setActiveCycle(currentActiveCycle)
       setCurrentUser((prev) => {
-        if (prev && prev.id === foundUser!.id && prev.role === foundUser!.role) {
+        if (
+          prev &&
+          prev.id === foundUser!.id &&
+          prev.role === foundUser!.role &&
+          prev.avatar === foundUser!.avatar &&
+          prev.name === foundUser!.name &&
+          prev.designation === foundUser!.designation &&
+          prev.department === foundUser!.department
+        ) {
           return prev
         }
         return foundUser!
@@ -290,6 +298,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setActiveCycle((prev) => {
             if (prev.id === current.id && prev.stage === current.stage && prev.name === current.name) return prev
             return current
+          })
+        }
+      }
+      if (state.users && state.users.length > 0) {
+        setAllUsers(state.users)
+        const activeId = currentUserRef.current?.id
+        const matched = state.users.find((u) => u.id === activeId || matchesUser(u.id, activeId))
+        if (matched) {
+          setCurrentUser((prev) => {
+            if (
+              prev &&
+              prev.id === matched.id &&
+              prev.role === matched.role &&
+              prev.avatar === matched.avatar &&
+              prev.name === matched.name &&
+              prev.designation === matched.designation &&
+              prev.department === matched.department
+            ) {
+              return prev
+            }
+            return matched
           })
         }
       }

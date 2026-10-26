@@ -67,14 +67,18 @@ export const ManagerDashboard: React.FC = () => {
         resultService.getAllResults(activeCycle.id),
       ])
 
-      // Fetch all pending goals for direct reports
-      const allGoalsPromises = directReports.map((r) =>
+      // Fetch pending goals strictly for direct reports who are enrolled into this review cycle by Admin
+      const cycleParticipants = activeCycle.participantIds || []
+      const enrolledDirectReports = directReports.filter((r) =>
+        cycleParticipants.some((p) => p === r.id || matchesUser(p, r.id))
+      )
+      const allGoalsPromises = enrolledDirectReports.map((r) =>
         goalService.listForUser(r.id, activeCycle.id)
       )
       const allGoalsResults = await Promise.all(allGoalsPromises)
       const pendingItems: Array<{ goal: Goal; employee: User }> = []
 
-      directReports.forEach((emp, index) => {
+      enrolledDirectReports.forEach((emp, index) => {
         const userGoals = allGoalsResults[index] || []
         const pending = userGoals.filter((g) => g.status === 'pending_approval')
         pending.forEach((g) => pendingItems.push({ goal: g, employee: emp }))

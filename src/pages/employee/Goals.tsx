@@ -14,6 +14,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { formatDate } from '../../lib/formatters'
 import { validateGoalSet } from '../../lib/validation'
+import { isUserCycleParticipant } from '../../lib/workflow'
 import {
   AlertCircle,
   Check,
@@ -119,6 +120,11 @@ export const EmployeeGoals: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const searchInputRef = useRef<HTMLInputElement>(null)
 
+  const isEnrolledInCycle = React.useMemo(() => {
+    if (!activeCycle || !activeCycle.id) return false
+    return isUserCycleParticipant(activeCycle, currentUser.id)
+  }, [activeCycle, currentUser.id])
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -197,6 +203,10 @@ export const EmployeeGoals: React.FC = () => {
   const validation = validateGoalSet(goals)
 
   const openCreateModal = () => {
+    if (!isEnrolledInCycle) {
+      warning('Goal Planning Locked', 'You are not assigned to this review cycle. An administrator must assign you to the cycle before you can create goals.')
+      return
+    }
     setEditingGoal(null)
     setFormTitle('')
     setFormDescription('')
@@ -431,6 +441,19 @@ export const EmployeeGoals: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
+      {!isEnrolledInCycle && (
+        <div className="dark-glass-card rounded-2xl p-5 border border-amber-500/20 bg-amber-500/5 space-y-1.5 font-sans">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-xs text-amber-600 dark:text-amber-400 uppercase tracking-wider">
+              Goal Planning Locked — Not Enrolled in Active Review Cycle
+            </span>
+          </div>
+          <p className="text-xs text-slate-600 dark:text-zinc-300">
+            Your account is not assigned to "{activeCycle?.name}". An administrator must assign you to this appraisal cycle before you can create and submit performance goals.
+          </p>
+        </div>
+      )}
+
       {/* Responsive Page Actions */}
       <div className="flex items-center justify-end gap-2 pb-1">
         <button

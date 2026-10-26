@@ -453,9 +453,16 @@ export const supabaseReviewService = {
     try {
       const dbCycleId = resolveCycleUuid(cycleId)
       const reports: User[] = await peopleService.getDirectReports(managerId)
-      if (reports.length === 0) return mockReviewService.listTeamReviews(managerId, cycleId)
+      if (reports.length === 0) return []
 
-      const reportIds = reports.map((r: User) => r.id)
+      const cycle = await supabaseCycleService.getById(cycleId)
+      const enrolledReports = reports.filter((emp: User) => {
+        if (!cycle || !Array.isArray(cycle.participantIds)) return false
+        return cycle.participantIds.some((pId) => pId === emp.id || matchesUser(pId, emp.id))
+      })
+
+      if (enrolledReports.length === 0) return []
+      const reportIds = enrolledReports.map((r: User) => r.id)
 
       // Fetch all self reviews, manager reviews, and goals in parallel
       const [srRes, mrRes, gRes] = await Promise.all([
@@ -485,7 +492,7 @@ export const supabaseReviewService = {
         return mockReviewService.listTeamReviews(managerId, cycleId)
       }
 
-      return reports.map((emp: User) => {
+      return enrolledReports.map((emp: User) => {
         const sr = selfMap.get(emp.id)
         const mr = managerMap.get(emp.id)
         const userGoals = goalsList.filter((g) => g.user_id === emp.id)

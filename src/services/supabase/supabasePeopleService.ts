@@ -2,6 +2,7 @@ import { supabase, isSupabaseReady, markSupabaseOffline } from '../../lib/supaba
 import { User, Role } from '../../types'
 import { peopleService as mockPeopleService } from '../mock/peopleService'
 import { apiCache } from '../../lib/apiCache'
+import { matchesUser, toDatabaseUserId } from '../../lib/workflow'
 
 export const supabasePeopleService = {
   async list(): Promise<User[]> {
@@ -14,6 +15,8 @@ export const supabasePeopleService = {
           return mockPeopleService.list()
         }
 
+        const localList = await mockPeopleService.list()
+
         const dbUsers: User[] = data.map((p) => {
           const isEleanor =
             p.id === '11111111-1111-1111-1111-111111111103' ||
@@ -22,26 +25,26 @@ export const supabasePeopleService = {
 
           const email = isEleanor ? 'eleanor.vance@performiq.internal' : p.email
           const role = isEleanor ? 'admin' : (p.role as Role)
+          const localMatch = localList.find((lu) => lu.id === p.id || matchesUser(lu.id, p.id) || lu.email.toLowerCase() === email.toLowerCase())
 
           return {
             id: p.id,
-            name: p.name,
+            name: localMatch?.name || p.name,
             email,
             role,
-            department: p.department,
-            designation: p.designation,
+            department: localMatch?.department || p.department,
+            designation: localMatch?.designation || p.designation,
             managerId: p.manager_id,
             employeeCode: p.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-            avatar: p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            avatar: localMatch?.avatar || p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
             active: p.active,
             joinedDate: p.join_date,
           }
         })
 
-        const localList = await mockPeopleService.list()
         const merged = [...dbUsers]
         for (const lu of localList) {
-          if (!merged.some((u) => u.id === lu.id || u.email.toLowerCase() === lu.email.toLowerCase())) {
+          if (!merged.some((u) => u.id === lu.id || matchesUser(u.id, lu.id) || u.email.toLowerCase() === lu.email.toLowerCase())) {
             merged.push(lu)
           }
         }
@@ -63,9 +66,10 @@ export const supabasePeopleService = {
         else if (id === 'u-mgr-1') queryId = '11111111-1111-1111-1111-111111111102'
         else if (id === 'u-emp-1') queryId = '11111111-1111-1111-1111-111111111101'
 
+        const localUser = await mockPeopleService.getById(id)
         const { data, error } = await supabase.from('profiles').select('*').eq('id', queryId).single()
         if (error || !data) {
-          return mockPeopleService.getById(id)
+          return localUser
         }
 
         const isEleanor =
@@ -78,14 +82,14 @@ export const supabasePeopleService = {
 
         return {
           id: data.id,
-          name: data.name,
+          name: localUser?.name || data.name,
           email,
           role,
-          department: data.department,
-          designation: data.designation,
+          department: localUser?.department || data.department,
+          designation: localUser?.designation || data.designation,
           managerId: data.manager_id,
           employeeCode: data.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-          avatar: data.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          avatar: localUser?.avatar || data.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
           active: data.active,
           joinedDate: data.join_date,
         }
@@ -171,44 +175,30 @@ export const supabasePeopleService = {
 
   async update(id: string, updates: Partial<User>): Promise<User> {
     apiCache.invalidate('people:')
-    if (!isSupabaseReady()) return mockPeopleService.update(id, updates)
 
-    try {
-      const dbUpdates: any = {}
-      if (updates.name !== undefined) dbUpdates.name = updates.name
-      if (updates.designation !== undefined) dbUpdates.designation = updates.designation
-      if (updates.department !== undefined) dbUpdates.department = updates.department
-      if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar
-      if (updates.active !== undefined) dbUpdates.active = updates.active
+    // Always update mock / localStorage first so local state is immediately updated
+    const localUpdated = await mockPeopleService.update(id, updates)
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(dbUpdates)
-        .eq('id', id)
-        .select()
-        .single()
+    const targetUuid = toDatabaseUserId(id)
+    if (isSupabaseReady() && targetUuid) {
+      try {
+        const dbUpdates: any = {}
+        if (updates.name !== undefined) dbUpdates.name = updates.name
+        if (updates.designation !== undefined) dbUpdates.designation = updates.designation
+        if (updates.department !== undefined) dbUpdates.department = updates.department
+        if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar
+        if (updates.active !== undefined) dbUpdates.active = updates.active
 
-      if (error || !data) {
-        return mockPeopleService.update(id, updates)
+        await supabase
+          .from('profiles')
+          .update(dbUpdates)
+          .eq('id', targetUuid)
+      } catch (err) {
+        console.warn('Notice updating profile in Supabase:', err)
       }
-
-      return {
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        role: data.role as Role,
-        department: data.department,
-        designation: data.designation,
-        managerId: data.manager_id,
-        employeeCode: data.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-        avatar: data.avatar,
-        active: data.active,
-        joinedDate: data.join_date,
-      }
-    } catch (err) {
-      markSupabaseOffline(err)
-      return mockPeopleService.update(id, updates)
     }
+
+    return localUpdated
   },
 
   async toggleActive(id: string): Promise<User> {

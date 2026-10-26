@@ -549,6 +549,13 @@ export function toAppUserId(userId?: string): string {
   return userId
 }
 
+export function isUserCycleParticipant(cycle?: ReviewCycle | null, userId?: string | null): boolean {
+  if (!cycle || !userId) return false
+  if (!cycle.participantIds || !Array.isArray(cycle.participantIds)) return false
+  if (cycle.participantIds.length === 0) return false
+  return cycle.participantIds.some((pId) => pId === userId || matchesUser(pId, userId))
+}
+
 export function resolveCycleUuid(cycleId?: string): string {
   if (!cycleId) return 'bf21ac37-1801-47df-b9ba-b1d05a0d6832'
   if (UUID_PATTERN.test(cycleId)) return cycleId

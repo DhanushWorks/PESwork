@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react'
-import { matchesCycle } from '../../lib/workflow'
+import { matchesCycle, isUserCycleParticipant } from '../../lib/workflow'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
 import { resultService, reviewService } from '../../services'
@@ -115,6 +115,7 @@ export const EmployeeResults: React.FC = () => {
 
   const isManagerReviewSubmitted = managerReview?.status === 'submitted'
   const isSelfReviewSubmitted = selfReview?.status === 'submitted'
+  const isEnrolledInCycle = isUserCycleParticipant(currentCycle, currentUser.id)
 
   const effectiveStage: CycleStage = (() => {
     if (currentCycle.stage === 'closed' || activeCycle.stage === 'closed') return 'closed'
@@ -144,10 +145,49 @@ export const EmployeeResults: React.FC = () => {
   return (
     <div className="space-y-6 w-full pb-12 font-sans">
       {/* Cycle Stage Tracker */}
-      <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+      {!isEnrolledInCycle ? (
+        <div className="dark-glass-card rounded-2xl p-6 sm:p-7 shadow-sm border border-slate-200/80 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 backdrop-blur-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                <Clock className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-base font-bold text-slate-900 dark:text-white">
+                    No Review Cycle Assigned
+                  </h2>
+                  <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300">
+                    Fresh Employee Account
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                  You are not enrolled in <strong>{currentCycle.name}</strong>. Appraisal history and outcome reports will generate when an Administrator assigns you to a cycle.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+      )}
 
       {/* UNRELEASED STATE: Calm pending view */}
-      {!isReleased ? (
+      {!isEnrolledInCycle ? (
+        <div className="dark-glass-card rounded-2xl p-8 sm:p-12 text-center shadow-sm space-y-4 border border-slate-200/90 dark:border-white/10">
+          <div className="w-16 h-16 rounded-[20px] grid place-items-center text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.05] border border-slate-200/90 dark:border-white/10 shadow-xs mx-auto">
+            <Award className="w-7 h-7 stroke-[1.8]" />
+          </div>
+          <div className="space-y-1.5 max-w-md mx-auto">
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white">
+              No Appraisal Outcomes Available
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-sans">
+              Evaluation results, calibrated rating bands, and performance summaries will appear here once an Administrator assigns your profile to a review cycle and formal assessments are submitted.
+            </p>
+          </div>
+        </div>
+      ) : !isReleased ? (
         <div className="dark-glass-card conic-border-glow rounded-2xl p-8 sm:p-12 text-center shadow-sm space-y-5">
           <div className="w-16 h-16 rounded-[20px] grid place-items-center text-slate-800 dark:text-white bg-slate-100 dark:bg-white/[0.05] border border-slate-200/90 dark:border-white/10 shadow-xs mx-auto">
             <Clock className="w-7 h-7 stroke-[1.8]" />

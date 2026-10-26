@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { peopleService } from '../../services'
+import { peopleService, cycleService } from '../../services'
+import { isUserCycleParticipant } from '../../lib/workflow'
 import { Role, User } from '../../types'
 import { RoleBadge } from '../../components/ui/Badge'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
@@ -52,7 +53,7 @@ function getInitials(name: string): string {
 }
 
 export const AdminUsers: React.FC = () => {
-  const { allUsers, refreshData } = useApp()
+  const { allUsers, allCycles, refreshData, currentUser } = useApp()
   const { success, error } = useToast()
 
   const [users, setUsers] = useState<User[]>(allUsers)
@@ -88,6 +89,7 @@ export const AdminUsers: React.FC = () => {
   const [department, setDepartment] = useState('Engineering')
   const [designation, setDesignation] = useState('')
   const [managerId, setManagerId] = useState('')
+  const [cycleId, setCycleId] = useState('')
 
   const fetchUsers = async () => {
     if (users.length === 0) setLoading(true)
@@ -125,6 +127,7 @@ export const AdminUsers: React.FC = () => {
     setDepartment('Engineering')
     setDesignation('')
     setManagerId('u-mgr-1')
+    setCycleId('')
     setShowModal(true)
   }
 
@@ -136,6 +139,8 @@ export const AdminUsers: React.FC = () => {
     setDepartment(u.department)
     setDesignation(u.designation)
     setManagerId(u.managerId || '')
+    const enrolledCycle = allCycles.find((c) => isUserCycleParticipant(c, u.id))
+    setCycleId(enrolledCycle ? enrolledCycle.id : '')
     setShowModal(true)
   }
 
@@ -156,9 +161,18 @@ export const AdminUsers: React.FC = () => {
           designation,
           managerId: managerId || undefined,
         })
+        const currentlyEnrolled = allCycles.find((c) => isUserCycleParticipant(c, editingUser.id))
+        if (currentlyEnrolled?.id !== cycleId) {
+          if (currentlyEnrolled) {
+            await cycleService.removeParticipant(currentlyEnrolled.id, editingUser.id, currentUser?.name || 'Admin')
+          }
+          if (cycleId) {
+            await cycleService.addParticipant(cycleId, editingUser.id, currentUser?.name || 'Admin')
+          }
+        }
         success('User updated', `${name}'s account details have been saved.`)
       } else {
-        await peopleService.create({
+        const created = await peopleService.create({
           name,
           email,
           role,
@@ -170,7 +184,13 @@ export const AdminUsers: React.FC = () => {
           joinedDate: new Date().toISOString().split('T')[0],
           avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100',
         })
-        success('User created', `${name} was added to the sample user directory.`)
+        if (cycleId && created?.id) {
+          await cycleService.addParticipant(cycleId, created.id, currentUser?.name || 'Admin')
+        }
+        success(
+          'User created',
+          `${name} was added to directory ${cycleId ? 'and enrolled in review cycle.' : 'as a fresh employee (no cycle assigned).'}`
+        )
       }
 
       setShowModal(false)
@@ -428,6 +448,21 @@ export const AdminUsers: React.FC = () => {
                         <Mail className="w-3 h-3 text-slate-400 shrink-0" />
                         <span className="truncate">{u.email}</span>
                       </div>
+                      <div className="flex items-center justify-between pt-1 border-t border-slate-100 dark:border-white/[0.06]">
+                        <span className="text-slate-400 dark:text-zinc-500">Cycle</span>
+                        {(() => {
+                          const enrolled = allCycles.find((c) => isUserCycleParticipant(c, u.id))
+                          return enrolled ? (
+                            <span className="font-semibold text-emerald-600 dark:text-emerald-400 truncate max-w-[130px]">
+                              {enrolled.name}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 dark:text-zinc-500">
+                              Unassigned (Fresh)
+                            </span>
+                          )
+                        })()}
+                      </div>
                     </div>
                   </div>
 
@@ -534,6 +569,18 @@ export const AdminUsers: React.FC = () => {
                         <td className="py-3.5 px-4">
                           <div className="font-medium text-slate-800 dark:text-zinc-200">{u.designation}</div>
                           <div className="text-[11px] text-slate-500 dark:text-zinc-400">{u.department}</div>
+                          {(() => {
+                            const enrolled = allCycles.find((c) => isUserCycleParticipant(c, u.id))
+                            return enrolled ? (
+                              <span className="inline-block mt-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-50 dark:bg-emerald-950/40 px-1.5 py-0.5 rounded border border-emerald-200/50 dark:border-emerald-800/40">
+                                {enrolled.name}
+                              </span>
+                            ) : (
+                              <span className="inline-block mt-1 text-[10px] text-slate-400 dark:text-zinc-500 font-medium">
+                                No Cycle Assigned (Fresh)
+                              </span>
+                            )
+                          })()}
                         </td>
 
                         <td className="py-3.5 px-4 text-slate-600 dark:text-zinc-400">
@@ -701,6 +748,28 @@ export const AdminUsers: React.FC = () => {
                   })),
               ]}
             />
+          </div>
+
+          <div>
+            <label className="font-semibold text-slate-700 dark:text-zinc-300 block mb-1">
+              Performance Review Cycle Assignment
+            </label>
+            <CustomDropdown
+              value={cycleId}
+              onChange={setCycleId}
+              fullWidth
+              placeholder="Start Fresh — No Cycle Assigned (Admin assigns later)"
+              options={[
+                { value: '', label: 'Start Fresh — No Cycle Assigned (Admin assigns later)' },
+                ...allCycles.map((c) => ({
+                  value: c.id,
+                  label: `${c.name} (${c.stage.replace('_', ' ')})`,
+                })),
+              ]}
+            />
+            <p className="text-[11px] text-slate-500 dark:text-zinc-400 mt-1">
+              Fresh employees start completely independent with zero active goals, pending reviews, or cycle deadlines until an Admin explicitly assigns them.
+            </p>
           </div>
 
         </div>

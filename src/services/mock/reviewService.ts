@@ -114,9 +114,16 @@ export const reviewService = {
 
   async listTeamReviews(managerId: string, cycleId: string): Promise<TeamReviewSummary[]> {
     const reports = await peopleService.getDirectReports(managerId)
-    const { selfReviews, managerReviews, goals, calibrations, results } = storageService.getState()
+    const { cycles, selfReviews, managerReviews, goals, calibrations, results } = storageService.getState()
+    const cycle = cycles.find((c) => c.id === cycleId || matchesCycle(c.id, cycleId))
 
-    return reports.map((employee) => {
+    // Only include direct reports who have been explicitly enrolled into this cycle by an Administrator
+    const enrolledReports = reports.filter((employee) => {
+      if (!cycle || !Array.isArray(cycle.participantIds)) return false
+      return cycle.participantIds.some((pId) => pId === employee.id || matchesUser(pId, employee.id))
+    })
+
+    return enrolledReports.map((employee) => {
       const sr = selfReviews.find((r) =>
         (r.userId === employee.id || matchesUser(r.userId, employee.id)) &&
         (r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId))

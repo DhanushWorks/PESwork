@@ -142,8 +142,8 @@ export const cycleService = {
         )
     }
 
-    // Legacy fallback only if field is strictly undefined (exclude admins)
-    return users.filter((u) => u.role !== 'admin')
+    // Strict: cycles only include explicitly enrolled non-admin participants
+    return []
   },
 
   /**

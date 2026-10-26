@@ -8,6 +8,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { getRatingBand } from '../../lib/scoring'
 import { ConfirmDialog } from '../../components/ui/Modal'
 import { formatDateTime, formatDate } from '../../lib/formatters'
+import { isUserCycleParticipant } from '../../lib/workflow'
 import {
   CheckCircle2,
   Clock,
@@ -16,6 +17,7 @@ import {
   Lock,
   Save,
   Send,
+  AlertCircle,
 } from 'lucide-react'
 
 const COMPETENCIES = [
@@ -108,7 +110,15 @@ export const EmployeeSelfReview: React.FC = () => {
     }
   }, [currentUser?.id, activeCycle?.id])
 
+  const isEnrolledInCycle = isUserCycleParticipant(activeCycle, currentUser?.id)
+  const isSubmitted = selfReview?.status === 'submitted'
+  const isFormDisabled = isSubmitted || !isEnrolledInCycle
+
   const handleSaveDraft = async () => {
+    if (!isEnrolledInCycle) {
+      error('Enrollment Required', 'You must be assigned to an active review cycle by an Admin before saving self-evaluations.')
+      return
+    }
     try {
       const saved = await reviewService.saveSelfDraft({
         userId: currentUser.id,
@@ -130,6 +140,10 @@ export const EmployeeSelfReview: React.FC = () => {
   }
 
   const handleSubmit = async () => {
+    if (!isEnrolledInCycle) {
+      error('Enrollment Required', 'You must be assigned to an active review cycle by an Admin before submitting self-evaluations.')
+      return
+    }
     if (!overallReflection.trim() || !achievements.trim()) {
       error('Incomplete review', 'Please fill out your overall reflection and key achievements.')
       return
@@ -161,8 +175,6 @@ export const EmployeeSelfReview: React.FC = () => {
     }
   }
 
-  const isSubmitted = selfReview?.status === 'submitted'
-
   if (loading) {
     return <LoadingState message="Loading self-review workspace..." variant="page" />
   }
@@ -177,7 +189,7 @@ export const EmployeeSelfReview: React.FC = () => {
           </span>
         )}
 
-        {!isSubmitted && (
+        {isEnrolledInCycle && !isSubmitted && (
           <>
             <button
               type="button"
@@ -198,6 +210,24 @@ export const EmployeeSelfReview: React.FC = () => {
           </>
         )}
       </div>
+
+      {/* Not Enrolled Warning Card */}
+      {!isEnrolledInCycle && (
+        <div className="p-5 rounded-2xl border border-amber-300/80 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/20 text-xs text-slate-900 dark:text-zinc-100 flex items-start gap-3.5 shadow-xs">
+          <div className="w-9 h-9 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 flex items-center justify-center flex-shrink-0 mt-0.5">
+            <Lock className="w-5 h-5" />
+          </div>
+          <div className="space-y-1">
+            <h3 className="font-bold text-[14px] text-amber-900 dark:text-amber-300">
+              Self-Review Locked — Not Enrolled in Active Cycle
+            </h3>
+            <p className="text-slate-700 dark:text-zinc-300 text-xs leading-relaxed font-medium">
+              Your employee account is currently not assigned to <strong>{activeCycle?.name || 'the active review cycle'}</strong>.
+              Form fields are read-only. Performance evaluations and self-ratings will unlock once an Administrator assigns you to an evaluation cycle.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* Submitted Banner if locked */}
       {isSubmitted && (
@@ -231,7 +261,7 @@ export const EmployeeSelfReview: React.FC = () => {
               label="Self-Assessed Overall Performance Rating (1.0 to 5.0)"
               value={overallRating}
               onChange={setOverallRating}
-              disabled={isSubmitted}
+              disabled={isFormDisabled}
               hideBadge={true}
             />
           </div>
@@ -242,7 +272,7 @@ export const EmployeeSelfReview: React.FC = () => {
             </label>
             <textarea
               rows={4}
-              disabled={isSubmitted}
+              disabled={isFormDisabled}
               value={overallReflection}
               onChange={(e) => setOverallReflection(e.target.value)}
               placeholder="Summarize your overall impact, key deliverables, and professional contributions across this evaluation period..."
@@ -285,7 +315,7 @@ export const EmployeeSelfReview: React.FC = () => {
                         [comp.id]: { ...current, rating: r },
                       }))
                     }
-                    disabled={isSubmitted}
+                    disabled={isFormDisabled}
                   />
                 </div>
 
@@ -295,7 +325,7 @@ export const EmployeeSelfReview: React.FC = () => {
                   </label>
                   <textarea
                     rows={3}
-                    disabled={isSubmitted}
+                    disabled={isFormDisabled}
                     value={current.comment}
                     onChange={(e) =>
                       setCompetencyRatings((prev) => ({
@@ -346,7 +376,7 @@ export const EmployeeSelfReview: React.FC = () => {
                         [val.id]: { ...current, rating: r },
                       }))
                     }
-                    disabled={isSubmitted}
+                    disabled={isFormDisabled}
                   />
                 </div>
 
@@ -356,7 +386,7 @@ export const EmployeeSelfReview: React.FC = () => {
                   </label>
                   <textarea
                     rows={3}
-                    disabled={isSubmitted}
+                    disabled={isFormDisabled}
                     value={current.comment}
                     onChange={(e) =>
                       setValueRatings((prev) => ({
@@ -389,7 +419,7 @@ export const EmployeeSelfReview: React.FC = () => {
             </label>
             <textarea
               rows={4}
-              disabled={isSubmitted}
+              disabled={isFormDisabled}
               value={achievements}
               onChange={(e) => setAchievements(e.target.value)}
               placeholder="List specific milestones, projects shipped, and positive impacts on the team or customer..."
@@ -403,7 +433,7 @@ export const EmployeeSelfReview: React.FC = () => {
             </label>
             <textarea
               rows={4}
-              disabled={isSubmitted}
+              disabled={isFormDisabled}
               value={challenges}
               onChange={(e) => setChallenges(e.target.value)}
               placeholder="What technical, organizational, or delivery hurdles did you face? How did you navigate them?"
@@ -417,7 +447,7 @@ export const EmployeeSelfReview: React.FC = () => {
             </label>
             <textarea
               rows={4}
-              disabled={isSubmitted}
+              disabled={isFormDisabled}
               value={developmentNeeds}
               onChange={(e) => setDevelopmentNeeds(e.target.value)}
               placeholder="What new competencies, leadership responsibilities, or technical capabilities do you want to cultivate?"

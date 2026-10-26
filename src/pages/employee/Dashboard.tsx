@@ -9,7 +9,7 @@ import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedContr
 import { MetricCard } from '../../components/ui/MetricCard'
 import { useCountUp } from '../../hooks/useCountUp'
 import { useInView } from '../../hooks/useInView'
-import { getEmployeeWorkflowState, matchesCycle } from '../../lib/workflow'
+import { getEmployeeWorkflowState, matchesCycle, isUserCycleParticipant } from '../../lib/workflow'
 import { formatDate, STAGE_ORDER } from '../../lib/formatters'
 import {
   ArrowRight,
@@ -107,6 +107,12 @@ export const EmployeeDashboard: React.FC = () => {
     return allCycles.find((c) => c.id === activeCycle.id || matchesCycle(c.id, activeCycle.id)) || activeCycle
   }, [allCycles, activeCycle])
 
+  // Strict participant check: Only employees explicitly assigned to the cycle by an Admin are connected
+  const isEnrolledInCycle = useMemo(() => {
+    if (!currentCycle || !currentCycle.id) return false
+    return isUserCycleParticipant(currentCycle, currentUser.id)
+  }, [currentCycle, currentUser.id])
+
   // Synchronized workflow state calculation for Employee role
   const workflowState = getEmployeeWorkflowState({
     cycle: currentCycle,
@@ -135,6 +141,7 @@ export const EmployeeDashboard: React.FC = () => {
 
   // 1. Pending Tasks for the authenticated employee
   const pendingTasks = useMemo(() => {
+    if (!isEnrolledInCycle) return []
     const list: Array<{
       id: string
       title: string
@@ -235,6 +242,7 @@ export const EmployeeDashboard: React.FC = () => {
 
   // 2. Upcoming & Overdue Deadlines for the authenticated employee
   const upcomingDeadlines = useMemo(() => {
+    if (!isEnrolledInCycle) return []
     const today = new Date()
     today.setHours(0, 0, 0, 0)
 
@@ -414,46 +422,60 @@ export const EmployeeDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Active Goals"
-          value={animatedGoalsCount}
+          value={isEnrolledInCycle ? animatedGoalsCount : 0}
           badge={
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium border border-slate-300 dark:border-zinc-700 bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200">
-              {totalGoalWeight === 100 ? '100% balanced' : `${totalGoalWeight}% balanced`}
+              {isEnrolledInCycle && totalGoalWeight === 100 ? '100% balanced' : `${isEnrolledInCycle ? totalGoalWeight : 0}% balanced`}
             </span>
           }
-          subtitle={`${approvedGoals.length || 3} approved · ${totalGoalWeight || 100}% weight`}
+          subtitle={
+            isEnrolledInCycle
+              ? `${approvedGoals.length} approved · ${totalGoalWeight}% weight`
+              : '0 approved · 0% weight'
+          }
         />
 
         <MetricCard
           title="Goal Execution"
-          value={`${animatedAvgProgress}%`}
-          trend={{ value: `${approvedGoals.length || 3} on track`, neutral: true }}
-          subtitle="Average progress overall"
+          value={`${isEnrolledInCycle ? animatedAvgProgress : 0}%`}
+          trend={{ value: `${isEnrolledInCycle ? approvedGoals.length : 0} on track`, neutral: true }}
+          subtitle={isEnrolledInCycle ? 'Average progress overall' : 'No active goals in cycle'}
         />
 
         <MetricCard
           title="Self-Review"
           value={
-            selfReview?.status === 'submitted'
+            !isEnrolledInCycle
+              ? 'Not Enrolled'
+              : selfReview?.status === 'submitted'
               ? 'Submitted'
               : selfReview?.status === 'draft'
-              ? 'Draft'
-              : 'Submitted'
+              ? 'Draft Saved'
+              : 'Not Started'
           }
           trend={{
-            value: selfReview?.status === 'submitted' ? 'Complete' : 'Pending',
+            value: !isEnrolledInCycle
+              ? 'Unassigned'
+              : selfReview?.status === 'submitted'
+              ? 'Complete'
+              : 'Pending',
             neutral: true,
           }}
           subtitle={
-            selfReview?.submittedAt
+            !isEnrolledInCycle
+              ? 'Awaiting Admin cycle assignment'
+              : selfReview?.submittedAt
               ? `Submitted ${formatDate(selfReview.submittedAt)}`
-              : 'Submitted Sep 14, 2026'
+              : 'Awaiting submission'
           }
         />
 
         <MetricCard
           title="Cycle Outcome"
           value={
-            releasedResult
+            !isEnrolledInCycle
+              ? 'Not Enrolled'
+              : releasedResult
               ? `${releasedResult.compositeScore.toFixed(2)}`
               : effectiveStage === 'manager_review'
               ? 'Manager Review'
@@ -461,11 +483,13 @@ export const EmployeeDashboard: React.FC = () => {
           }
           badge={
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-zinc-300">
-              {releasedResult ? 'Released' : 'Sealed'}
+              {!isEnrolledInCycle ? 'Unassigned' : releasedResult ? 'Released' : 'Sealed'}
             </span>
           }
           subtitle={
-            releasedResult
+            !isEnrolledInCycle
+              ? 'Awaiting Admin cycle assignment'
+              : releasedResult
               ? (releasedResult.ratingBand || releasedResult.finalRatingLabel || 'Final Rating')
               : 'Appears after calibration release'
           }
@@ -474,7 +498,42 @@ export const EmployeeDashboard: React.FC = () => {
 
       {/* Workflow Tracking: Progression Stepper */}
       <section>
-        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+        {isEnrolledInCycle ? (
+          <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+        ) : (
+          <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-3 shadow-xs dark:shadow-md transition-all">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-slate-500 dark:text-zinc-400">
+                  PERFORMANCE EVALUATION WORKFLOW
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  Not Enrolled
+                </span>
+              </div>
+              <span className="text-xs text-slate-500 dark:text-zinc-400">
+                Fresh Employee Account
+              </span>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200/80 dark:border-white/[0.06] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white">
+                  No Review Cycle Assigned
+                </h3>
+                <p className="text-xs text-slate-600 dark:text-zinc-400 max-w-2xl leading-relaxed">
+                  Your account was created fresh. You are not currently enrolled in any performance evaluation cycle. An administrator will manually assign you to an active review cycle when eligible. Once added by Admin, your goal setting, self-reflection forms, and progression stepper will activate here.
+                </p>
+              </div>
+
+              <div className="shrink-0 flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs font-medium text-slate-700 dark:text-zinc-300">
+                  Status: Fresh Account
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Section 3.5: Pending Tasks & Upcoming Deadlines */}
