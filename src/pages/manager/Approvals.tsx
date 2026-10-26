@@ -7,6 +7,7 @@ import { Modal, ConfirmDialog } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate } from '../../lib/formatters'
+import { matchesUser } from '../../lib/workflow'
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import {
   AlertCircle,
@@ -20,7 +21,7 @@ import {
 } from 'lucide-react'
 
 export const ManagerApprovals: React.FC = () => {
-  const { currentUser, activeCycle, refreshData } = useApp()
+  const { currentUser, activeCycle, allUsers, refreshData } = useApp()
   const { success, error } = useToast()
 
   const [pendingGoals, setPendingGoals] = useState<Array<{ goal: Goal; employee: User }>>([])
@@ -201,24 +202,26 @@ export const ManagerApprovals: React.FC = () => {
         />
       ) : (
         <div className="space-y-4">
-          {displayedGoals.map(({ goal, employee }) => (
-            <div
-              key={goal.id}
-              className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-7 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20"
-            >
-              {/* Employee Header */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
-                <div className="flex items-center gap-3">
-                  <img
-                    src={employee.avatar}
-                    alt={employee.name}
-                    className="w-9 h-9 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20"
-                  />
-                  <div>
-                    <div className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA]">{employee.name}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-zinc-300 font-sans">{employee.designation}</div>
+          {displayedGoals.map(({ goal, employee }) => {
+            const liveEmp = allUsers.find((u) => u.id === employee.id || matchesUser(u.id, employee.id)) || employee
+            return (
+              <div
+                key={goal.id}
+                className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-7 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20"
+              >
+                {/* Employee Header */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={liveEmp.avatar || employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                      alt={liveEmp.name}
+                      className="w-9 h-9 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20"
+                    />
+                    <div>
+                      <div className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA]">{liveEmp.name}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-zinc-300 font-sans">{liveEmp.designation}</div>
+                    </div>
                   </div>
-                </div>
 
                 <div className="flex items-center gap-2 text-xs flex-wrap">
                   <span className="font-sans font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200/90 dark:border-zinc-700/80 text-[11px]">
@@ -279,7 +282,7 @@ export const ManagerApprovals: React.FC = () => {
                 </button>
               </div>
             </div>
-          ))}
+          )})}
         </div>
       )}
 

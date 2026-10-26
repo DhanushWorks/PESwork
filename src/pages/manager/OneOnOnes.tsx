@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react'
 import { useApp } from '../../app/AppContext'
+import { matchesUser } from '../../lib/workflow'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import { CustomDropdown } from '../../components/ui/CustomDropdown'
@@ -53,7 +54,7 @@ const INITIAL_MEETINGS: MeetingCheckIn[] = []
 const STORAGE_KEY = 'performiq_1on1_checkins_v3'
 
 export const ManagerOneOnOnes: React.FC = () => {
-  const { currentUser } = useApp()
+  const { currentUser, allUsers } = useApp()
   const { success, info } = useToast()
   const [statusFilter, setStatusFilter] = useState<'all' | 'scheduled' | 'completed'>('all')
   const [searchQuery, setSearchQuery] = useState('')
@@ -343,6 +344,14 @@ export const ManagerOneOnOnes: React.FC = () => {
             const completedCountForCard = item.actionItems.filter((a) => a.completed).length
             const isCompleted = item.status === 'completed'
 
+            const matchedUser = allUsers.find(
+              (u) =>
+                u.name.toLowerCase() === item.employeeName.toLowerCase() ||
+                (item.employeeCode && u.employeeCode === item.employeeCode) ||
+                matchesUser(u.id, item.employeeId)
+            )
+            const liveAvatar = matchedUser?.avatar || item.avatar
+
             return (
               <div
                 key={item.id}
@@ -354,7 +363,7 @@ export const ManagerOneOnOnes: React.FC = () => {
                   <div className="flex items-center gap-3.5 min-w-0">
                     <div className="relative shrink-0">
                       <img
-                        src={item.avatar}
+                        src={liveAvatar}
                         alt={item.employeeName}
                         className="w-12 h-12 rounded-2xl object-cover ring-2 ring-slate-100 dark:ring-white/10"
                         onError={(e) => {

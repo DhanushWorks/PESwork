@@ -28,7 +28,7 @@ import {
 } from 'lucide-react'
 
 export const AdminOverview: React.FC = () => {
-  const { activeCycle } = useApp()
+  const { activeCycle, allUsers } = useApp()
 
   const initialState = storageService.getState()
   const cachedUsers = apiCache.peek<User[]>('people:list') || initialState.users || []
@@ -898,27 +898,29 @@ export const AdminOverview: React.FC = () => {
           <>
             {/* Mobile Adaptive Card View (Zero horizontal or vertical clipping on narrow screens) */}
             <div className="block sm:hidden space-y-3 font-sans">
-              {pendingApprovals.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/60 dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors space-y-2.5 shadow-2xs"
-                >
-                  <div className="flex items-center justify-between gap-2.5">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <img
-                        src={item.employee.avatar}
-                        alt={item.employee.name}
-                        className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                          {item.employee.name}
-                        </div>
-                        <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
-                          {item.employee.employeeCode}
+              {pendingApprovals.map((item) => {
+                const liveEmp = allUsers.find((u) => u.id === item.employee.id || matchesUser(u.id, item.employee.id)) || item.employee
+                return (
+                  <div
+                    key={item.id}
+                    className="p-3.5 rounded-xl border border-slate-200/80 dark:border-white/[0.08] bg-slate-50/60 dark:bg-white/[0.02] hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors space-y-2.5 shadow-2xs"
+                  >
+                    <div className="flex items-center justify-between gap-2.5">
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <img
+                          src={liveEmp.avatar || item.employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                          alt={liveEmp.name}
+                          className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
+                        />
+                        <div className="min-w-0">
+                          <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                            {liveEmp.name}
+                          </div>
+                          <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
+                            {liveEmp.employeeCode}
+                          </div>
                         </div>
                       </div>
-                    </div>
                     <Link
                       to={item.reviewUrl}
                       className="h-7 px-2.5 rounded-lg border border-slate-200 dark:border-white/15 bg-white dark:bg-white/[0.06] hover:bg-slate-100 dark:hover:bg-white/[0.12] text-slate-800 dark:text-zinc-100 text-xs font-semibold inline-flex items-center gap-1 transition-all cursor-pointer shadow-2xs shrink-0 active:scale-95"
@@ -950,7 +952,7 @@ export const AdminOverview: React.FC = () => {
                     </span>
                   </div>
                 </div>
-              ))}
+              )})}
             </div>
 
             {/* Desktop & Tablet Table View */}
@@ -967,25 +969,27 @@ export const AdminOverview: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] font-sans">
-                  {pendingApprovals.map((item) => (
-                    <tr key={item.id} className="group hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors">
-                      <td className="py-3 pr-2">
-                        <div className="flex items-center gap-2.5 min-w-0">
-                          <img
-                            src={item.employee.avatar}
-                            alt={item.employee.name}
-                            className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
-                          />
-                          <div className="min-w-0">
-                            <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                              {item.employee.name}
-                            </div>
-                            <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
-                              {item.employee.employeeCode}
+                  {pendingApprovals.map((item) => {
+                    const liveEmp = allUsers.find((u) => u.id === item.employee.id || matchesUser(u.id, item.employee.id)) || item.employee
+                    return (
+                      <tr key={item.id} className="group hover:bg-slate-50/70 dark:hover:bg-white/[0.02] transition-colors">
+                        <td className="py-3 pr-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <img
+                              src={liveEmp.avatar || item.employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                              alt={liveEmp.name}
+                              className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
+                            />
+                            <div className="min-w-0">
+                              <div className="font-bold text-xs text-slate-900 dark:text-white truncate">
+                                {liveEmp.name}
+                              </div>
+                              <div className="text-[10.5px] text-slate-400 dark:text-zinc-500 font-mono truncate">
+                                {liveEmp.employeeCode}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
                       <td className="py-3 px-2">
                         <span className="text-[11px] text-slate-700 dark:text-zinc-300 font-medium truncate block max-w-[180px]" title={item.cycleName}>
                           {item.cycleName}
@@ -1015,7 +1019,7 @@ export const AdminOverview: React.FC = () => {
                         </Link>
                       </td>
                     </tr>
-                  ))}
+                  )})}
                 </tbody>
               </table>
             </div>

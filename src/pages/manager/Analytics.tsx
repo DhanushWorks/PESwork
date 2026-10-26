@@ -5,10 +5,11 @@ import { Goal, User, ManagerReview } from '../../types'
 import { MetricCard } from '../../components/ui/MetricCard'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { RATING_BANDS } from '../../lib/scoring'
+import { matchesUser } from '../../lib/workflow'
 import { TrendingUp, Users, Target, Award } from 'lucide-react'
 
 export const ManagerAnalytics: React.FC = () => {
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, allUsers } = useApp()
   const [reports, setReports] = useState<User[]>([])
   const [reviews, setReviews] = useState<ManagerReview[]>([])
   const [goals, setGoals] = useState<Goal[]>([])
@@ -182,7 +183,8 @@ export const ManagerAnalytics: React.FC = () => {
 
         <div className="divide-y divide-slate-100 dark:divide-white/[0.06]">
           {reports.map((emp) => {
-            const empGoals = goals.filter((g) => g.userId === emp.id)
+            const liveEmp = allUsers.find((u) => u.id === emp.id || matchesUser(u.id, emp.id)) || emp
+            const empGoals = goals.filter((g) => g.userId === emp.id || matchesUser(g.userId, emp.id))
             const empAvg =
               empGoals.length > 0
                 ? Math.round(empGoals.reduce((sum, g) => sum + g.progress, 0) / empGoals.length)
@@ -191,9 +193,13 @@ export const ManagerAnalytics: React.FC = () => {
             return (
               <div key={emp.id} className="py-3.5 first:pt-0 flex items-center justify-between gap-4 text-xs">
                 <div className="flex items-center gap-3 w-48 truncate">
-                  <img src={emp.avatar} alt={emp.name} className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20" />
+                  <img
+                    src={liveEmp.avatar || emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                    alt={liveEmp.name}
+                    className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20"
+                  />
                   <div className="truncate">
-                    <div className="font-bold text-slate-900 dark:text-[#F0F3FA] truncate">{emp.name}</div>
+                    <div className="font-bold text-slate-900 dark:text-[#F0F3FA] truncate">{liveEmp.name}</div>
                     <div className="text-[11px] text-slate-500 dark:text-zinc-300 font-sans truncate">{empGoals.length} goals</div>
                   </div>
                 </div>

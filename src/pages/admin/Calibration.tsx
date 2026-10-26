@@ -12,6 +12,7 @@ import { LoadingState } from '../../components/ui/LoadingState'
 import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedControl'
 import { RATING_BANDS, getRatingBand } from '../../lib/scoring'
 import { formatDate, formatDateTime } from '../../lib/formatters'
+import { matchesUser } from '../../lib/workflow'
 import { PdfViewerModal } from '../../components/ui/PdfViewerModal'
 import {
   AlertCircle,
@@ -42,7 +43,7 @@ import {
 } from 'lucide-react'
 
 export const AdminCalibration: React.FC = () => {
-  const { activeCycle, currentUser, refreshData } = useApp()
+  const { activeCycle, currentUser, allUsers, refreshData } = useApp()
   const { success, error } = useToast()
   const navigate = useNavigate()
 
@@ -708,6 +709,7 @@ export const AdminCalibration: React.FC = () => {
                 </tr>
               ) : (
                 filteredItems.map((item) => {
+                  const liveEmp = allUsers.find((u) => u.id === item.employee.id || matchesUser(u.id, item.employee.id)) || item.employee
                   const hasCalibration = !!item.calibrationRecord
                   const isModified =
                     hasCalibration &&
@@ -722,21 +724,21 @@ export const AdminCalibration: React.FC = () => {
                       <td className="py-4 px-5 whitespace-nowrap">
                         <div className="flex items-center gap-3">
                           <img
-                            src={item.employee.avatar}
-                            alt={item.employee.name}
+                            src={liveEmp.avatar || item.employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                            alt={liveEmp.name}
                             className="w-10 h-10 rounded-full object-cover ring-2 ring-slate-200/80 dark:ring-white/10 shrink-0 shadow-2xs"
                           />
                           <div className="min-w-0">
                             <div className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm leading-tight">
-                              <span>{item.employee.name}</span>
-                              {item.employee.employeeCode && (
+                              <span>{liveEmp.name}</span>
+                              {(liveEmp.employeeCode || item.employee.employeeCode) && (
                                 <span className="text-[10px] font-sans text-slate-500 dark:text-zinc-400 bg-slate-100 dark:bg-white/[0.06] px-1.5 py-0.5 rounded border border-slate-200/70 dark:border-white/10">
-                                  #{item.employee.employeeCode}
+                                  #{liveEmp.employeeCode || item.employee.employeeCode}
                                 </span>
                               )}
                             </div>
                             <div className="text-[11px] text-slate-500 dark:text-zinc-400 flex items-center gap-1.5 mt-1">
-                              <span>{item.employee.designation}</span>
+                              <span>{liveEmp.designation || item.employee.designation}</span>
                               <span className="opacity-40">•</span>
                               <span>{item.employee.department}</span>
                             </div>

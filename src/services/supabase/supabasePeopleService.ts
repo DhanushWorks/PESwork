@@ -102,7 +102,10 @@ export const supabasePeopleService = {
 
   async getDirectReports(managerId: string): Promise<User[]> {
     return apiCache.getOrFetch(`people:reports:${managerId}`, async () => {
-      if (!isSupabaseReady()) return mockPeopleService.getDirectReports(managerId)
+      const localReports = await mockPeopleService.getDirectReports(managerId)
+      const localList = await mockPeopleService.list()
+
+      if (!isSupabaseReady()) return localReports
 
       try {
         let queryManagerId = managerId
@@ -110,31 +113,49 @@ export const supabasePeopleService = {
 
         const { data, error } = await supabase.from('profiles').select('*').eq('manager_id', queryManagerId)
         if (error || !data || data.length === 0) {
-          return mockPeopleService.getDirectReports(managerId)
+          return localReports
         }
 
-        return data.map((p) => ({
-          id: p.id,
-          name: p.name,
-          email: p.email,
-          role: p.role as Role,
-          department: p.department,
-          designation: p.designation,
-          managerId: p.manager_id,
-          employeeCode: p.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-          avatar: p.avatar,
-          active: p.active,
-          joinedDate: p.join_date,
-        }))
+        const dbReports: User[] = data.map((p) => {
+          const localMatch = localList.find(
+            (lu) => lu.id === p.id || matchesUser(lu.id, p.id) || (p.email && lu.email?.toLowerCase() === p.email.toLowerCase())
+          )
+
+          return {
+            id: p.id,
+            name: localMatch?.name || p.name,
+            email: p.email,
+            role: p.role as Role,
+            department: localMatch?.department || p.department,
+            designation: localMatch?.designation || p.designation,
+            managerId: p.manager_id,
+            employeeCode: localMatch?.employeeCode || p.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            avatar:
+              localMatch?.avatar ||
+              p.avatar ||
+              'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            active: localMatch?.active !== undefined ? localMatch.active : p.active,
+            joinedDate: localMatch?.joinedDate || p.join_date,
+          }
+        })
+
+        const merged = [...dbReports]
+        for (const lr of localReports) {
+          if (!merged.some((r) => r.id === lr.id || matchesUser(r.id, lr.id))) {
+            merged.push(lr)
+          }
+        }
+        return merged
       } catch (err) {
         markSupabaseOffline(err)
-        return mockPeopleService.getDirectReports(managerId)
+        return localReports
       }
     }, 60000)
   },
 
   async create(user: Omit<User, 'id'>): Promise<User> {
     apiCache.invalidate('people:')
+    apiCache.invalidate('reviews:')
     const mockCreated = await mockPeopleService.create(user)
 
     if (isSupabaseReady()) {
@@ -175,12 +196,16 @@ export const supabasePeopleService = {
 
   async update(id: string, updates: Partial<User>): Promise<User> {
     apiCache.invalidate('people:')
+    apiCache.invalidate('reviews:')
+    apiCache.invalidate('calibration:')
+    apiCache.invalidate('results:')
+    apiCache.invalidate('goals:')
 
     // Always update mock / localStorage first so local state is immediately updated
     const localUpdated = await mockPeopleService.update(id, updates)
 
     const targetUuid = toDatabaseUserId(id)
-    if (isSupabaseReady() && targetUuid) {
+    if (isSupabaseReady()) {
       try {
         const dbUpdates: any = {}
         if (updates.name !== undefined) dbUpdates.name = updates.name
@@ -189,10 +214,11 @@ export const supabasePeopleService = {
         if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar
         if (updates.active !== undefined) dbUpdates.active = updates.active
 
-        await supabase
-          .from('profiles')
-          .update(dbUpdates)
-          .eq('id', targetUuid)
+        if (targetUuid && targetUuid !== id) {
+          await supabase.from('profiles').update(dbUpdates).or(`id.eq.${id},id.eq.${targetUuid}`)
+        } else {
+          await supabase.from('profiles').update(dbUpdates).eq('id', id)
+        }
       } catch (err) {
         console.warn('Notice updating profile in Supabase:', err)
       }
@@ -202,6 +228,8 @@ export const supabasePeopleService = {
   },
 
   async toggleActive(id: string): Promise<User> {
+    apiCache.invalidate('people:')
+    apiCache.invalidate('reviews:')
     const current = await this.getById(id)
     if (!current) throw new Error(`User ${id} not found`)
     return this.update(id, { active: !current.active })

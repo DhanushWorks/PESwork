@@ -31,7 +31,12 @@ export const peopleService = {
     let updated: User | null = null
     storageService.updateState((state) => {
       const users = state.users.map((u) => {
-        if (u.id === id || matchesUser(u.id, id)) {
+        if (
+          u.id === id ||
+          matchesUser(u.id, id) ||
+          (updates.email && u.email?.toLowerCase() === updates.email.toLowerCase()) ||
+          (updates.employeeCode && u.employeeCode === updates.employeeCode)
+        ) {
           updated = { ...u, ...updates }
           return updated
         }
@@ -39,7 +44,14 @@ export const peopleService = {
       })
       return { users }
     })
-    if (!updated) throw new Error(`User ${id} not found`)
+    if (!updated) {
+      const current = storageService.getState().users.find((u) => u.id === id || matchesUser(u.id, id))
+      if (current) {
+        updated = { ...current, ...updates }
+      } else {
+        throw new Error(`User ${id} not found`)
+      }
+    }
     return updated
   },
 

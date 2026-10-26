@@ -38,9 +38,18 @@ import {
 } from 'lucide-react'
 
 export const ManagerDashboard: React.FC = () => {
-  const { currentUser, activeCycle, allCycles, refreshData } = useApp()
+  const { currentUser, activeCycle, allCycles, allUsers, refreshData } = useApp()
   const { success, error } = useToast()
   const navigate = useNavigate()
+
+  // Dynamically resolve live employee record from allUsers state to prevent stale cached avatars
+  const getLiveEmployee = useCallback(
+    (emp: User): User => {
+      const live = allUsers.find((u) => u.id === emp.id || matchesUser(u.id, emp.id))
+      return live ? { ...emp, ...live } : emp
+    },
+    [allUsers]
+  )
 
   const cachedSummaries = apiCache.peek<TeamReviewSummary[]>(`reviews:team:${currentUser.id}:${activeCycle.id}`) || []
   const [teamSummaries, setTeamSummaries] = useState<TeamReviewSummary[]>(cachedSummaries)
@@ -573,7 +582,7 @@ export const ManagerDashboard: React.FC = () => {
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/[0.06] text-slate-800 dark:text-zinc-200">
                 {filteredSummaries.map((summary) => {
-                  const emp = summary.employee
+                  const emp = getLiveEmployee(summary.employee)
                   const isSrSubmitted = summary.selfReviewStatus === 'submitted'
                   const isMrSubmitted = summary.managerReviewStatus === 'submitted'
 
@@ -711,7 +720,7 @@ export const ManagerDashboard: React.FC = () => {
           /* Cards Grid View */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredSummaries.map((summary) => {
-              const emp = summary.employee
+              const emp = getLiveEmployee(summary.employee)
               const isSrSubmitted = summary.selfReviewStatus === 'submitted'
               const isMrSubmitted = summary.managerReviewStatus === 'submitted'
 
@@ -1221,21 +1230,21 @@ export const ManagerDashboard: React.FC = () => {
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
-                          src={item.employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
-                          alt={item.employee.name}
+                          src={getLiveEmployee(item.employee).avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+                          alt={getLiveEmployee(item.employee).name}
                           className="w-7 h-7 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
                         />
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5">
                             <span className="font-bold text-xs text-slate-900 dark:text-white truncate">
-                              {item.employee.name}
+                              {getLiveEmployee(item.employee).name}
                             </span>
                             <span className="text-[10px] text-slate-400 dark:text-zinc-500 font-mono shrink-0">
-                              ({item.employee.employeeCode})
+                              ({getLiveEmployee(item.employee).employeeCode})
                             </span>
                           </div>
                           <p className="text-[11px] text-slate-500 dark:text-zinc-400 truncate">
-                            {item.employee.designation}
+                            {getLiveEmployee(item.employee).designation}
                           </p>
                         </div>
                       </div>
@@ -1342,7 +1351,7 @@ export const ManagerDashboard: React.FC = () => {
             ) : (
               <div className="space-y-3">
                 {pendingEvaluations.map((summary) => {
-                  const emp = summary.employee
+                  const emp = getLiveEmployee(summary.employee)
                   const isSrSubmitted = summary.selfReviewStatus === 'submitted'
                   const isDraft = summary.managerReviewStatus === 'draft'
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
@@ -17,6 +17,7 @@ import { GoalStatusBadge, RatingBadge } from '../../components/ui/Badge'
 import { ConfirmDialog } from '../../components/ui/Modal'
 import { LoadingState } from '../../components/ui/LoadingState'
 import { formatDate, formatDateTime } from '../../lib/formatters'
+import { matchesUser } from '../../lib/workflow'
 import {
   ArrowLeft,
   Award,
@@ -37,10 +38,17 @@ import { PdfViewerModal } from '../../components/ui/PdfViewerModal'
 export const ManagerReviewWorkspace: React.FC = () => {
   const { employeeId } = useParams<{ employeeId: string }>()
   const navigate = useNavigate()
-  const { currentUser, activeCycle, refreshData } = useApp()
+  const { currentUser, activeCycle, allUsers, refreshData } = useApp()
   const { success, error } = useToast()
 
   const [employee, setEmployee] = useState<User | null>(null)
+
+  // Dynamically resolve live employee record to prevent stale profile details
+  const liveEmployee = useMemo(() => {
+    if (!employee) return null
+    const matched = allUsers.find((u) => u.id === employee.id || matchesUser(u.id, employee.id))
+    return matched ? { ...employee, ...matched } : employee
+  }, [employee, allUsers])
   const [goals, setGoals] = useState<Goal[]>([])
   const [selfReview, setSelfReview] = useState<SelfReview | null>(null)
   const [peerFeedback, setPeerFeedback] = useState<FeedbackItem[]>([])
@@ -228,14 +236,14 @@ export const ManagerReviewWorkspace: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <img
-              src={employee.avatar}
-              alt={employee.name}
+              src={liveEmployee?.avatar || employee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
+              alt={liveEmployee?.name || employee.name}
               className="w-12 h-12 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/20 shadow-sm"
             />
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-                  {employee.name}
+                  {liveEmployee?.name || employee.name}
                 </h1>
                 {isReleased ? (
                   <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/40 px-2.5 py-0.5 rounded-full border dark:border-emerald-800/50 flex items-center gap-1 font-sans">
