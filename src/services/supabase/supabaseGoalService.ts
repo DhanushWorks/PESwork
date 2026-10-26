@@ -3,16 +3,14 @@ import { Goal, GoalStatus, ProgressLog } from '../../types'
 import { goalService as mockGoalService } from '../mock/goalService'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
 import { storageService } from '../mock/storageService'
-import { matchesUser, matchesCycle } from '../../lib/workflow'
+import { matchesUser, matchesCycle, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
 
 function toValidUuid(id?: string): string | null {
   if (!id) return null
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
-    return id
+  const resolved = resolveCycleUuid(toDatabaseUserId(id))
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolved)) {
+    return resolved
   }
-  if (id === 'u-emp-1') return '11111111-1111-1111-1111-111111111101'
-  if (id === 'u-mgr-1') return '11111111-1111-1111-1111-111111111102'
-  if (id === 'u-admin') return '11111111-1111-1111-1111-111111111103'
   return null
 }
 

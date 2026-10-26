@@ -13,7 +13,6 @@ import { EmployeeSelfReview } from '../pages/employee/SelfReview'
 import { EmployeeFeedback } from '../pages/employee/Feedback'
 import { EmployeeResults } from '../pages/employee/Results'
 import { EmployeeDevelopment } from '../pages/employee/Development'
-import { EmployeeProfile } from '../pages/employee/Profile'
 
 // Manager Pages
 import { ManagerDashboard } from '../pages/manager/Dashboard'
@@ -31,6 +30,7 @@ import { AdminCalibration } from '../pages/admin/Calibration'
 import { AdminReports } from '../pages/admin/Reports'
 import { AdminAudit } from '../pages/admin/Audit'
 import { Settings } from '../pages/Settings'
+import { Profile } from '../pages/Profile'
 
 export const router = createBrowserRouter([
   {
@@ -62,7 +62,7 @@ export const router = createBrowserRouter([
           { path: 'feedback', element: <EmployeeFeedback /> },
           { path: 'results', element: <EmployeeResults /> },
           { path: 'development', element: <EmployeeDevelopment /> },
-          { path: 'profile', element: <EmployeeProfile /> },
+          { path: 'profile', element: <Profile /> },
         ],
       },
       // Manager Routes (Strictly Manager role only)
@@ -90,6 +90,10 @@ export const router = createBrowserRouter([
           { path: 'reports', element: <AdminReports /> },
           { path: 'audit', element: <AdminAudit /> },
         ],
+      },
+      {
+        path: 'profile',
+        element: <Profile />,
       },
       {
         path: 'settings',

@@ -3,6 +3,7 @@ import { EvaluationResult, ReviewCycle } from '../../types'
 import { resultService as mockResultService, EmployeeResultView } from '../mock/resultService'
 import { supabaseCycleService as cycleService } from './supabaseCycleService'
 import { getRatingBand } from '../../lib/scoring'
+import { toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
 
 export type { EmployeeResultView }
@@ -22,8 +23,8 @@ export const supabaseResultService = {
       const { data: resultData, error: resultErr } = await supabase
         .from('final_results')
         .select('*')
-        .eq('user_id', userId)
-        .eq('cycle_id', cycleId)
+        .eq('user_id', toDatabaseUserId(userId))
+        .eq('cycle_id', resolveCycleUuid(cycleId))
         .maybeSingle()
 
       if (resultErr || !resultData) {
@@ -95,7 +96,7 @@ export const supabaseResultService = {
       const { data: resultsData, error } = await supabase
         .from('final_results')
         .select('*')
-        .eq('user_id', userId)
+        .eq('user_id', toDatabaseUserId(userId))
         .neq('status', 'pending')
 
       if (error || !resultsData || resultsData.length === 0) {

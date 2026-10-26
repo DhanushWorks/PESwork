@@ -1,6 +1,7 @@
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { CalibrationRecord, Goal, ManagerReview, SelfReview, User } from '../../types'
 import { getRatingBand } from '../../lib/scoring'
+import { matchesCycle, matchesUser, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
 import {
   calibrationService as mockCalibrationService,
@@ -62,13 +63,14 @@ export const supabaseCalibrationService = {
         .select('*')
         .eq('id', cycleId)
         .single()
+      const targetCycleUuid = resolveCycleUuid(cycleId)
       const cycleName = cycleData?.name || 'FY26 Performance & Growth Cycle'
 
       // 2. Fetch manager reviews for this cycle
       const { data: reviewsData, error: reviewsErr } = await supabase
         .from('manager_reviews')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .eq('cycle_id', targetCycleUuid)
 
       if (reviewsErr) {
         console.warn('Notice in supabaseCalibrationService.listForCycle:', reviewsErr.message)
@@ -412,8 +414,8 @@ export const supabaseCalibrationService = {
       try {
         if (adjustedScore && reason) {
           await supabase.rpc('calibrate_review', {
-            p_cycle_id: cycleId,
-            p_user_id: employeeId,
+            p_cycle_id: resolveCycleUuid(cycleId),
+            p_user_id: toDatabaseUserId(employeeId),
             p_score: adjustedScore,
             p_reason: reason,
           })
@@ -426,8 +428,8 @@ export const supabaseCalibrationService = {
             released_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           })
-          .eq('cycle_id', cycleId)
-          .eq('user_id', employeeId)
+          .eq('cycle_id', resolveCycleUuid(cycleId))
+          .eq('user_id', toDatabaseUserId(employeeId))
 
         // Advance cycle to Stage 7 (released) when admin grants permission
         await supabase
@@ -436,7 +438,7 @@ export const supabaseCalibrationService = {
             stage: 'released',
             updated_at: new Date().toISOString(),
           })
-          .eq('id', cycleId)
+          .eq('id', resolveCycleUuid(cycleId))
 
         // Also notify employee
         await notificationService.create({

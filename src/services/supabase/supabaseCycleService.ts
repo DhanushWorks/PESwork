@@ -4,25 +4,11 @@ import { STAGE_ORDER } from '../../lib/formatters'
 import { generateDeterministicDeadlines } from '../../lib/deadlines'
 import { cycleService as mockCycleService } from '../mock/cycleService'
 import { storageService } from '../mock/storageService'
-import { matchesUser } from '../../lib/workflow'
+import { matchesUser, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
 import { supabasePeopleService } from './supabasePeopleService'
 
-export function toDatabaseUserId(userId: string): string {
-  if (userId === 'u-emp-1') return '11111111-1111-1111-1111-111111111101'
-  if (userId === 'u-mgr-1') return '11111111-1111-1111-1111-111111111102'
-  if (userId === 'u-admin') return '11111111-1111-1111-1111-111111111103'
-  return userId
-}
-
+export { toDatabaseUserId, resolveCycleUuid }
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-
-export function resolveCycleUuid(cycleId?: string): string | null {
-  if (!cycleId) return null
-  if (UUID_REGEX.test(cycleId)) return cycleId
-  if (cycleId === 'cycle-2026-h1') return '30000000-0000-0000-0000-000000000001'
-  if (cycleId === 'cycle-2025-annual' || cycleId === 'cycle-2025-h2') return '30000000-0000-0000-0000-000000000002'
-  return null
-}
 
 export function normalizeCycleDeadlines(rawDeadlines: any, startDate: string, endDate: string): ReviewCycle['deadlines'] {
   const generated = generateDeterministicDeadlines(startDate, endDate)

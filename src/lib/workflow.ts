@@ -515,9 +515,49 @@ export function matchesUser(idA?: string, idB?: string): boolean {
 export function matchesCycle(idA?: string, idB?: string): boolean {
   if (!idA || !idB) return false
   if (idA === idB) return true
-  const c1Ids = ['cycle-2026-h1', 'cycle-2026-h2', '30000000-0000-0000-0000-000000000001']
+  const c1Ids = [
+    'cycle-2026-h1',
+    'cycle-2026-h2',
+    'cycle-current',
+    '30000000-0000-0000-0000-000000000001',
+    'bf21ac37-1801-47df-b9ba-b1d05a0d6832',
+  ]
   if (c1Ids.includes(idA) && c1Ids.includes(idB)) return true
-  const c2Ids = ['cycle-2025-annual', 'cycle-2025-h2', '30000000-0000-0000-0000-000000000002']
+  const c2Ids = [
+    'cycle-2025-annual',
+    'cycle-2025-h2',
+    '30000000-0000-0000-0000-000000000002',
+  ]
   if (c2Ids.includes(idA) && c2Ids.includes(idB)) return true
   return false
+}
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+export function toDatabaseUserId(userId?: string): string {
+  if (!userId) return ''
+  if (userId === 'u-emp-1') return '11111111-1111-1111-1111-111111111101'
+  if (userId === 'u-mgr-1') return '11111111-1111-1111-1111-111111111102'
+  if (userId === 'u-admin') return '11111111-1111-1111-1111-111111111103'
+  return userId
+}
+
+export function toAppUserId(userId?: string): string {
+  if (!userId) return ''
+  if (userId === '11111111-1111-1111-1111-111111111101') return 'u-emp-1'
+  if (userId === '11111111-1111-1111-1111-111111111102') return 'u-mgr-1'
+  if (userId === '11111111-1111-1111-1111-111111111103') return 'u-admin'
+  return userId
+}
+
+export function resolveCycleUuid(cycleId?: string): string {
+  if (!cycleId) return 'bf21ac37-1801-47df-b9ba-b1d05a0d6832'
+  if (UUID_PATTERN.test(cycleId)) return cycleId
+  if (cycleId === 'cycle-2026-h1' || cycleId === 'cycle-2026-h2' || cycleId === 'cycle-current') {
+    return 'bf21ac37-1801-47df-b9ba-b1d05a0d6832'
+  }
+  if (cycleId === 'cycle-2025-annual' || cycleId === 'cycle-2025-h2') {
+    return '30000000-0000-0000-0000-000000000002'
+  }
+  return cycleId
 }

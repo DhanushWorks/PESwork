@@ -1,9 +1,21 @@
 import { createClient } from '@supabase/supabase-js'
 
+export const DEFAULT_SUPABASE_URL = 'https://kngdjjgdxgzovcjxstlc.supabase.co'
+export const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtuZ2RqamdkeGd6b3ZjanhzdGxjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTE5ODI2MjIsImV4cCI6MjEwNzU1ODYyMn0._1LUiCLDpf06N1QCQakRKI-E5-aCYRVbHF7aLQkxmko'
+
 function getEnv(key: string): string {
   try {
-    if (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env[key]) {
-      return import.meta.env[key]
+    if (typeof import.meta !== 'undefined' && import.meta.env) {
+      if (key === 'VITE_SUPABASE_URL' && import.meta.env.VITE_SUPABASE_URL) {
+        return import.meta.env.VITE_SUPABASE_URL
+      }
+      if (key === 'VITE_SUPABASE_ANON_KEY' && import.meta.env.VITE_SUPABASE_ANON_KEY) {
+        return import.meta.env.VITE_SUPABASE_ANON_KEY
+      }
+      if (import.meta.env[key]) {
+        return import.meta.env[key]
+      }
     }
     if (typeof window !== 'undefined') {
       const win = window as any
@@ -18,8 +30,15 @@ function getEnv(key: string): string {
   return ''
 }
 
-const supabaseUrl = getEnv('VITE_SUPABASE_URL')
-const supabaseAnonKey = getEnv('VITE_SUPABASE_ANON_KEY')
+const supabaseUrl =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL) ||
+  getEnv('VITE_SUPABASE_URL') ||
+  DEFAULT_SUPABASE_URL
+
+const supabaseAnonKey =
+  (typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY) ||
+  getEnv('VITE_SUPABASE_ANON_KEY') ||
+  DEFAULT_SUPABASE_ANON_KEY
 
 export const isSupabaseConfigured = Boolean(
   supabaseUrl &&
@@ -135,7 +154,7 @@ export async function testSupabaseConnection(): Promise<{ ok: boolean; message: 
       return { ok: false, message: error.message }
     }
     markSupabaseOnline()
-    return { ok: true, message: 'Connected to Supabase successfully!' }
+    return { ok: true, message: 'Connected to Supabase PostgreSQL (Project kngdjjgdxgzovcjxstlc)' }
   } catch (err: any) {
     markSupabaseOffline(err)
     return { ok: false, message: err.message || 'Failed to connect to Supabase' }

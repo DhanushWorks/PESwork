@@ -1,7 +1,7 @@
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { ManagerReview, SelfReview, User } from '../../types'
 import { calculateCompositeScore } from '../../lib/scoring'
-import { matchesCycle, matchesUser } from '../../lib/workflow'
+import { matchesCycle, matchesUser, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
 import { supabaseCycleService as cycleService } from './supabaseCycleService'
 import { supabasePeopleService as peopleService } from './supabasePeopleService'
 import { reviewService as mockReviewService, TeamReviewSummary } from '../mock/reviewService'
@@ -35,8 +35,8 @@ export const supabaseReviewService = {
       const { data, error } = await supabase
         .from('self_assessments')
         .select('*')
-        .eq('user_id', userId)
-        .eq('cycle_id', cycleId)
+        .eq('user_id', toDatabaseUserId(userId))
+        .eq('cycle_id', resolveCycleUuid(cycleId))
         .maybeSingle()
 
       if (error || !data) {
@@ -80,8 +80,8 @@ export const supabaseReviewService = {
         const tenantId = await getTenantId(reviewData.userId)
         const payload = {
           tenant_id: tenantId,
-          cycle_id: reviewData.cycleId,
-          user_id: reviewData.userId,
+          cycle_id: resolveCycleUuid(reviewData.cycleId),
+          user_id: toDatabaseUserId(reviewData.userId),
           overall_rating: Number(reviewData.overallRating) || 3.0,
           answers: {
             overallReflection: reviewData.overallReflection || '',
@@ -130,8 +130,8 @@ export const supabaseReviewService = {
         const submittedAt = new Date().toISOString()
         const payload = {
           tenant_id: tenantId,
-          cycle_id: reviewData.cycleId,
-          user_id: reviewData.userId,
+          cycle_id: resolveCycleUuid(reviewData.cycleId),
+          user_id: toDatabaseUserId(reviewData.userId),
           overall_rating: Number(reviewData.overallRating) || 3.0,
           answers: {
             overallReflection: reviewData.overallReflection || '',
@@ -206,8 +206,8 @@ export const supabaseReviewService = {
       const { data, error } = await supabase
         .from('manager_reviews')
         .select('*')
-        .eq('user_id', employeeId)
-        .eq('cycle_id', cycleId)
+        .eq('user_id', toDatabaseUserId(employeeId))
+        .eq('cycle_id', resolveCycleUuid(cycleId))
         .maybeSingle()
 
       if (error || !data) {
@@ -273,9 +273,9 @@ export const supabaseReviewService = {
         const tenantId = await getTenantId(reviewData.managerId)
         const payload = {
           tenant_id: tenantId,
-          cycle_id: reviewData.cycleId,
-          user_id: reviewData.employeeId,
-          reviewer_id: reviewData.managerId,
+          cycle_id: resolveCycleUuid(reviewData.cycleId),
+          user_id: toDatabaseUserId(reviewData.employeeId),
+          reviewer_id: toDatabaseUserId(reviewData.managerId),
           overall_rating: compositeScore,
           component_values: {
             goalsScore,
@@ -342,9 +342,9 @@ export const supabaseReviewService = {
         const submittedAt = new Date().toISOString()
         const payload = {
           tenant_id: tenantId,
-          cycle_id: reviewData.cycleId,
-          user_id: reviewData.employeeId,
-          reviewer_id: reviewData.managerId,
+          cycle_id: resolveCycleUuid(reviewData.cycleId),
+          user_id: toDatabaseUserId(reviewData.employeeId),
+          reviewer_id: toDatabaseUserId(reviewData.managerId),
           overall_rating: compositeScore,
           component_values: {
             goalsScore,
@@ -449,6 +449,7 @@ export const supabaseReviewService = {
     if (!isSupabaseReady()) return mockReviewService.listTeamReviews(managerId, cycleId)
 
     try {
+      const dbCycleId = resolveCycleUuid(cycleId)
       const reports: User[] = await peopleService.getDirectReports(managerId)
       if (reports.length === 0) return mockReviewService.listTeamReviews(managerId, cycleId)
 
@@ -459,12 +460,12 @@ export const supabaseReviewService = {
         supabase
           .from('self_assessments')
           .select('id, user_id, status, submitted_at')
-          .eq('cycle_id', cycleId)
-          .in('user_id', reportIds),
+          .eq('cycle_id', dbCycleId)
+          .in('user_id', reportIds.map(toDatabaseUserId)),
         supabase
           .from('manager_reviews')
           .select('id, user_id, status, overall_rating, submitted_at, component_values')
-          .eq('cycle_id', cycleId)
+          .eq('cycle_id', resolveCycleUuid(cycleId))
           .in('user_id', reportIds),
         supabase
           .from('goals')

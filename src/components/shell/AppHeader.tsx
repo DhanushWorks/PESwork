@@ -741,19 +741,23 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                 className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 p-3 z-50 text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 text-xs overscroll-contain"
                 role="menu"
               >
-                {/* Executive Current Identity Card */}
-                <div className="p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/90 border border-slate-200/80 dark:border-zinc-800/80 mb-2.5">
+                {/* Executive Current Identity Card (Click to open Profile) */}
+                <Link
+                  to="/profile"
+                  onClick={() => setShowUserMenu(false)}
+                  className="block p-3 rounded-xl bg-slate-50 dark:bg-zinc-900/90 hover:bg-slate-100/90 dark:hover:bg-zinc-800/90 border border-slate-200/80 dark:border-zinc-800/80 mb-2.5 transition-colors cursor-pointer group/card"
+                >
                   <div className="flex items-center gap-3">
                     <div className="relative flex-shrink-0">
                       <img
                         src={currentUser.avatar}
                         alt={currentUser.name}
-                        className="w-12 h-12 rounded-xl object-cover ring-2 ring-slate-200 dark:ring-zinc-700 shadow-xs"
+                        className="w-12 h-12 rounded-xl object-cover ring-2 ring-slate-200 dark:ring-zinc-700 shadow-xs group-hover/card:ring-indigo-500/50 transition-all"
                       />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1.5">
-                        <p className="font-bold text-slate-900 dark:text-zinc-100 truncate text-sm tracking-tight">
+                        <p className="font-bold text-slate-900 dark:text-zinc-100 truncate text-sm tracking-tight group-hover/card:text-indigo-600 dark:group-hover/card:text-indigo-400 transition-colors">
                           {currentUser.name}
                         </p>
                         <span className="text-[9px] font-sans font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800/60">
@@ -780,47 +784,21 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                       <span className="truncate">{currentUser.employeeCode}</span>
                     </div>
                   </div>
-                </div>
+                </Link>
 
                 {/* Quick Navigation Links */}
                 <div className="space-y-1">
-                  {currentUser.role === 'employee' ? (
-                    <Link
-                      to="/employee/profile"
-                      onClick={() => setShowUserMenu(false)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        <span>My Employee Profile</span>
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
-                    </Link>
-                  ) : currentUser.role === 'manager' ? (
-                    <Link
-                      to="/manager"
-                      onClick={() => setShowUserMenu(false)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        <span>Manager Workspace</span>
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
-                    </Link>
-                  ) : (
-                    <Link
-                      to="/admin"
-                      onClick={() => setShowUserMenu(false)}
-                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Shield className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
-                        <span>Admin Hub</span>
-                      </div>
-                      <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
-                    </Link>
-                  )}
+                  <Link
+                    to="/profile"
+                    onClick={() => setShowUserMenu(false)}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer"
+                  >
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="w-3.5 h-3.5 text-indigo-600 dark:text-indigo-400" />
+                      <span>My Profile</span>
+                    </div>
+                    <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
+                  </Link>
 
                   <Link
                     to="/settings"
@@ -829,7 +807,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       <Settings className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
-                      <span>Account Settings</span>
+                      <span>Workspace Settings</span>
                     </div>
                     <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                   </Link>

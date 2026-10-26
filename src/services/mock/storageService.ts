@@ -55,12 +55,30 @@ export type DemoState = {
 
 const STORAGE_KEY = 'performiq_clean_workflow_v1'
 
+const BASELINE_CYCLE: ReviewCycle = {
+  id: 'bf21ac37-1801-47df-b9ba-b1d05a0d6832',
+  name: 'FY 2026 H2 Performance Review',
+  stage: 'released',
+  startDate: '2026-10-01',
+  endDate: '2026-12-31',
+  description: 'Evaluation cycle for FY 2026 H2 Performance Review',
+  weights: { goals: 50, competencies: 30, values: 20 },
+  deadlines: {
+    goalsDue: '2026-10-31',
+    selfReviewDue: '2026-11-15',
+    managerReviewDue: '2026-12-05',
+    calibrationDue: '2026-12-15',
+    releaseDate: '2026-12-20',
+  },
+  participantIds: ['11111111-1111-1111-1111-111111111101', 'u-emp-1'],
+}
+
 export function getCleanState(): DemoState {
   return {
     dataMode: 'clean',
     users: [...SEED_USERS],
-    cycles: [],
-    activeCycleId: '',
+    cycles: [BASELINE_CYCLE],
+    activeCycleId: BASELINE_CYCLE.id,
     currentUserId: 'u-emp-1', // Default to Alex Rivera (Employee)
     goals: [],
     selfReviews: [],
