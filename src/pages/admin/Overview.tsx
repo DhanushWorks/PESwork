@@ -583,7 +583,7 @@ export const AdminOverview: React.FC = () => {
 
                 <ProgressBar value={engStats.overall} size="sm" showPercentage={false} />
 
-                <div className="flex items-center justify-between text-[10.5px] text-slate-600 dark:text-zinc-300 font-sans pt-2 font-medium">
+                <div className="flex items-center justify-between text-[10.5px] text-slate-600 dark:text-zinc-300 font-sans pt-2 font-medium flex-wrap gap-1">
                   <span>Self: <strong className="text-slate-900 dark:text-white">{engStats.selfRate}%</strong></span>
                   <span>Manager: <strong className="text-slate-900 dark:text-white">{engStats.mgrRate}%</strong></span>
                   <span>Goals: <strong className="text-slate-900 dark:text-white">{engStats.goalsRate}%</strong></span>
@@ -619,7 +619,7 @@ export const AdminOverview: React.FC = () => {
 
                 <ProgressBar value={prodStats.overall} size="sm" showPercentage={false} />
 
-                <div className="flex items-center justify-between text-[10.5px] text-slate-600 dark:text-zinc-300 font-sans pt-2 font-medium">
+                <div className="flex items-center justify-between text-[10.5px] text-slate-600 dark:text-zinc-300 font-sans pt-2 font-medium flex-wrap gap-1">
                   <span>Self: <strong className="text-slate-900 dark:text-white">{prodStats.selfRate}%</strong></span>
                   <span>Manager: <strong className="text-slate-900 dark:text-white">{prodStats.mgrRate}%</strong></span>
                   <span>Goals: <strong className="text-slate-900 dark:text-white">{prodStats.goalsRate}%</strong></span>

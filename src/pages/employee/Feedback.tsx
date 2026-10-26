@@ -269,7 +269,7 @@ export const EmployeeFeedback: React.FC = () => {
                   >
                     <div className="w-flipbox-front-h flex flex-col justify-between h-full space-y-3.5">
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between gap-3">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
                           <div className="flex items-center gap-3 min-w-0">
                             <img
                               src={
@@ -293,7 +293,7 @@ export const EmployeeFeedback: React.FC = () => {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
+                          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0">
                             <span
                               className={`inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full border ${
                                 isKudos

@@ -204,10 +204,10 @@ export const ManagerApprovals: React.FC = () => {
           {displayedGoals.map(({ goal, employee }) => (
             <div
               key={goal.id}
-              className="dark-glass-card rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20"
+              className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-7 space-y-4 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20"
             >
               {/* Employee Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
                 <div className="flex items-center gap-3">
                   <img
                     src={employee.avatar}
@@ -220,7 +220,7 @@ export const ManagerApprovals: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-xs">
+                <div className="flex items-center gap-2 text-xs flex-wrap">
                   <span className="font-sans font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 border border-slate-200/90 dark:border-zinc-700/80 text-[11px]">
                     Weight: {goal.weight}%
                   </span>

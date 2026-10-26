@@ -478,7 +478,7 @@ export const EmployeeDashboard: React.FC = () => {
       {/* Section 3.5: Pending Tasks & Upcoming Deadlines */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6">
         {/* Pending Tasks (lg:col-span-7) */}
-        <section className="col-span-12 lg:col-span-7 dark-glass-card p-6 sm:p-7 flex flex-col justify-between">
+        <section className="col-span-12 lg:col-span-7 dark-glass-card p-4 sm:p-6 lg:p-7 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center gap-2.5">
@@ -564,7 +564,7 @@ export const EmployeeDashboard: React.FC = () => {
         </section>
 
         {/* Upcoming Deadlines (lg:col-span-5) */}
-        <section className="col-span-12 lg:col-span-5 dark-glass-card p-6 sm:p-7 flex flex-col justify-between">
+        <section className="col-span-12 lg:col-span-5 dark-glass-card p-4 sm:p-6 lg:p-7 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-4 border-b border-slate-100 dark:border-white/[0.06]">
               <div className="flex items-center gap-2.5">
@@ -642,7 +642,7 @@ export const EmployeeDashboard: React.FC = () => {
         {/* Active Performance Goals List (s8) */}
         <section
           ref={tableCardRef}
-          className="col-span-12 lg:col-span-8 dark-glass-card p-6 sm:p-8"
+          className="col-span-12 lg:col-span-8 dark-glass-card p-4 sm:p-6 lg:p-7"
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
             <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
@@ -681,28 +681,30 @@ export const EmployeeDashboard: React.FC = () => {
               filteredGoals.map((g, idx) => (
                 <div
                   key={g.id}
-                  className="flex items-center gap-4 py-4 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors group"
+                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 py-3.5 sm:py-4 px-2.5 sm:px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.04] transition-colors group"
                 >
-                  {/* Row Index 01, 02... */}
-                  <span className="font-sans text-[11px] font-medium text-slate-400 dark:text-[#8D96AA] w-6 shrink-0">
-                    {String(idx + 1).padStart(2, '0')}
-                  </span>
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* Row Index 01, 02... */}
+                    <span className="font-sans text-[11px] font-medium text-slate-400 dark:text-[#8D96AA] w-6 shrink-0">
+                      {String(idx + 1).padStart(2, '0')}
+                    </span>
 
-                  {/* Goal Info */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <Link
-                      to={`/employee/goals/${g.id}`}
-                      className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors truncate block"
-                    >
-                      {g.title}
-                    </Link>
-                    <div className="text-xs text-slate-500 dark:text-[#8D96AA] mt-0.5 font-sans">
-                      Weight {g.weight}%
+                    {/* Goal Info */}
+                    <div className="min-w-0 flex-1 pr-2">
+                      <Link
+                        to={`/employee/goals/${g.id}`}
+                        className="text-sm font-semibold text-slate-900 dark:text-white group-hover:text-slate-700 dark:group-hover:text-slate-200 transition-colors truncate block"
+                      >
+                        {g.title}
+                      </Link>
+                      <div className="text-xs text-slate-500 dark:text-[#8D96AA] mt-0.5 font-sans">
+                        Weight {g.weight}%
+                      </div>
                     </div>
                   </div>
 
                   {/* Progress & Status */}
-                  <div className="w-48 sm:w-56 shrink-0">
+                  <div className="w-full sm:w-48 md:w-56 shrink-0 pl-9 sm:pl-0">
                     <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
                       <span className="text-slate-700 dark:text-zinc-300">On track</span>
                       <span className="text-slate-900 dark:text-[#EEF1F7] font-sans">{g.progress}%</span>
@@ -725,7 +727,7 @@ export const EmployeeDashboard: React.FC = () => {
         </section>
 
         {/* Peer Feedback List (s4) */}
-        <section className="col-span-12 lg:col-span-4 dark-glass-card p-6 sm:p-7 flex flex-col justify-between">
+        <section className="col-span-12 lg:col-span-4 dark-glass-card p-4 sm:p-6 lg:p-7 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.06]">
               <span className="font-sans text-[11px] sm:text-xs uppercase tracking-wider text-slate-900 dark:text-white font-bold">

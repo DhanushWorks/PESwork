@@ -1,3 +1,4 @@
+import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { ManagerReview, SelfReview, User } from '../../types'
 import { calculateCompositeScore } from '../../lib/scoring'
@@ -446,6 +447,7 @@ export const supabaseReviewService = {
    * List team members with appraisal status for manager direct reports
    */
   async listTeamReviews(managerId: string, cycleId: string): Promise<TeamReviewSummary[]> {
+    return apiCache.getOrFetch(`reviews:team:${managerId}:${cycleId}`, async () => {
     if (!isSupabaseReady()) return mockReviewService.listTeamReviews(managerId, cycleId)
 
     try {
@@ -504,12 +506,14 @@ export const supabaseReviewService = {
       console.warn('Notice listing team reviews from Supabase:', err)
       return mockReviewService.listTeamReviews(managerId, cycleId)
     }
+    }, 45000)
   },
 
   /**
    * List all self reviews for a cycle (Administrative view)
    */
   async listAllSelfReviews(cycleId: string): Promise<SelfReview[]> {
+    return apiCache.getOrFetch(`reviews:self:${cycleId}`, async () => {
     if (!isSupabaseReady()) return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
 
     try {
@@ -543,12 +547,14 @@ export const supabaseReviewService = {
     } catch {
       return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
     }
+    }, 45000)
   },
 
   /**
    * List all manager reviews for a cycle (Administrative view)
    */
   async listAllManagerReviews(cycleId: string): Promise<ManagerReview[]> {
+    return apiCache.getOrFetch(`reviews:mgr:${cycleId}`, async () => {
     if (!isSupabaseReady()) return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))
 
     try {
@@ -585,6 +591,7 @@ export const supabaseReviewService = {
     } catch {
       return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))
     }
+    }, 45000)
   },
 }
 

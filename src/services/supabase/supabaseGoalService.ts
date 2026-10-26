@@ -1,3 +1,4 @@
+import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { Goal, GoalStatus, ProgressLog } from '../../types'
 import { goalService as mockGoalService } from '../mock/goalService'
@@ -88,6 +89,7 @@ export function recordRemovedEvidenceId(id: string) {
 
 export const supabaseGoalService = {
   async listForUser(userId: string, cycleId?: string): Promise<Goal[]> {
+    return apiCache.getOrFetch(`goals:user:${userId}:${cycleId || "all"}`, async () => {
     if (!isSupabaseReady()) return mockGoalService.listForUser(userId, cycleId)
 
     try {
@@ -202,6 +204,7 @@ export const supabaseGoalService = {
     } catch {
       return mockGoalService.listForUser(userId, cycleId)
     }
+    }, 45000)
   },
 
   async getById(goalId: string): Promise<Goal | null> {

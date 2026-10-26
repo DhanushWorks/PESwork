@@ -413,7 +413,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </button>
 
           {/* Active Sidebar Page Name Display (Clean typography only, zero logo/icon) */}
-          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight truncate flex items-center gap-1.5 select-none">
+          <h1 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white tracking-tight truncate max-w-[140px] xs:max-w-[220px] sm:max-w-none flex items-center gap-1.5 select-none">
             <span>{pageInfo.title}</span>
             {pageInfo.subtitle && (
               <>
@@ -499,8 +499,10 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             )}
           </div>
 
-          {/* Full Screen Mode Toggle */}
-          <FullscreenToggle />
+          {/* Full Screen Mode Toggle (Hidden on mobile viewport to maximize header space) */}
+          <div className="hidden sm:inline-flex">
+            <FullscreenToggle />
+          </div>
 
           {/* Dark Mode / White Mode Animated Toggle */}
           <ThemeToggle />
@@ -535,7 +537,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             {showNotifMenu && (
               <div
                 ref={notifDropdownRef}
-                className="absolute right-0 mt-2.5 w-[350px] sm:w-[390px] bg-white dark:bg-[#18181b] menu-solid-bg rounded-3xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 overflow-hidden z-50 animate-dropdown-entrance overscroll-contain flex flex-col"
+                className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-[390px] sm:w-[390px] bg-white dark:bg-[#18181b] menu-solid-bg rounded-3xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 overflow-hidden z-50 animate-dropdown-entrance overscroll-contain flex flex-col"
                 role="dialog"
               >
                 {/* Notification Dropdown Header */}
@@ -738,7 +740,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             {showUserMenu && (
               <div
                 ref={userDropdownRef}
-                className="absolute right-0 mt-2 w-80 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 p-3 z-50 text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 text-xs overscroll-contain"
+                className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-xs sm:w-80 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 p-3 z-50 text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 text-xs overscroll-contain"
                 role="menu"
               >
                 {/* Executive Current Identity Card (Click to open Profile) */}

@@ -1,3 +1,4 @@
+import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { ReviewCycle, CycleStage, User } from '../../types'
 import { STAGE_ORDER } from '../../lib/formatters'
@@ -27,6 +28,7 @@ export function normalizeCycleDeadlines(rawDeadlines: any, startDate: string, en
 
 export const supabaseCycleService = {
   async list(): Promise<ReviewCycle[]> {
+    return apiCache.getOrFetch('cycles:list', async () => {
     if (!isSupabaseReady()) return mockCycleService.list()
 
     try {
@@ -78,9 +80,11 @@ export const supabaseCycleService = {
       markSupabaseOffline(err)
       return mockCycleService.list()
     }
+    }, 60000)
   },
 
   async getById(id: string): Promise<ReviewCycle | null> {
+    return apiCache.getOrFetch(`cycles:cycle:${id}`, async () => {
     if (!isSupabaseReady()) return mockCycleService.getById(id)
 
     const targetUuid = resolveCycleUuid(id)
@@ -116,6 +120,7 @@ export const supabaseCycleService = {
       markSupabaseOffline(err)
       return mockCycleService.getById(id)
     }
+    }, 60000)
   },
 
   async getActiveCycle(): Promise<ReviewCycle> {
@@ -150,6 +155,7 @@ export const supabaseCycleService = {
   },
 
   async advanceStage(cycleId: string): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     if (!isSupabaseConfigured) return mockCycleService.advanceStage(cycleId)
 
     const current = await this.getById(cycleId)
@@ -188,6 +194,7 @@ export const supabaseCycleService = {
   },
 
   async setStage(cycleId: string, stage: CycleStage): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     const targetUuid = resolveCycleUuid(cycleId)
     if (isSupabaseConfigured && targetUuid) {
       try {

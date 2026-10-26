@@ -1,3 +1,4 @@
+import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { CalibrationRecord, Goal, ManagerReview, SelfReview, User } from '../../types'
 import { getRatingBand } from '../../lib/scoring'
@@ -53,6 +54,7 @@ function parseEvidenceMeta(url?: string): { url?: string; fileName?: string } {
 
 export const supabaseCalibrationService = {
   async listForCycle(cycleId: string): Promise<CalibrationItem[]> {
+    return apiCache.getOrFetch(`calibration:cycle:${cycleId}`, async () => {
     if (!isSupabaseReady()) {
       return mockCalibrationService.listForCycle(cycleId)
     }
@@ -408,15 +410,18 @@ export const supabaseCalibrationService = {
       console.warn('supabaseCalibrationService.listForCycle fallback to mock:', err)
       return mockCalibrationService.listForCycle(cycleId)
     }
+    }, 45000)
   },
 
   async calibrate(
+
     cycleId: string,
     employeeId: string,
     adjustedScore: number,
     reason: string,
     calibratedBy: string
   ): Promise<CalibrationRecord> {
+    apiCache.invalidate('calibration:')
     if (isSupabaseConfigured) {
       const { error } = await supabase.rpc('calibrate_review', {
         p_cycle_id: cycleId,
@@ -440,6 +445,9 @@ export const supabaseCalibrationService = {
     adjustedScore?: number,
     reason?: string
   ) {
+    apiCache.invalidate('calibration:')
+    apiCache.invalidate('results:')
+    apiCache.invalidate('cycles:')
     if (isSupabaseConfigured) {
       try {
         if (adjustedScore && reason) {
@@ -487,6 +495,7 @@ export const supabaseCalibrationService = {
   },
 
   async revokePermission(cycleId: string, employeeId: string, adminName: string): Promise<void> {
+    apiCache.invalidate('calibration:')
     if (isSupabaseConfigured) {
       try {
         await supabase
@@ -496,8 +505,8 @@ export const supabaseCalibrationService = {
             released_at: null,
             updated_at: new Date().toISOString(),
           })
-          .or(`cycle_id.eq.${targetCycleUuid},cycle_id.eq.${cycleId}`)
-          .eq('user_id', employeeId)
+          .eq('cycle_id', resolveCycleUuid(cycleId))
+          .eq('user_id', toDatabaseUserId(employeeId))
       } catch (e) {
         console.warn('Notice in supabase revokePermission:', e)
       }
@@ -507,6 +516,7 @@ export const supabaseCalibrationService = {
   },
 
   async releaseCycle(cycleId: string): Promise<{ releasedCount: number }> {
+    apiCache.invalidate('calibration:')
     if (isSupabaseConfigured) {
       const { data, error } = await supabase.rpc('release_cycle', {
         p_cycle_id: cycleId,

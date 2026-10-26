@@ -1,128 +1,136 @@
 import { supabase, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { User, Role } from '../../types'
 import { peopleService as mockPeopleService } from '../mock/peopleService'
+import { apiCache } from '../../lib/apiCache'
 
 export const supabasePeopleService = {
   async list(): Promise<User[]> {
-    if (!isSupabaseReady()) return mockPeopleService.list()
+    return apiCache.getOrFetch('people:list', async () => {
+      if (!isSupabaseReady()) return mockPeopleService.list()
 
-    try {
-      const { data, error } = await supabase.from('profiles').select('*')
-      if (error || !data || data.length === 0) {
+      try {
+        const { data, error } = await supabase.from('profiles').select('*')
+        if (error || !data || data.length === 0) {
+          return mockPeopleService.list()
+        }
+
+        const dbUsers: User[] = data.map((p) => {
+          const isEleanor =
+            p.id === '11111111-1111-1111-1111-111111111103' ||
+            p.name === 'Eleanor Vance' ||
+            p.email === 'admin@performiq.internal'
+
+          const email = isEleanor ? 'eleanor.vance@performiq.internal' : p.email
+          const role = isEleanor ? 'admin' : (p.role as Role)
+
+          return {
+            id: p.id,
+            name: p.name,
+            email,
+            role,
+            department: p.department,
+            designation: p.designation,
+            managerId: p.manager_id,
+            employeeCode: p.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
+            avatar: p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+            active: p.active,
+            joinedDate: p.join_date,
+          }
+        })
+
+        const localList = await mockPeopleService.list()
+        const merged = [...dbUsers]
+        for (const lu of localList) {
+          if (!merged.some((u) => u.id === lu.id || u.email.toLowerCase() === lu.email.toLowerCase())) {
+            merged.push(lu)
+          }
+        }
+        return merged
+      } catch (err) {
+        markSupabaseOffline(err)
         return mockPeopleService.list()
       }
+    }, 60000)
+  },
 
-      const dbUsers: User[] = data.map((p) => {
+  async getById(id: string): Promise<User | null> {
+    return apiCache.getOrFetch(`people:user:${id}`, async () => {
+      if (!isSupabaseReady()) return mockPeopleService.getById(id)
+
+      try {
+        let queryId = id
+        if (id === 'u-admin') queryId = '11111111-1111-1111-1111-111111111103'
+        else if (id === 'u-mgr-1') queryId = '11111111-1111-1111-1111-111111111102'
+        else if (id === 'u-emp-1') queryId = '11111111-1111-1111-1111-111111111101'
+
+        const { data, error } = await supabase.from('profiles').select('*').eq('id', queryId).single()
+        if (error || !data) {
+          return mockPeopleService.getById(id)
+        }
+
         const isEleanor =
-          p.id === '11111111-1111-1111-1111-111111111103' ||
-          p.name === 'Eleanor Vance' ||
-          p.email === 'admin@performiq.internal'
+          data.id === '11111111-1111-1111-1111-111111111103' ||
+          data.name === 'Eleanor Vance' ||
+          data.email === 'admin@performiq.internal'
 
-        const email = isEleanor ? 'eleanor.vance@performiq.internal' : p.email
-        const role = isEleanor ? 'admin' : (p.role as Role)
+        const email = isEleanor ? 'eleanor.vance@performiq.internal' : data.email
+        const role = isEleanor ? 'admin' : (data.role as Role)
 
         return {
-          id: p.id,
-          name: p.name,
+          id: data.id,
+          name: data.name,
           email,
           role,
+          department: data.department,
+          designation: data.designation,
+          managerId: data.manager_id,
+          employeeCode: data.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
+          avatar: data.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          active: data.active,
+          joinedDate: data.join_date,
+        }
+      } catch (err) {
+        markSupabaseOffline(err)
+        return mockPeopleService.getById(id)
+      }
+    }, 60000)
+  },
+
+  async getDirectReports(managerId: string): Promise<User[]> {
+    return apiCache.getOrFetch(`people:reports:${managerId}`, async () => {
+      if (!isSupabaseReady()) return mockPeopleService.getDirectReports(managerId)
+
+      try {
+        let queryManagerId = managerId
+        if (managerId === 'u-mgr-1') queryManagerId = '11111111-1111-1111-1111-111111111102'
+
+        const { data, error } = await supabase.from('profiles').select('*').eq('manager_id', queryManagerId)
+        if (error || !data || data.length === 0) {
+          return mockPeopleService.getDirectReports(managerId)
+        }
+
+        return data.map((p) => ({
+          id: p.id,
+          name: p.name,
+          email: p.email,
+          role: p.role as Role,
           department: p.department,
           designation: p.designation,
           managerId: p.manager_id,
           employeeCode: p.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-          avatar: p.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+          avatar: p.avatar,
           active: p.active,
           joinedDate: p.join_date,
-        }
-      })
-
-      const localList = await mockPeopleService.list()
-      const merged = [...dbUsers]
-      for (const lu of localList) {
-        if (!merged.some((u) => u.id === lu.id || u.email.toLowerCase() === lu.email.toLowerCase())) {
-          merged.push(lu)
-        }
-      }
-      return merged
-    } catch (err) {
-      markSupabaseOffline(err)
-      return mockPeopleService.list()
-    }
-  },
-
-  async getById(id: string): Promise<User | null> {
-    if (!isSupabaseReady()) return mockPeopleService.getById(id)
-
-    try {
-      let queryId = id
-      if (id === 'u-admin') queryId = '11111111-1111-1111-1111-111111111103'
-      else if (id === 'u-mgr-1') queryId = '11111111-1111-1111-1111-111111111102'
-      else if (id === 'u-emp-1') queryId = '11111111-1111-1111-1111-111111111101'
-
-      const { data, error } = await supabase.from('profiles').select('*').eq('id', queryId).single()
-      if (error || !data) {
-        return mockPeopleService.getById(id)
-      }
-
-      const isEleanor =
-        data.id === '11111111-1111-1111-1111-111111111103' ||
-        data.name === 'Eleanor Vance' ||
-        data.email === 'admin@performiq.internal'
-
-      const email = isEleanor ? 'eleanor.vance@performiq.internal' : data.email
-      const role = isEleanor ? 'admin' : (data.role as Role)
-
-      return {
-        id: data.id,
-        name: data.name,
-        email,
-        role,
-        department: data.department,
-        designation: data.designation,
-        managerId: data.manager_id,
-        employeeCode: data.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-        avatar: data.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        active: data.active,
-        joinedDate: data.join_date,
-      }
-    } catch (err) {
-      markSupabaseOffline(err)
-      return mockPeopleService.getById(id)
-    }
-  },
-
-  async getDirectReports(managerId: string): Promise<User[]> {
-    if (!isSupabaseReady()) return mockPeopleService.getDirectReports(managerId)
-
-    try {
-      let queryManagerId = managerId
-      if (managerId === 'u-mgr-1') queryManagerId = '11111111-1111-1111-1111-111111111102'
-
-      const { data, error } = await supabase.from('profiles').select('*').eq('manager_id', queryManagerId)
-      if (error || !data || data.length === 0) {
+        }))
+      } catch (err) {
+        markSupabaseOffline(err)
         return mockPeopleService.getDirectReports(managerId)
       }
-
-      return data.map((p) => ({
-        id: p.id,
-        name: p.name,
-        email: p.email,
-        role: p.role as Role,
-        department: p.department,
-        designation: p.designation,
-        managerId: p.manager_id,
-        employeeCode: p.employee_code || `EMP-${Math.floor(100 + Math.random() * 900)}`,
-        avatar: p.avatar,
-        active: p.active,
-        joinedDate: p.join_date,
-      }))
-    } catch (err) {
-      markSupabaseOffline(err)
-      return mockPeopleService.getDirectReports(managerId)
-    }
+    }, 60000)
   },
 
   async create(user: Omit<User, 'id'>): Promise<User> {
+    apiCache.invalidate('people:')
     const mockCreated = await mockPeopleService.create(user)
 
     if (isSupabaseReady()) {
@@ -162,6 +170,7 @@ export const supabasePeopleService = {
   },
 
   async update(id: string, updates: Partial<User>): Promise<User> {
+    apiCache.invalidate('people:')
     if (!isSupabaseReady()) return mockPeopleService.update(id, updates)
 
     try {

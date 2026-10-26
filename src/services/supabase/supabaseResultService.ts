@@ -1,3 +1,4 @@
+import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { EvaluationResult, ReviewCycle } from '../../types'
 import { resultService as mockResultService, EmployeeResultView } from '../mock/resultService'
@@ -13,6 +14,7 @@ export const supabaseResultService = {
    * Fetch evaluation result for the authenticated employee with privacy barrier
    */
   async getMyResults(userId: string, cycleId: string): Promise<EmployeeResultView | null> {
+    return apiCache.getOrFetch(`results:user:${userId}:${cycleId}`, async () => {
     if (!isSupabaseReady()) return mockResultService.getMyResults(userId, cycleId)
 
     try {
@@ -84,6 +86,7 @@ export const supabaseResultService = {
       console.warn('Notice in supabaseResultService.getMyResults:', err)
       return mockResultService.getMyResults(userId, cycleId)
     }
+    }, 45000)
   },
 
   /**
@@ -151,6 +154,7 @@ export const supabaseResultService = {
    * Formal employee acknowledgement of released review
    */
   async acknowledge(resultId: string): Promise<EvaluationResult> {
+    apiCache.invalidate('results:')
     const mockRes = await mockResultService.acknowledge(resultId)
 
     if (isSupabaseConfigured) {
@@ -182,6 +186,7 @@ export const supabaseResultService = {
    * Formal employee inquiry / dispute of released evaluation
    */
   async dispute(resultId: string, reason: string): Promise<EvaluationResult> {
+    apiCache.invalidate('results:')
     const mockRes = await mockResultService.dispute(resultId, reason)
 
     if (isSupabaseConfigured) {
@@ -229,6 +234,7 @@ export const supabaseResultService = {
    * Retrieve all evaluation results for a cycle
    */
   async getAllResults(cycleId: string): Promise<EvaluationResult[]> {
+    return apiCache.getOrFetch(`results:cycle:${cycleId}`, async () => {
     if (!isSupabaseReady()) return mockResultService.getAllResults(cycleId)
 
     try {
@@ -274,6 +280,7 @@ export const supabaseResultService = {
     } catch {
       return []
     }
+    }, 45000)
   },
 }
 
