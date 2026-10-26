@@ -92,6 +92,22 @@ export const Profile: React.FC = () => {
     setAvatar(currentUser.avatar || '')
   }, [currentUser.id])
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showPhotoModal) {
+        setShowPhotoModal(false)
+      }
+    }
+    if (showPhotoModal) {
+      document.body.style.overflow = 'hidden'
+      window.addEventListener('keydown', handleKeyDown)
+    }
+    return () => {
+      document.body.style.overflow = 'unset'
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [showPhotoModal])
+
   const manager = allUsers.find((u) => u.id === currentUser.managerId)
 
   const handleCopy = (text: string, field: string) => {
@@ -182,18 +198,6 @@ export const Profile: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            Personal Profile
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 font-sans">
-            Manage your personal identity, professional designation, and workspace credentials.
-          </p>
-        </div>
-      </div>
-
       {/* 1. PERSONAL IDENTITY & ACTIVE ACCOUNT */}
       <div className="dark-glass-card rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="pb-3 border-b border-slate-200 dark:border-white/[0.08]">
@@ -282,9 +286,8 @@ export const Profile: React.FC = () => {
                   setModalTempAvatar(avatar || currentUser.avatar || '')
                   setShowPhotoModal(true)
                 }}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
+                className="inline-flex items-center px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 dark:bg-white/[0.05] border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 hover:bg-slate-200/70 dark:hover:bg-white/[0.1] transition-colors cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5" />
                 Choose Photo
               </button>
             </div>
@@ -444,15 +447,25 @@ export const Profile: React.FC = () => {
 
       {/* 3. PROFILE PHOTO CUSTOMIZER MODAL */}
       {showPhotoModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 shadow-2xl p-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-zinc-800">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/40 dark:bg-black/60 transition-all animate-in fade-in duration-200 overflow-hidden"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowPhotoModal(false)
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="photo-modal-title"
+            className="relative w-full max-w-md sm:max-w-lg rounded-2xl bg-white dark:bg-[#18181b] border border-slate-200/90 dark:border-zinc-800 shadow-2xl flex flex-col max-h-[calc(100dvh-2.5rem)] sm:max-h-[min(90vh,600px)] overflow-hidden my-auto animate-in zoom-in-95 duration-150"
+          >
+            {/* Fixed Header */}
+            <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-slate-100 dark:border-zinc-800 shrink-0">
               <div>
-                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                <h3 id="photo-modal-title" className="text-base font-bold text-slate-900 dark:text-white">
                   Update Profile Photo
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
+                <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5 font-sans">
                   Upload an image from your device, pick an avatar, or enter a web link.
                 </p>
               </div>
@@ -460,176 +473,182 @@ export const Profile: React.FC = () => {
                 type="button"
                 onClick={() => setShowPhotoModal(false)}
                 className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
+                aria-label="Close modal"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Live Preview Box */}
-            <div className="flex flex-col items-center justify-center p-4 rounded-xl bg-slate-50 dark:bg-zinc-900/50 border border-slate-200 dark:border-zinc-800/80">
-              <div className="relative mb-2">
-                <img
-                  src={modalTempAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250'}
-                  alt="Preview"
-                  className="w-24 h-24 rounded-full object-cover ring-4 ring-slate-200 dark:ring-zinc-700 shadow-md"
-                />
-                <div className="absolute -bottom-1 -right-1 p-1 rounded-full bg-emerald-500 text-white shadow-xs">
-                  <Check className="w-3.5 h-3.5 stroke-[3]" />
-                </div>
-              </div>
-              <span className="text-xs font-semibold text-slate-700 dark:text-zinc-300">
-                Live Preview
-              </span>
-              <span className="text-[11px] text-slate-400 dark:text-zinc-500">
-                This photo will appear across all dashboards and appraisals
-              </span>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 text-xs font-semibold">
-              <button
-                type="button"
-                onClick={() => setPhotoTab('upload')}
-                className={`flex-1 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  photoTab === 'upload'
-                    ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Upload className="w-3.5 h-3.5" />
-                Upload File
-              </button>
-              <button
-                type="button"
-                onClick={() => setPhotoTab('gallery')}
-                className={`flex-1 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  photoTab === 'gallery'
-                    ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <Sparkles className="w-3.5 h-3.5" />
-                Avatar Gallery
-              </button>
-              <button
-                type="button"
-                onClick={() => setPhotoTab('url')}
-                className={`flex-1 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
-                  photoTab === 'url'
-                    ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-2xs'
-                    : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
-                }`}
-              >
-                <LinkIcon className="w-3.5 h-3.5" />
-                Image URL
-              </button>
-            </div>
-
-            {/* Tab 1: Upload from Device */}
-            {photoTab === 'upload' && (
-              <div className="space-y-3">
-                <input
-                  ref={modalFileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, true)}
-                />
-                <div
-                  onClick={() => modalFileInputRef.current?.click()}
-                  className="p-6 rounded-xl border-2 border-dashed border-slate-300 dark:border-zinc-700 hover:border-slate-400 dark:hover:border-zinc-600 bg-slate-50/50 dark:bg-zinc-900/30 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-full bg-slate-100 dark:bg-zinc-800 grid place-items-center text-slate-700 dark:text-zinc-300">
-                    <Upload className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
-                      Click to choose image from your computer
-                    </span>
-                    <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-0.5">
-                      Supports JPG, PNG, or WebP. Auto-crops & optimizes instantly.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tab 2: Gallery of Pre-sets */}
-            {photoTab === 'gallery' && (
-              <div className="space-y-2">
-                <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                  Select any high-resolution enterprise avatar:
-                </p>
-                <div className="grid grid-cols-4 gap-3 max-h-48 overflow-y-auto p-1">
-                  {PRESET_AVATARS.map((p) => {
-                    const isSelected = modalTempAvatar === p.url
-                    return (
-                      <button
-                        key={p.id}
-                        type="button"
-                        onClick={() => setModalTempAvatar(p.url)}
-                        className={`relative rounded-xl p-1.5 transition-all text-center cursor-pointer group ${
-                          isSelected
-                            ? 'ring-2 ring-slate-900 dark:ring-white bg-slate-100 dark:bg-zinc-800'
-                            : 'hover:bg-slate-50 dark:hover:bg-zinc-800/60'
-                        }`}
-                      >
-                        <img
-                          src={p.url}
-                          alt={p.label}
-                          className="w-14 h-14 mx-auto rounded-full object-cover shadow-2xs group-hover:scale-105 transition-transform"
-                        />
-                        <span className="text-[10px] font-medium text-slate-700 dark:text-zinc-300 mt-1 block truncate">
-                          {p.label}
-                        </span>
-                        {isSelected && (
-                          <div className="absolute top-1 right-1 p-0.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">
-                            <Check className="w-2.5 h-2.5 stroke-[3]" />
-                          </div>
-                        )}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Tab 3: Custom Image URL */}
-            {photoTab === 'url' && (
-              <div className="space-y-3">
-                <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block">
-                  Paste Web Image URL (HTTPS)
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    placeholder="https://example.com/my-photo.jpg"
-                    value={customUrlInput}
-                    onChange={(e) => setCustomUrlInput(e.target.value)}
-                    className="flex-1 px-3.5 py-2 rounded-xl text-xs border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-indigo-500 font-sans"
+            {/* Scrollable Content Body */}
+            <div className="px-5 sm:px-6 py-4 overflow-y-auto overscroll-contain flex-1 min-h-0 space-y-4 font-sans text-xs">
+              {/* Compact Live Preview Row */}
+              <div className="flex items-center gap-4 p-3.5 rounded-xl bg-slate-50 dark:bg-zinc-900/50 border border-slate-200/80 dark:border-zinc-800/80">
+                <div className="relative shrink-0">
+                  <img
+                    src={modalTempAvatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=250'}
+                    alt="Preview"
+                    className="w-16 h-16 rounded-full object-cover ring-2 ring-slate-200 dark:ring-zinc-700 shadow-sm"
                   />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (customUrlInput.trim().startsWith('http')) {
-                        setModalTempAvatar(customUrlInput.trim())
-                      } else {
-                        error('Invalid URL', 'Please enter a valid HTTP or HTTPS image URL.')
-                      }
-                    }}
-                    className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition-opacity cursor-pointer"
-                  >
-                    Preview
-                  </button>
+                  <div className="absolute -bottom-1 -right-1 p-0.5 rounded-full bg-emerald-500 text-white shadow-xs">
+                    <Check className="w-3 h-3 stroke-[3]" />
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-400 dark:text-zinc-500">
-                  Tip: Use direct image links from Unsplash, GitHub, or LinkedIn CDN.
-                </p>
+                <div className="space-y-0.5 min-w-0">
+                  <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block">
+                    Live Preview
+                  </span>
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-normal">
+                    This photo will display across your profile, appraisal cards, and team rosters.
+                  </p>
+                </div>
               </div>
-            )}
 
-            {/* Footer Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-zinc-800">
+              {/* Navigation Tabs */}
+              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-200/80 dark:border-zinc-800 text-xs font-semibold">
+                <button
+                  type="button"
+                  onClick={() => setPhotoTab('upload')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    photoTab === 'upload'
+                      ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  Upload File
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoTab('gallery')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    photoTab === 'gallery'
+                      ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <User className="w-3.5 h-3.5" />
+                  Avatar Gallery
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoTab('url')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer ${
+                    photoTab === 'url'
+                      ? 'bg-white dark:bg-zinc-800 text-slate-900 dark:text-white shadow-2xs'
+                      : 'text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
+                >
+                  <LinkIcon className="w-3.5 h-3.5" />
+                  Image URL
+                </button>
+              </div>
+
+              {/* Tab 1: Upload from Device */}
+              {photoTab === 'upload' && (
+                <div className="space-y-3">
+                  <input
+                    ref={modalFileInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, true)}
+                  />
+                  <div
+                    onClick={() => modalFileInputRef.current?.click()}
+                    className="p-5 rounded-xl border-2 border-dashed border-slate-300 dark:border-zinc-700 hover:border-slate-400 dark:hover:border-zinc-600 bg-slate-50/50 dark:bg-zinc-900/30 flex flex-col items-center justify-center text-center gap-2 cursor-pointer transition-colors"
+                  >
+                    <div className="w-9 h-9 rounded-full bg-slate-100 dark:bg-zinc-800 grid place-items-center text-slate-700 dark:text-zinc-300">
+                      <Upload className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-800 dark:text-zinc-200">
+                        Click to choose image from your computer
+                      </span>
+                      <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-0.5">
+                        Supports JPG, PNG, or WebP. Auto-crops & optimizes instantly.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 2: Gallery of Pre-sets */}
+              {photoTab === 'gallery' && (
+                <div className="space-y-2">
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400">
+                    Select any high-resolution enterprise avatar:
+                  </p>
+                  <div className="grid grid-cols-4 gap-2.5 max-h-48 overflow-y-auto p-1">
+                    {PRESET_AVATARS.map((p) => {
+                      const isSelected = modalTempAvatar === p.url
+                      return (
+                        <button
+                          key={p.id}
+                          type="button"
+                          onClick={() => setModalTempAvatar(p.url)}
+                          className={`relative rounded-xl p-1.5 transition-all text-center cursor-pointer group ${
+                            isSelected
+                              ? 'ring-2 ring-slate-900 dark:ring-white bg-slate-100 dark:bg-zinc-800'
+                              : 'hover:bg-slate-50 dark:hover:bg-zinc-800/60'
+                          }`}
+                        >
+                          <img
+                            src={p.url}
+                            alt={p.label}
+                            className="w-13 h-13 mx-auto rounded-full object-cover shadow-2xs group-hover:scale-105 transition-transform"
+                          />
+                          <span className="text-[10px] font-medium text-slate-700 dark:text-zinc-300 mt-1 block truncate">
+                            {p.label}
+                          </span>
+                          {isSelected && (
+                            <div className="absolute top-1 right-1 p-0.5 rounded-full bg-slate-900 text-white dark:bg-white dark:text-slate-900">
+                              <Check className="w-2.5 h-2.5 stroke-[3]" />
+                            </div>
+                          )}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Tab 3: Custom Image URL */}
+              {photoTab === 'url' && (
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-slate-700 dark:text-zinc-300 block">
+                    Paste Web Image URL (HTTPS)
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      placeholder="https://example.com/my-photo.jpg"
+                      value={customUrlInput}
+                      onChange={(e) => setCustomUrlInput(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-xl text-xs border border-slate-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-slate-900 dark:text-white focus:outline-hidden focus:ring-2 focus:ring-slate-400 dark:focus:ring-zinc-600 font-sans"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (customUrlInput.trim().startsWith('http')) {
+                          setModalTempAvatar(customUrlInput.trim())
+                        } else {
+                          error('Invalid URL', 'Please enter a valid HTTP or HTTPS image URL.')
+                        }
+                      }}
+                      className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 transition-opacity cursor-pointer shrink-0"
+                    >
+                      Preview
+                    </button>
+                  </div>
+                  <p className="text-[11px] text-slate-400 dark:text-zinc-500">
+                    Tip: Use direct image links from Unsplash, GitHub, or LinkedIn CDN.
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed Footer Actions */}
+            <div className="flex items-center justify-between px-5 sm:px-6 py-3 border-t border-slate-100 dark:border-zinc-800 shrink-0 bg-slate-50/90 dark:bg-[#18181b]/95 z-10">
               <button
                 type="button"
                 onClick={() => {

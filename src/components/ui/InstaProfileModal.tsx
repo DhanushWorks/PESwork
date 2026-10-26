@@ -100,7 +100,7 @@ export const InstaProfileModal: React.FC<InstaProfileModalProps> = ({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[99999] bg-black/75 dark:bg-black/85 backdrop-blur-md flex items-center justify-center p-4 overscroll-contain animate-in fade-in duration-200 select-none"
+      className="fixed inset-0 z-[99999] bg-black/75 dark:bg-black/85 flex items-center justify-center p-4 overscroll-contain animate-in fade-in duration-200 select-none"
       onClick={onClose}
       onWheel={(e) => {
         e.preventDefault()

@@ -2,7 +2,7 @@ import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { ManagerReview, SelfReview, User } from '../../types'
 import { calculateCompositeScore } from '../../lib/scoring'
-import { matchesCycle, matchesUser, toDatabaseUserId, resolveCycleUuid } from '../../lib/workflow'
+import { matchesCycle, matchesUser, toDatabaseUserId, resolveCycleUuid, isUserCycleParticipant } from '../../lib/workflow'
 import { supabaseCycleService as cycleService } from './supabaseCycleService'
 import { supabasePeopleService as peopleService } from './supabasePeopleService'
 import { reviewService as mockReviewService, TeamReviewSummary } from '../mock/reviewService'
@@ -455,11 +455,8 @@ export const supabaseReviewService = {
       const reports: User[] = await peopleService.getDirectReports(managerId)
       if (reports.length === 0) return []
 
-      const cycle = await supabaseCycleService.getById(cycleId)
-      const enrolledReports = reports.filter((emp: User) => {
-        if (!cycle || !Array.isArray(cycle.participantIds)) return false
-        return cycle.participantIds.some((pId) => pId === emp.id || matchesUser(pId, emp.id))
-      })
+      const cycle = await cycleService.getById(cycleId)
+      const enrolledReports = reports.filter((emp: User) => isUserCycleParticipant(cycle, emp.id))
 
       if (enrolledReports.length === 0) return []
       const reportIds = enrolledReports.map((r: User) => r.id)

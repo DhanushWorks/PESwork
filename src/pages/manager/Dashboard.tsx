@@ -13,7 +13,7 @@ import { RubberSegmentedControl } from '../../components/ui/RubberSegmentedContr
 import { AnimatedSearchBar } from '../../components/ui/AnimatedSearchBar'
 import { Modal } from '../../components/ui/Modal'
 import { LoadingState } from '../../components/ui/LoadingState'
-import { getManagerWorkflowState, matchesCycle } from '../../lib/workflow'
+import { getManagerWorkflowState, matchesCycle, isUserCycleParticipant, matchesUser } from '../../lib/workflow'
 import { formatDate, STAGE_ORDER } from '../../lib/formatters'
 import {
   AlertCircle,
@@ -68,9 +68,8 @@ export const ManagerDashboard: React.FC = () => {
       ])
 
       // Fetch pending goals strictly for direct reports who are enrolled into this review cycle by Admin
-      const cycleParticipants = activeCycle.participantIds || []
       const enrolledDirectReports = directReports.filter((r) =>
-        cycleParticipants.some((p) => p === r.id || matchesUser(p, r.id))
+        isUserCycleParticipant(activeCycle, r.id)
       )
       const allGoalsPromises = enrolledDirectReports.map((r) =>
         goalService.listForUser(r.id, activeCycle.id)
