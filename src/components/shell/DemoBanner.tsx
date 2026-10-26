@@ -1,17 +1,20 @@
 import React, { useState } from 'react'
 import { Sparkles, X, RotateCcw } from 'lucide-react'
-import { useApp } from '../../app/AppContext'
+import { useOptionalApp } from '../../app/AppContext'
 import { useToast } from '../ui/Toast'
 import { ConfirmDialog } from '../ui/Modal'
 
 export const DemoBanner: React.FC = () => {
-  const { resetDemoData } = useApp()
-  const { success } = useToast()
+  const app = useOptionalApp()
+  const resetDemoData = app?.resetDemoData
+  const toast = useToast()
+  const success = toast?.success || console.log
   const [isDismissed, setIsDismissed] = useState(true) // dismissed by default to keep the UI clean
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
 
   const handleReset = async () => {
+    if (!resetDemoData) return
     setIsResetting(true)
     await resetDemoData()
     setIsResetting(false)
