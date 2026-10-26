@@ -102,6 +102,7 @@ function runTests() {
   // Self review is submitted; manager review is not started yet.
   // -------------------------------------------------------------
   console.log('--- Test 2: Employee Submits Self-Review ---')
+  const cycleStage2: ReviewCycle = { ...mockCycle, stage: 'manager_review' }
   const submittedSelfReview: SelfReview = {
     id: 'sr-u-emp-1-1',
     userId: 'u-emp-1',
@@ -118,7 +119,7 @@ function runTests() {
   }
 
   const empState2 = getEmployeeWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage2,
     selfReview: submittedSelfReview,
     managerReview: null,
     result: null,
@@ -134,14 +135,14 @@ function runTests() {
   }
 
   const mgrState2 = getManagerWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage2,
     teamSummaries: [teamSummary2],
     pendingGoals: [],
     releasedResults: [],
   })
 
   const adminState2 = getAdminWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage2,
     totalEmployees: 1,
     selfReviews: [submittedSelfReview],
     managerReviews: [],
@@ -170,6 +171,7 @@ function runTests() {
   // Manager evaluation is formally submitted; awaiting Calibration
   // -------------------------------------------------------------
   console.log('--- Test 3: Manager Submits Appraisal Review ---')
+  const cycleStage3: ReviewCycle = { ...mockCycle, stage: 'calibration' }
   const submittedManagerReview: ManagerReview = {
     id: 'mr-u-emp-1-1',
     employeeId: 'u-emp-1',
@@ -194,7 +196,7 @@ function runTests() {
   }
 
   const empState3 = getEmployeeWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage3,
     selfReview: submittedSelfReview,
     managerReview: submittedManagerReview,
     result: null,
@@ -212,14 +214,14 @@ function runTests() {
   }
 
   const mgrState3 = getManagerWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage3,
     teamSummaries: [teamSummary3],
     pendingGoals: [],
     releasedResults: [],
   })
 
   const adminState3 = getAdminWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage3,
     totalEmployees: 1,
     selfReviews: [submittedSelfReview],
     managerReviews: [submittedManagerReview],
@@ -279,22 +281,23 @@ function runTests() {
     disputeStatus: 'none',
   }
 
+  const cycleStage4: ReviewCycle = { ...mockCycle, stage: 'released' }
   const empState4 = getEmployeeWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage4,
     selfReview: submittedSelfReview,
     managerReview: submittedManagerReview,
     result: releasedResult,
   })
 
   const mgrState4 = getManagerWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage4,
     teamSummaries: [teamSummary3],
     pendingGoals: [],
     releasedResults: [releasedResult],
   })
 
   const adminState4 = getAdminWorkflowState({
-    cycle: mockCycle,
+    cycle: cycleStage4,
     totalEmployees: 1,
     selfReviews: [submittedSelfReview],
     managerReviews: [submittedManagerReview],

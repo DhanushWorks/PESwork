@@ -160,7 +160,7 @@ const ROLES: { id: Role; label: string; desc: string; icon: any }[] = [
 ]
 
 export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
-  const { allUsers, switchUser, refreshData } = useApp()
+  const { allUsers, switchUser, refreshData, setIsAuthenticated } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const { success, error, info } = useToast()
@@ -264,6 +264,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       if (isSupabaseConfigured && isSupabaseOnline() && password && password !== '••••••••' && isEmail) {
         const { user: authUser, session, error: authError } = await supabaseAuthService.signIn(normalized, password)
         if (authUser && session) {
+          setIsAuthenticated(true)
           success('Welcome back!', `Logged in via Supabase as ${authUser.name}`)
           await switchUser(authUser.id)
           await refreshData()
@@ -437,6 +438,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
         console.warn('Active cycle alignment notice:', e)
       }
 
+      setIsAuthenticated(true)
       await refreshData()
       navigate(`/${matchedUser.role}`)
     } catch (err: any) {
@@ -517,6 +519,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
               joinedDate: new Date().toISOString().split('T')[0],
               avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
             })
+            setIsAuthenticated(true)
             await switchUser(newUser.id)
             await refreshData()
             success('Account Registered & Connected!', `Welcome ${fullName}! You are signed in as ${role}.`)
@@ -549,6 +552,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
       })
 
       // Lock in user session immediately BEFORE refresh to prevent any race condition
+      setIsAuthenticated(true)
       await switchUser(newUser.id)
       await refreshData()
       success('Account Created & Ready!', `Welcome ${fullName}! You are signed in as ${role}.`)
@@ -582,6 +586,7 @@ export const Login: React.FC<LoginProps> = ({ initialMode = 'signin' }) => {
         resolvePersonaUser(userEmail, SEED_USERS)
 
       if (matched) {
+        setIsAuthenticated(true)
         await switchUser(matched.id)
         await refreshData()
         success('Session initialized', `Logged in as ${matched.name} (${matched.role})`)

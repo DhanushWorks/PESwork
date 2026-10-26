@@ -25,6 +25,8 @@ type AppContextType = {
   switchWorkspaceRole: (role: Role) => void
   switchActiveCycle: (cycleId: string) => Promise<void>
   isLiveAuth: boolean
+  isAuthenticated: boolean
+  setIsAuthenticated: (val: boolean) => void
   signOut: () => Promise<void>
   refreshData: () => Promise<void>
   dataMode: 'clean' | 'full'
@@ -81,6 +83,31 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [allCycles, setAllCycles] = useState<ReviewCycle[]>([])
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [isLiveAuth, setIsLiveAuth] = useState(false)
+  const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(() => {
+    try {
+      return (
+        localStorage.getItem('performiq_authenticated') === 'true' ||
+        sessionStorage.getItem('performiq_authenticated') === 'true'
+      )
+    } catch {
+      return false
+    }
+  })
+
+  const setIsAuthenticated = useCallback((val: boolean) => {
+    setIsAuthenticatedState(val)
+    try {
+      if (val) {
+        localStorage.setItem('performiq_authenticated', 'true')
+        sessionStorage.setItem('performiq_authenticated', 'true')
+      } else {
+        localStorage.removeItem('performiq_authenticated')
+        sessionStorage.removeItem('performiq_authenticated')
+      }
+    } catch (e) {
+      console.warn('Storage set error:', e)
+    }
+  }, [])
   const [dataMode, setDataMode] = useState<'clean' | 'full'>(() => storageService.getState().dataMode || 'clean')
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     try {
@@ -186,6 +213,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
       if (session && authUser) {
         setIsLiveAuth(true)
+        setIsAuthenticated(true)
         foundUser = authUser
         if (!users.some((u) => u.id === authUser.id)) {
           users.unshift(authUser)
@@ -442,13 +470,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const signOut = useCallback(async () => {
     await supabaseAuthService.signOut()
     setIsLiveAuth(false)
+    setIsAuthenticated(false)
     const state = storageService.getState()
     const fallback = state.users.find((u) => u.id === state.currentUserId) || state.users[0]
     if (fallback) {
       setCurrentUser(fallback)
       setActiveWorkspaceRole(fallback.role)
     }
-  }, [])
+  }, [setIsAuthenticated])
 
   const unreadNotificationsCount = notifications.filter((n) => !n.read).length
 
@@ -468,6 +497,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       switchWorkspaceRole,
       switchActiveCycle,
       isLiveAuth,
+      isAuthenticated,
+      setIsAuthenticated,
       signOut,
       refreshData,
       dataMode,
@@ -491,6 +522,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       switchWorkspaceRole,
       switchActiveCycle,
       isLiveAuth,
+      isAuthenticated,
+      setIsAuthenticated,
       signOut,
       refreshData,
       resetDemoData,

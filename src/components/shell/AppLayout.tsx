@@ -6,7 +6,7 @@ import { AppHeader } from './AppHeader'
 import { AppSidebar } from './AppSidebar'
 
 export const AppLayout: React.FC = () => {
-  const { currentUser } = useApp()
+  const { currentUser, isAuthenticated } = useApp()
   const location = useLocation()
   const navigate = useNavigate()
   const [sidebarOpen, setSidebarOpen] = useState(false)
@@ -19,8 +19,14 @@ export const AppLayout: React.FC = () => {
     }
   })
 
-  // Strict RBAC synchronization: automatically redirect to the user's role workspace if navigating outside their authorized domain
+  // Strict RBAC & Authentication synchronization:
+  // If not authenticated, redirect immediately to login.
+  // Otherwise, automatically redirect to the user's role workspace if navigating outside their authorized domain
   useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login', { replace: true })
+      return
+    }
     const path = location.pathname
     if (path.startsWith('/admin') && currentUser.role !== 'admin') {
       navigate(`/${currentUser.role}`, { replace: true })
@@ -29,7 +35,7 @@ export const AppLayout: React.FC = () => {
     } else if (path.startsWith('/employee') && currentUser.role !== 'employee') {
       navigate(`/${currentUser.role}`, { replace: true })
     }
-  }, [currentUser.role, location.pathname, navigate])
+  }, [currentUser.role, isAuthenticated, location.pathname, navigate])
 
   const toggleCollapse = () => {
     setIsCollapsed((prev) => {

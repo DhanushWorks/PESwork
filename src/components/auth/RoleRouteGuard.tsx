@@ -19,7 +19,11 @@ interface RoleRouteGuardProps {
  * to the authenticated user's designated workspace.
  */
 export const RoleRouteGuard: React.FC<RoleRouteGuardProps> = ({ allowedRole, children }) => {
-  const { currentUser } = useApp()
+  const { currentUser, isAuthenticated } = useApp()
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
+  }
 
   // Guard against transient state de-synchronization during navigation:
   // Check storageService synchronously to verify if user was just switched
@@ -40,17 +44,10 @@ export const RoleRouteGuard: React.FC<RoleRouteGuardProps> = ({ allowedRole, chi
 
 /**
  * Root dynamic redirect:
- * When navigating to root `/`, redirects directly to the active user's role dashboard.
+ * When navigating to root `/` via direct link or browser address bar,
+ * immediately opens the designated Login page.
  */
 export const RootRedirect: React.FC = () => {
-  const { currentUser } = useApp()
-  const state = storageService.getState()
-  const activeUser =
-    currentUser && (currentUser.id === state.currentUserId || matchesUser(currentUser.id, state.currentUserId))
-      ? currentUser
-      : state.users.find((u) => u.id === state.currentUserId || matchesUser(u.id, state.currentUserId)) || currentUser
-
-  const effectiveRole = activeUser?.role || currentUser?.role || 'employee'
-  return <Navigate to={`/${effectiveRole}`} replace />
+  return <Navigate to="/login" replace />
 }
 
