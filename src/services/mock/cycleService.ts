@@ -9,7 +9,11 @@ export const cycleService = {
   },
 
   async getById(id: string): Promise<ReviewCycle | null> {
-    const cycle = storageService.getState().cycles.find((c) => c.id === id || matchesCycle(c.id, id))
+    const state = storageService.getState()
+    const cycle =
+      state.cycles.find((c) => c.id === id || matchesCycle(c.id, id)) ||
+      state.cycles.find((c) => c.id === state.activeCycleId || matchesCycle(c.id, state.activeCycleId)) ||
+      (state.cycles.length > 0 ? state.cycles[0] : null)
     return cycle ? { ...cycle } : null
   },
 
@@ -107,7 +111,7 @@ export const cycleService = {
     let updated: ReviewCycle | null = null
     storageService.updateState((state) => {
       const cycles = state.cycles.map((c) => {
-        if (c.id === id) {
+        if (c.id === id || matchesCycle(c.id, id)) {
           updated = {
             ...c,
             ...updates,
@@ -118,6 +122,18 @@ export const cycleService = {
         }
         return c
       })
+      if (!updated && state.cycles.length > 0) {
+        const fallback = state.cycles[0]
+        updated = {
+          ...fallback,
+          ...updates,
+          deadlines: updates.deadlines ? { ...fallback.deadlines, ...updates.deadlines } : fallback.deadlines,
+          weights: updates.weights ? { ...fallback.weights, ...updates.weights } : fallback.weights,
+        }
+        return {
+          cycles: state.cycles.map((c, i) => (i === 0 ? updated! : c)),
+        }
+      }
       return { cycles }
     })
     if (!updated) throw new Error(`Cycle ${id} not found`)

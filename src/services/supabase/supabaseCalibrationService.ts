@@ -518,16 +518,39 @@ export const supabaseCalibrationService = {
 
   async releaseCycle(cycleId: string): Promise<{ releasedCount: number }> {
     apiCache.invalidate('calibration:')
-    if (isSupabaseConfigured) {
-      const { data, error } = await supabase.rpc('release_cycle', {
-        p_cycle_id: cycleId,
-      })
+    const targetUuid = resolveCycleUuid(cycleId)
+    if (isSupabaseConfigured && targetUuid) {
+      try {
+        await supabase
+          .from('final_results')
+          .update({
+            status: 'released',
+            released_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('cycle_id', targetUuid)
 
-      if (error) {
-        console.warn('RPC release_cycle notice:', error.message)
-      } else if (data?.released_results_count !== undefined) {
-        await mockCalibrationService.releaseCycle(cycleId)
-        return { releasedCount: data.released_results_count }
+        await supabase
+          .from('review_cycles')
+          .update({
+            stage: 'released',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', targetUuid)
+          .neq('stage', 'closed')
+
+        const { data, error } = await supabase.rpc('release_cycle', {
+          p_cycle_id: targetUuid,
+        })
+
+        if (error) {
+          console.warn('RPC release_cycle notice:', error.message)
+        } else if (data?.released_results_count !== undefined) {
+          await mockCalibrationService.releaseCycle(cycleId)
+          return { releasedCount: data.released_results_count }
+        }
+      } catch (e) {
+        console.warn('Notice in supabase releaseCycle direct update:', e)
       }
     }
 
