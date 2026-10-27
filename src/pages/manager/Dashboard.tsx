@@ -541,6 +541,7 @@ export const ManagerDashboard: React.FC = () => {
               ]}
               variant="pill"
               sizeVariant="default"
+              containerClassName="w-full sm:w-52 md:w-60"
             />
           </div>
         </div>

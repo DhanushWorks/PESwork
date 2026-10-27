@@ -158,9 +158,9 @@ export const ManagerApprovals: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Search Toolbar with 270px x 48px Animated Search Bar */}
+      {/* Search Toolbar with unified single-row balanced layout */}
       {pendingGoals.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-2.5 sm:gap-3 w-full">
           <AnimatedSearchBar
             value={searchQuery}
             onChangeValue={setSearchQuery}
@@ -173,14 +173,15 @@ export const ManagerApprovals: React.FC = () => {
             ]}
             variant="pill"
             sizeVariant="default"
+            containerClassName="flex-1 min-w-0 sm:flex-initial sm:w-64 md:w-72"
           />
 
           <button
             type="button"
             onClick={() => setShowApproveAllConfirm(true)}
-            className="h-8.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent self-start sm:self-auto shrink-0"
+            className="h-8.5 sm:h-9 px-3 sm:px-3.5 rounded-full sm:rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0 whitespace-nowrap"
           >
-            <Check className="w-3.5 h-3.5" />
+            <Check className="w-3.5 h-3.5 shrink-0" />
             <span>Approve All ({pendingGoals.length})</span>
           </button>
         </div>

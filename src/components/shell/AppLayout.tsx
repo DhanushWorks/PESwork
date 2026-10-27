@@ -89,7 +89,7 @@ export const AppLayout: React.FC = () => {
           }`}
         >
           <AppHeader
-            onToggleSidebar={() => setSidebarOpen(true)}
+            onToggleSidebar={() => setSidebarOpen((prev) => !prev)}
             isCollapsed={isCollapsed}
             onToggleCollapse={toggleCollapse}
           />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { NavLink, Link, useNavigate, useLocation } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import {
@@ -47,6 +47,17 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null)
 
+  // Keyboard Escape listener to dismiss mobile drawer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        onClose()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
+
   // Navigation labels with 'Dashboard' (KPI and People & Profile removed as requested)
   const employeeNav = [
     { label: 'Dashboard', path: '/employee', icon: LayoutDashboard },
@@ -90,20 +101,20 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
 
   return (
     <>
-      {/* Mobile Backdrop */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden"
-          onClick={onClose}
-          aria-hidden="true"
-        />
-      )}
+      {/* Mobile Backdrop with Butter-Smooth Fade In & Out */}
+      <div
+        className={`mobile-sidebar-backdrop fixed inset-0 z-40 bg-slate-900/50 dark:bg-black/70 backdrop-blur-[2px] lg:hidden ${
+          isOpen ? 'is-open' : ''
+        }`}
+        onClick={onClose}
+        aria-hidden="true"
+      />
 
-      {/* Sidebar: White in White Mode and Executive Deep Obsidian in Dark Mode */}
+      {/* Sidebar: Smooth 60/120 FPS GPU-accelerated spring slide in and out */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-40 bg-white/95 dark:bg-[#000000]/95 backdrop-blur-md text-slate-800 dark:text-zinc-200 flex flex-col border-r border-[#d6deea] dark:border-white/[0.08] transition-[width,transform] duration-200 ease-in-out lg:translate-x-0 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${isCollapsed ? 'lg:w-12 lg:overflow-visible' : 'lg:w-60'} w-64 sm:w-72 shadow-2xl`}
+        className={`mobile-sidebar-drawer fixed top-0 bottom-0 left-0 z-50 bg-white dark:bg-[#000000] text-slate-800 dark:text-zinc-200 flex flex-col border-r border-[#d6deea] dark:border-white/[0.08] ${
+          isOpen ? 'is-open shadow-2xl' : 'shadow-none pointer-events-none lg:pointer-events-auto'
+        } ${isCollapsed ? 'lg:w-12 lg:overflow-visible' : 'lg:w-60'} w-64 sm:w-72`}
       >
         {/* Top Header Bar with Company Name & Logo (Left) and Close Button (Mobile) / Collapse Button (Desktop) */}
         <div
@@ -158,14 +169,15 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             )}
           </button>
 
-          {/* Mobile Close Button - clean, even, far right on mobile drawer */}
+          {/* Mobile Close Button - Using the matching PanelLeft toggle bar icon instead of 'X' */}
           <button
             type="button"
             onClick={onClose}
-            className="flex lg:hidden w-8 h-8 items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white rounded-lg dark:hover:bg-white/[0.08] transition-colors cursor-pointer shrink-0"
-            aria-label="Close sidebar"
+            className="flex lg:hidden w-8 h-8 items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white rounded-lg dark:hover:bg-white/[0.08] active:scale-90 transition-all duration-200 cursor-pointer shrink-0"
+            aria-label="Toggle navigation sidebar"
+            title="Close sidebar"
           >
-            <X className="w-4.5 h-4.5" />
+            <PanelLeft className="w-4.5 h-4.5 text-slate-600 dark:text-slate-300" />
           </button>
         </div>
 

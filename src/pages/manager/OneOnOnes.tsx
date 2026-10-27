@@ -303,7 +303,7 @@ export const ManagerOneOnOnes: React.FC = () => {
         </div>
 
         {/* Right: Search Bar & Schedule 1:1 Sync Button - Tight & Aligned */}
-        <div className="flex items-center gap-2.5 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
           <AnimatedSearchBar
             value={searchQuery}
             onChangeValue={setSearchQuery}
@@ -311,16 +311,16 @@ export const ManagerOneOnOnes: React.FC = () => {
             animatedText="Search direct report, agenda..."
             variant="pill"
             sizeVariant="sm"
-            containerClassName="w-52 sm:w-64"
+            containerClassName="flex-1 min-w-0 sm:flex-initial sm:w-64"
           />
 
           <button
             type="button"
             onClick={() => setIsScheduleModalOpen(true)}
-            className="h-8 px-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0 whitespace-nowrap"
+            className="h-8 px-3 sm:px-3.5 rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0 whitespace-nowrap"
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Schedule 1:1 Sync</span>
+            <Plus className="w-3.5 h-3.5 shrink-0" />
+            <span>Schedule<span className="hidden sm:inline"> 1:1 Sync</span></span>
           </button>
         </div>
       </div>

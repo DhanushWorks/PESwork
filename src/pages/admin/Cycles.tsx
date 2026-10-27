@@ -353,8 +353,8 @@ export const AdminCycles: React.FC = () => {
 
   return (
     <div className="space-y-4 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
-      {/* Search Toolbar */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+      {/* Search & Action Toolbar - Unified single-row balanced layout */}
+      <div className="flex items-center justify-between gap-2.5 sm:gap-3 w-full">
         <AnimatedSearchBar
           value={searchQuery}
           onChangeValue={setSearchQuery}
@@ -367,15 +367,16 @@ export const AdminCycles: React.FC = () => {
           ]}
           variant="pill"
           sizeVariant="default"
+          containerClassName="flex-1 min-w-0 sm:flex-initial sm:w-64 md:w-72"
         />
 
         <button
           type="button"
           onClick={handleOpenCreateModal}
-          className="h-8.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0 self-start sm:self-auto"
+          className="h-8.5 sm:h-9 px-3 sm:px-3.5 rounded-full sm:rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0 whitespace-nowrap"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Create New Cycle</span>
+          <Plus className="w-3.5 h-3.5 shrink-0" />
+          <span>Create<span className="hidden sm:inline"> New</span> Cycle</span>
         </button>
       </div>
 
