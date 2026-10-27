@@ -12,7 +12,6 @@ import {
   PieChart,
   RefreshCw,
   RotateCcw,
-  Settings,
   ShieldCheck,
   Sliders,
   Sparkles,
@@ -293,69 +292,6 @@ export const AppSidebar: React.FC<AppSidebarProps> = ({
             })}
           </div>
         </nav>
-
-        {/* Bottom Left Settings NavLink */}
-        <div className="border-t border-slate-200/90 dark:border-white/[0.08] p-2">
-          <NavLink
-            to="/settings"
-            onClick={onClose}
-            onMouseEnter={() => isCollapsed && setActiveTooltip('Settings')}
-            onMouseLeave={() => isCollapsed && setActiveTooltip(null)}
-            onFocus={() => isCollapsed && setActiveTooltip('Settings')}
-            onBlur={() => isCollapsed && setActiveTooltip(null)}
-            onTouchStart={() => isCollapsed && setActiveTooltip('Settings')}
-            className={({ isActive }) =>
-              `relative w-full flex items-center h-9 px-0 rounded-xl text-xs font-medium cursor-pointer transition-all duration-200 ease-out active:scale-[0.98] group select-none ${
-                isCollapsed ? 'lg:overflow-visible overflow-hidden' : 'overflow-hidden'
-              } ${
-                isActive
-                  ? 'bg-slate-900/[0.06] text-slate-900 dark:bg-white/[0.08] dark:text-white font-semibold border border-slate-900/[0.08] dark:border-white/[0.1] shadow-2xs'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-white/[0.05] border border-transparent hover:border-slate-200/80 dark:hover:border-white/[0.06]'
-              }`
-            }
-            aria-label="Settings"
-          >
-            {({ isActive }) => (
-              <>
-                <div className="w-8 h-8 flex items-center justify-center flex-shrink-0">
-                  <Settings
-                    className={`w-4 h-4 transition-colors duration-150 ${
-                      isActive
-                        ? 'text-slate-900 dark:text-white'
-                        : 'text-slate-500 group-hover:text-slate-900 dark:text-zinc-400 dark:group-hover:text-zinc-100'
-                    }`}
-                  />
-                </div>
-                <span
-                  className={`whitespace-nowrap transition-all duration-200 ease-in-out font-medium overflow-hidden ${
-                    isCollapsed
-                      ? 'opacity-100 max-w-full translate-x-0 ml-2.5 lg:opacity-0 lg:max-w-0 lg:-translate-x-2 lg:pointer-events-none'
-                      : 'opacity-100 max-w-full translate-x-0 ml-2.5'
-                  } ${
-                    isActive
-                      ? 'text-slate-900 dark:text-white font-semibold'
-                      : 'text-slate-600 group-hover:text-slate-900 dark:text-slate-400 dark:group-hover:text-slate-100 group-hover:translate-x-0.5'
-                  }`}
-                >
-                  Settings
-                </span>
-
-                {/* Floating tooltip when collapsed - desktop only */}
-                {isCollapsed && (
-                  <div
-                    className={`hidden lg:block absolute left-full ml-3 px-2.5 py-1 bg-slate-900 text-white dark:bg-[#18181b] dark:text-zinc-100 text-[11px] font-medium rounded-md shadow-2xl border border-slate-800 dark:border-zinc-700/80 whitespace-nowrap pointer-events-none transition-all duration-150 z-50 ${
-                      activeTooltip === 'Settings'
-                        ? 'opacity-100 translate-x-1'
-                        : 'opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-focus-visible:opacity-100 group-focus-visible:translate-x-1'
-                    }`}
-                  >
-                    Settings
-                  </div>
-                )}
-              </>
-            )}
-          </NavLink>
-        </div>
       </aside>
     </>
   )

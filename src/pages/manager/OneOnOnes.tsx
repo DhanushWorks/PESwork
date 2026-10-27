@@ -414,8 +414,8 @@ export const ManagerOneOnOnes: React.FC = () => {
                       <div className="w-6 h-6 rounded-lg bg-indigo-500/10 text-[#8B7CFF] flex items-center justify-center">
                         <Sparkles className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
-                        DISCUSSION AGENDA · STRATEGIC TOPICS
+                      <span className="text-xs font-bold text-indigo-600 dark:text-[#8B7CFF]">
+                        Discussion Agenda
                       </span>
                     </div>
                     <span className="text-[11px] font-sans text-slate-400 dark:text-zinc-500 hidden sm:inline">
@@ -453,8 +453,8 @@ export const ManagerOneOnOnes: React.FC = () => {
                       <div className="w-6 h-6 rounded-lg bg-indigo-50 dark:bg-white/[0.04] text-indigo-600 dark:text-[#8B7CFF] flex items-center justify-center">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-indigo-600 dark:text-[#8B7CFF]">
-                        AGREED ACTION ITEMS · MUTUAL COMMITMENTS
+                      <span className="text-xs font-bold text-indigo-600 dark:text-[#8B7CFF]">
+                        Action Items
                       </span>
                     </div>
 
@@ -614,16 +614,11 @@ export const ManagerOneOnOnes: React.FC = () => {
       </div>
 
       {/* SECTION 3: 1:1 Templates */}
-      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div>
-            <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
-              1:1 Templates
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-0.5">
-              Discussion guides and frameworks for syncs.
-            </p>
-          </div>
+      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xs dark:shadow-md space-y-5 sm:space-y-6">
+        <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
+          <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-tight text-slate-900 dark:text-white">
+            1:1 Templates
+          </h2>
         </div>
 
         {/* 3 Playbook Cards Grid matching the 3 coursework cards in Reference */}

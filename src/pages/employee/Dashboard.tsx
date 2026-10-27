@@ -407,7 +407,7 @@ export const EmployeeDashboard: React.FC = () => {
   }, [historicalResults, releasedResult, activeCycle])
 
   return (
-    <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 font-sans select-none">
+    <div className="space-y-6 w-full pb-4 sm:pb-6 font-sans select-none">
       {/* SVG Global Gradients for Radial Gauges */}
       <svg width="0" height="0" className="absolute pointer-events-none" aria-hidden="true">
         <defs>
@@ -705,7 +705,7 @@ export const EmployeeDashboard: React.FC = () => {
           ref={tableCardRef}
           className="col-span-12 lg:col-span-8 dark-glass-card p-4 sm:p-6 lg:p-7"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-100 dark:border-white/[0.06]">
             <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white">
               Active performance goals
             </h3>
@@ -714,8 +714,8 @@ export const EmployeeDashboard: React.FC = () => {
               {/* Rubber Segmented Control Filter Tabs */}
               <RubberSegmentedControl
                 options={[
-                  { value: 'all', label: 'All', count: goals.length || 4 },
-                  { value: 'approved', label: 'Approved', count: approvedGoals.length || 4 },
+                  { value: 'all', label: 'All', count: goals.length },
+                  { value: 'approved', label: 'Approved', count: approvedGoals.length },
                   { value: 'pending', label: 'Pending', count: pendingGoals.length },
                 ]}
                 value={goalFilter}
@@ -846,23 +846,18 @@ export const EmployeeDashboard: React.FC = () => {
       </div>
 
       {/* Section 5: Recent Performance History */}
-      <section className="dark-glass-card p-6 sm:p-7">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/[0.06]">
-          <div>
-            <h3 className="text-lg font-semibold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-              <History className="w-4.5 h-4.5 text-slate-500 dark:text-zinc-400" />
-              Recent performance history
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-[#8D96AA] mt-0.5">
-              Historical evaluation outcomes, calibrated ratings, and supervisor feedback summaries
-            </p>
-          </div>
+      <section className="dark-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7">
+        <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-100 dark:border-white/[0.06]">
+          <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
+            <History className="w-4.5 h-4.5 text-slate-500 dark:text-zinc-400" />
+            <span>Performance History</span>
+          </h3>
           {performanceHistory.length > 0 && (
             <Link
               to="/employee/results"
-              className="text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1 self-start sm:self-auto"
+              className="text-xs font-semibold text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white inline-flex items-center gap-1"
             >
-              <span>All evaluation records</span>
+              <span>View All</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           )}

@@ -243,10 +243,10 @@ export const EmployeeSelfReview: React.FC = () => {
       )}
 
       {/* Section 1: Overall Performance & Reflection */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
         <div className="pb-4 border-b border-slate-300 dark:border-zinc-700 flex items-center justify-between gap-3 flex-wrap">
-          <h2 className="text-[15px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.07em]">
-            1. Overall Performance Reflection
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Overall Reflection
           </h2>
           <span
             className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold font-sans border transition-colors ${getRatingBand(overallRating).badgeClass}`}
@@ -283,14 +283,11 @@ export const EmployeeSelfReview: React.FC = () => {
       </div>
 
       {/* Section 2: Core Competencies */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
         <div className="pb-4 border-b border-slate-300 dark:border-zinc-700">
-          <h2 className="text-[15px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.07em]">
-            2. Core Competency Self-Evaluation
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Core Competencies
           </h2>
-          <p className="text-xs text-slate-700 dark:text-zinc-300 mt-1 font-medium">
-            Assess your capabilities against company engineering & product competency standards.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -344,14 +341,11 @@ export const EmployeeSelfReview: React.FC = () => {
       </div>
 
       {/* Section 3: Company Values */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
         <div className="pb-4 border-b border-slate-300 dark:border-zinc-700">
-          <h2 className="text-[15px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.07em]">
-            3. Cultural Values & Alignment
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Cultural Values
           </h2>
-          <p className="text-xs text-slate-700 dark:text-zinc-300 mt-1 font-medium">
-            How did you embody organizational principles and ethics during everyday execution?
-          </p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -405,10 +399,10 @@ export const EmployeeSelfReview: React.FC = () => {
       </div>
 
       {/* Section 4: Narrative Achievements, Challenges & Development */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 space-y-6 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
         <div className="pb-4 border-b border-slate-300 dark:border-zinc-700">
-          <h2 className="text-[15px] font-bold text-slate-900 dark:text-white uppercase tracking-[0.07em]">
-            4. Achievements, Challenges & Growth Goals
+          <h2 className="text-base font-bold text-slate-900 dark:text-white">
+            Growth & Goals
           </h2>
         </div>
 

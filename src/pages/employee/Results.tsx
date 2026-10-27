@@ -180,10 +180,10 @@ export const EmployeeResults: React.FC = () => {
           </div>
           <div className="space-y-1.5 max-w-md mx-auto">
             <h2 className="text-lg font-bold text-slate-900 dark:text-white">
-              No Appraisal Outcomes Available
+              No Results Available
             </h2>
             <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed font-sans">
-              Evaluation results, calibrated rating bands, and performance summaries will appear here once an Administrator assigns your profile to a review cycle and formal assessments are submitted.
+              Results will appear here once you are assigned to a review cycle.
             </p>
           </div>
         </div>
@@ -195,32 +195,31 @@ export const EmployeeResults: React.FC = () => {
 
           <div className="space-y-2 max-w-md mx-auto">
             <h2 className="text-xl font-bold text-slate-900 dark:text-[#F0F3FA]">
-              Your results will appear after release
+              Results Pending
             </h2>
             <p className="text-xs text-slate-500 dark:text-zinc-300 leading-relaxed">
-              The evaluation cycle is currently in the{' '}
+              Cycle stage:{' '}
               <strong className="text-slate-800 dark:text-[#F0F3FA] capitalize font-semibold">
                 {effectiveStage.replace('_', ' ')}
-              </strong>{' '}
-              stage. People Managers and the People Operations Calibration Committee are finalizing
-              ratings to ensure organizational parity.
+              </strong>
+              . Ratings are currently being finalized.
             </p>
           </div>
 
           <div className="pt-4 max-w-lg mx-auto bg-slate-50 dark:bg-white/[0.03] rounded-xl p-4 border border-slate-200 dark:border-white/[0.08] text-left text-xs space-y-2">
             <div className="flex items-center gap-2 font-semibold text-slate-800 dark:text-[#F0F3FA]">
               <Sparkles className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-              <span>What happens next?</span>
+              <span>Next Steps</span>
             </div>
             <ul className="list-disc list-inside text-slate-600 dark:text-zinc-300 space-y-1 text-[11px] pl-1 font-sans">
-              <li>Manager appraisals are normalized across departmental distributions.</li>
-              <li>Official release is projected on <strong className="text-slate-800 dark:text-[#F0F3FA]">{formatDate(activeCycle.deadlines.releaseDate)}</strong>.</li>
-              <li>You will receive an in-app notification immediately once results become visible.</li>
+              <li>Reviews are currently in progress.</li>
+              <li>Projected release: <strong className="text-slate-800 dark:text-[#F0F3FA]">{formatDate(activeCycle.deadlines.releaseDate)}</strong>.</li>
+              <li>You will be notified once results are published.</li>
             </ul>
           </div>
 
           <div className="text-[11px] text-slate-400 dark:text-zinc-300/70 font-sans">
-            Preview tip: You can switch to the <strong className="text-slate-600 dark:text-[#C5CEE0]">Admin (Eleanor Vance)</strong> role to advance the cycle or simulate result release.
+            Tip: Switch to <strong className="text-slate-600 dark:text-[#C5CEE0]">Admin</strong> to advance the cycle or release results.
           </div>
         </div>
       ) : (

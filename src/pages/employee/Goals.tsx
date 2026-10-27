@@ -705,8 +705,8 @@ export const EmployeeGoals: React.FC = () => {
         <LoadingState message="Loading performance goals..." variant="card" />
       ) : filteredGoals.length === 0 ? (
         <EmptyState
-          title="No goals match your filter"
-          description="Try clearing your search query or create a new performance goal."
+          title="No goals found"
+          description="Clear filters or create a new goal."
           action={{
             label: 'Create Goal',
             icon: <Plus className="w-3.5 h-3.5" />,

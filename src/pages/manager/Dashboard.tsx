@@ -435,7 +435,7 @@ export const ManagerDashboard: React.FC = () => {
   })
 
   return (
-    <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 animate-fade-in font-sans">
+    <div className="space-y-6 w-full pb-4 sm:pb-6 animate-fade-in font-sans">
       {/* Metric Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <MetricCard
@@ -488,61 +488,75 @@ export const ManagerDashboard: React.FC = () => {
       </section>
 
       {/* Direct Reports Appraisal Roster (Moved to top under Stepper) */}
-      <div id="roster" className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-5 shadow-xs dark:shadow-md transition-all">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-slate-500 dark:text-zinc-400">
-                TEAM PERFORMANCE · DIRECT REPORTS
-              </span>
-            </div>
+      <div id="roster" className="dark-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 space-y-4 sm:space-y-5 shadow-xs dark:shadow-md transition-all">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
+          <div className="space-y-0.5">
             <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
-              Evaluation Roster
+              Team Evaluations
             </h2>
-            <p className="text-xs text-slate-500 dark:text-zinc-400">
-              Inspect submitted self-reviews, verify goal commitments, and calibrate performance appraisals
-            </p>
           </div>
 
-          <div className="flex items-center gap-3 flex-wrap self-start lg:self-auto shrink-0">
-            {/* Status Filter Tabs */}
-            <RubberSegmentedControl
-              options={[
-                { value: 'all', label: 'All', count: teamSummaries.length },
-                { value: 'pending', label: 'Pending Review', count: pendingReviewsCount },
-                { value: 'completed', label: 'Evaluated', count: submittedReviewsCount },
-              ]}
-              value={teamFilter}
-              onChange={(val) => setTeamFilter(val as any)}
-              size="xs"
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 w-full lg:w-auto shrink-0">
+            {/* Row 1 on mobile: Status Filter + View Switcher side-by-side (Compact & Balanced) */}
+            <div className="flex items-center justify-between sm:justify-start gap-2 w-full sm:w-auto overflow-x-auto no-scrollbar">
+              <RubberSegmentedControl
+                options={[
+                  { value: 'all', label: 'All', count: teamSummaries.length },
+                  {
+                    value: 'pending',
+                    label: (
+                      <>
+                        <span className="hidden sm:inline">Pending Review</span>
+                        <span className="sm:hidden">Pending</span>
+                      </>
+                    ),
+                    count: pendingReviewsCount,
+                  },
+                  {
+                    value: 'completed',
+                    label: (
+                      <>
+                        <span className="hidden sm:inline">Evaluated</span>
+                        <span className="sm:hidden">Done</span>
+                      </>
+                    ),
+                    count: submittedReviewsCount,
+                  },
+                ]}
+                value={teamFilter}
+                onChange={(val) => setTeamFilter(val as any)}
+                size="xs"
+                className="shrink-0"
+              />
 
-            {/* View Mode Switcher */}
-            <RubberSegmentedControl
-              options={[
-                { value: 'table', label: 'Table', icon: <List className="w-3.5 h-3.5" /> },
-                { value: 'grid', label: 'Cards', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-              ]}
-              value={viewMode}
-              onChange={(val) => setViewMode(val as any)}
-              size="xs"
-            />
+              <RubberSegmentedControl
+                options={[
+                  { value: 'table', label: 'Table', icon: <List className="w-3.5 h-3.5" /> },
+                  { value: 'grid', label: 'Cards', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
+                ]}
+                value={viewMode}
+                onChange={(val) => setViewMode(val as any)}
+                size="xs"
+                className="shrink-0"
+              />
+            </div>
 
-            {/* Animated Search Bar */}
-            <AnimatedSearchBar
-              value={searchQuery}
-              onChangeValue={setSearchQuery}
-              placeholder="Search team members..."
-              animatedPlaceholders={[
-                'Search direct reports...',
-                'Filter by job designation...',
-                'Search by teammate name...',
-                'Filter team roster...',
-              ]}
-              variant="pill"
-              sizeVariant="default"
-              containerClassName="w-full sm:w-52 md:w-60"
-            />
+            {/* Row 2 on mobile: Search Bar (Full width on mobile, sleek & responsive) */}
+            <div className="w-full sm:w-52 md:w-60 min-w-0">
+              <AnimatedSearchBar
+                value={searchQuery}
+                onChangeValue={setSearchQuery}
+                placeholder="Search direct reports..."
+                animatedPlaceholders={[
+                  'Search direct reports...',
+                  'Filter by designation...',
+                  'Search teammate...',
+                ]}
+                variant="pill"
+                sizeVariant="default"
+                containerClassName="w-full"
+              />
+            </div>
           </div>
         </div>
 
@@ -553,30 +567,29 @@ export const ManagerDashboard: React.FC = () => {
             No team members match the selected filter.
           </div>
         ) : viewMode === 'table' ? (
-          /* High-Density Aligned Executive Table View (Zero Text Wrapping & No Scrollbar) */
+          /* High-Density Aligned Executive Table View (Protected Column Widths, No Overlapping) */
           <div
-            className="overflow-x-auto no-scrollbar -mx-6 sm:mx-0"
-            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            className="overflow-x-auto table-scrollbar -mx-4 sm:mx-0 px-4 sm:px-0 select-none pb-1"
           >
-            <table className="w-full text-left text-xs border-collapse">
+            <table className="w-full min-w-[780px] text-left text-xs border-collapse">
               <thead>
                 <tr className="bg-slate-100/80 dark:bg-white/[0.04] border-y border-slate-200 dark:border-white/[0.12] text-slate-900 dark:text-white uppercase tracking-wider text-xs font-bold font-sans">
-                  <th className="py-3.5 px-3 sm:px-4 whitespace-nowrap">
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[200px] whitespace-nowrap">
                     Direct Report
                   </th>
-                  <th className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                  <th className="py-3.5 px-2 sm:px-3 min-w-[130px] whitespace-nowrap">
                     Goal Plan
                   </th>
-                  <th className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                  <th className="py-3.5 px-2 sm:px-3 min-w-[110px] whitespace-nowrap">
                     Self-Review
                   </th>
-                  <th className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                  <th className="py-3.5 px-2 sm:px-3 min-w-[140px] whitespace-nowrap">
                     Manager Appraisal
                   </th>
-                  <th className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                  <th className="py-3.5 px-2 sm:px-3 min-w-[120px] whitespace-nowrap">
                     Appraisal Score
                   </th>
-                  <th className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
+                  <th className="py-3.5 px-3 sm:px-4 min-w-[80px] text-right whitespace-nowrap">
                     Action
                   </th>
                 </tr>
@@ -594,12 +607,12 @@ export const ManagerDashboard: React.FC = () => {
                       className="hover:bg-slate-50/80 dark:hover:bg-white/[0.03] transition-colors group cursor-pointer"
                     >
                       {/* Column 1: Direct Report Identity */}
-                      <td className="py-3.5 px-3 sm:px-4 whitespace-nowrap">
+                      <td className="py-3.5 px-3 sm:px-4 min-w-[200px] whitespace-nowrap">
                         <div className="flex items-center gap-2.5">
                           <img
                             src={emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100'}
                             alt={emp.name}
-                            className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10"
+                            className="w-8 h-8 rounded-full object-cover ring-1 ring-slate-200 dark:ring-white/10 shrink-0"
                           />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5 flex-nowrap">
@@ -618,7 +631,7 @@ export const ManagerDashboard: React.FC = () => {
                       </td>
 
                       {/* Column 2: Goal Plan */}
-                      <td className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                      <td className="py-3.5 px-2 sm:px-3 min-w-[130px] whitespace-nowrap">
                         <div className="flex items-center gap-1.5 font-mono text-xs">
                           <Target className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-500 shrink-0" />
                           <span className="font-semibold text-slate-800 dark:text-zinc-200">
@@ -631,7 +644,7 @@ export const ManagerDashboard: React.FC = () => {
                       </td>
 
                       {/* Column 3: Self-Review Status */}
-                      <td className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                      <td className="py-3.5 px-2 sm:px-3 min-w-[110px] whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {isSrSubmitted ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-slate-900 text-white dark:bg-white dark:text-slate-900 font-sans">
@@ -648,7 +661,7 @@ export const ManagerDashboard: React.FC = () => {
                       </td>
 
                       {/* Column 4: Manager Appraisal Status */}
-                      <td className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                      <td className="py-3.5 px-2 sm:px-3 min-w-[140px] whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           {summary.isReleased || summary.adminApproved ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200/90 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/50 font-sans">
@@ -674,7 +687,7 @@ export const ManagerDashboard: React.FC = () => {
                       </td>
 
                       {/* Column 5: Appraisal Score */}
-                      <td className="py-3.5 px-2 sm:px-3 whitespace-nowrap">
+                      <td className="py-3.5 px-2 sm:px-3 min-w-[120px] whitespace-nowrap">
                         {summary.compositeScore ? (
                           <div className="flex items-center gap-1.5">
                             <RatingBadge score={summary.compositeScore} />
@@ -692,7 +705,7 @@ export const ManagerDashboard: React.FC = () => {
                       </td>
 
                       {/* Column 6: Action Button */}
-                      <td className="py-3.5 px-3 sm:px-4 text-right whitespace-nowrap">
+                      <td className="py-3.5 px-3 sm:px-4 min-w-[80px] text-right whitespace-nowrap">
                         <button
                           type="button"
                           onClick={(e) => {
@@ -821,25 +834,16 @@ export const ManagerDashboard: React.FC = () => {
         {/* SECTION 1: Team Review Progress */}
         <section className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-5 flex flex-col justify-between shadow-xs">
           <div>
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-slate-500 dark:text-zinc-400">
-                  CYCLE MILESTONES · DIRECT REPORTS
-                </span>
-                <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
-                  Team Review Progress
-                </h3>
-              </div>
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08] mb-4">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                Review Progress
+              </h3>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-zinc-300 border border-slate-200 dark:border-white/10 font-mono">
                   {overallTeamProgress}% Overall
                 </span>
               </div>
             </div>
-
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-2 mb-4">
-              Real-time progression of direct reports assigned for {activeCycle.name}
-            </p>
 
             {totalReports === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 dark:text-zinc-400 font-sans bg-slate-50/50 dark:bg-white/[0.015] rounded-xl border border-dashed border-slate-200 dark:border-white/10">
@@ -1075,23 +1079,14 @@ export const ManagerDashboard: React.FC = () => {
         {/* SECTION 4: Upcoming Deadlines */}
         <section className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-4 flex flex-col justify-between shadow-xs">
           <div>
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-slate-500 dark:text-zinc-400">
-                  RESPONSIBILITIES · TIME SENSITIVE
-                </span>
-                <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
-                  Upcoming Deadlines
-                </h3>
-              </div>
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08] mb-4">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                Upcoming Deadlines
+              </h3>
               <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-md bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-zinc-300 border border-slate-200 dark:border-white/10 font-semibold">
-                {upcomingDeadlinesList.length} Outstanding
+                {upcomingDeadlinesList.length} Due
               </span>
             </div>
-
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-2 mb-4">
-              Real milestone dates from the evaluation schedule requiring completion
-            </p>
 
             {upcomingDeadlinesList.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 dark:text-zinc-300 font-sans bg-slate-50/50 dark:bg-white/[0.015] rounded-xl border border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center p-6 space-y-2">
@@ -1179,22 +1174,17 @@ export const ManagerDashboard: React.FC = () => {
         {/* SECTION 2: Pending Goal Approvals */}
         <section className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-4 flex flex-col justify-between shadow-xs">
           <div>
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-slate-500 dark:text-zinc-400">
-                  ACTION REQUIRED · GOALS
-                </span>
-                <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
-                  Pending Goal Approvals
-                </h3>
-              </div>
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08] mb-4">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                Goal Approvals
+              </h3>
               <div className="flex items-center gap-2">
                 <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-md border font-semibold ${
                   pendingGoalItems.length > 0
                     ? 'bg-amber-50 text-amber-800 dark:bg-[#FFB454]/10 dark:text-[#FFB454] border-amber-200 dark:border-[#FFB454]/20'
                     : 'bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-zinc-300 border-slate-200 dark:border-white/10'
                 }`}>
-                  {pendingGoalItems.length} Awaiting Action
+                  {pendingGoalItems.length} Pending
                 </span>
                 {pendingGoalItems.length > 0 && (
                   <Link
@@ -1206,10 +1196,6 @@ export const ManagerDashboard: React.FC = () => {
                 )}
               </div>
             </div>
-
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-2 mb-4">
-              Direct report goals submitted for manager verification and approval
-            </p>
 
             {pendingGoalItems.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 dark:text-zinc-300 font-sans bg-slate-50/50 dark:bg-white/[0.015] rounded-xl border border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center p-6 space-y-2">
@@ -1317,27 +1303,18 @@ export const ManagerDashboard: React.FC = () => {
         {/* SECTION 3: Pending Performance Evaluations */}
         <section className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-4 flex flex-col justify-between shadow-xs">
           <div>
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">
-              <div>
-                <span className="text-[10px] sm:text-[11px] font-sans uppercase tracking-[0.08em] font-bold text-slate-500 dark:text-zinc-400">
-                  ACTION REQUIRED · APPRAISALS
-                </span>
-                <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white mt-0.5">
-                  Pending Performance Evaluations
-                </h3>
-              </div>
+            <div className="flex items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08] mb-4">
+              <h3 className="text-base sm:text-lg font-bold tracking-tight text-slate-900 dark:text-white">
+                Pending Evaluations
+              </h3>
               <span className={`text-[11px] font-mono px-2.5 py-0.5 rounded-md border font-semibold ${
                 pendingReviewsCount > 0
                   ? 'bg-amber-50 text-amber-800 dark:bg-[#FFB454]/10 dark:text-[#FFB454] border-amber-200 dark:border-[#FFB454]/20'
                   : 'bg-slate-100 text-slate-700 dark:bg-white/[0.06] dark:text-zinc-300 border-slate-200 dark:border-white/10'
               }`}>
-                {pendingReviewsCount} to Evaluate
+                {pendingReviewsCount} to Review
               </span>
             </div>
-
-            <p className="text-xs text-slate-500 dark:text-zinc-400 mt-2 mb-4">
-              Direct report evaluations awaiting completion according to review workflow dependencies
-            </p>
 
             {pendingEvaluations.length === 0 ? (
               <div className="py-8 text-center text-xs text-slate-500 dark:text-zinc-300 font-sans bg-slate-50/50 dark:bg-white/[0.015] rounded-xl border border-dashed border-slate-200 dark:border-white/10 flex flex-col items-center justify-center p-6 space-y-2">

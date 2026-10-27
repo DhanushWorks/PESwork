@@ -33,12 +33,13 @@ import {
   MessageSquareHeart,
   FolderArchive,
   TrendingUp,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { CYCLE_STAGE_DETAILS } from '../../lib/formatters'
 import { ConfirmDialog } from '../ui/Modal'
 import { storageService } from '../../services'
 import { Goal } from '../../types'
-import { ThemeToggle } from '../ui/ThemeToggle'
 import { FullscreenToggle } from '../ui/FullscreenToggle'
 
 type AppHeaderProps = {
@@ -149,6 +150,8 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
     switchWorkspaceRole,
     resetDemoData,
     signOut,
+    theme,
+    toggleTheme,
   } = useApp()
 
   const navigate = useNavigate()
@@ -209,7 +212,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
 
   // Close dropdowns on outside click
   useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
+    const handleClickOutside = (e: MouseEvent | TouchEvent) => {
       if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
         setShowUserMenu(false)
       }
@@ -218,7 +221,11 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
+    document.addEventListener('touchstart', handleClickOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('touchstart', handleClickOutside)
+    }
   }, [])
 
   // Close dropdowns on Escape key
@@ -275,15 +282,12 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
           </h1>
         </div>
 
-        {/* Right Actions: Fullscreen + Theme Toggle + Bell 🔔 + Avatar */}
+        {/* Right Actions: Fullscreen + Bell 🔔 + Avatar */}
         <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
           {/* Full Screen Mode Toggle (Hidden on mobile viewport to maximize header space) */}
           <div className="hidden sm:inline-flex">
             <FullscreenToggle />
           </div>
-
-          {/* Dark Mode / White Mode Animated Toggle */}
-          <ThemeToggle />
 
           {/* Notifications Bell 🔔 (Banking App: Cards Motion Trigger & Stack) */}
           <div className="relative" ref={notifMenuRef}>
@@ -315,7 +319,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             {showNotifMenu && (
               <div
                 ref={notifDropdownRef}
-                className="absolute right-0 mt-2.5 w-[calc(100vw-1.5rem)] max-w-[390px] sm:w-[390px] bg-white dark:bg-[#18181b] menu-solid-bg rounded-3xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 overflow-hidden z-50 animate-dropdown-entrance overscroll-contain flex flex-col"
+                className="fixed left-3 right-3 top-14 max-w-[420px] mx-auto sm:mx-0 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-2.5 sm:w-[390px] sm:max-w-[390px] bg-white dark:bg-[#18181b] menu-solid-bg rounded-3xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 overflow-hidden z-50 animate-dropdown-entrance overscroll-contain flex flex-col"
                 role="dialog"
               >
                 {/* Notification Dropdown Header */}
@@ -518,7 +522,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
             {showUserMenu && (
               <div
                 ref={userDropdownRef}
-                className="absolute right-0 mt-2 w-[calc(100vw-1.5rem)] max-w-xs sm:w-80 bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 p-3 z-50 text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 text-xs overscroll-contain"
+                className="fixed left-3 right-3 top-14 max-w-sm mx-auto sm:mx-0 sm:absolute sm:top-full sm:left-auto sm:right-0 sm:mt-2 sm:w-80 sm:max-w-xs bg-white dark:bg-[#18181b] menu-solid-bg rounded-2xl shadow-2xl border border-slate-200/90 dark:border-zinc-700/80 p-3 z-50 text-slate-800 dark:text-zinc-200 animate-in fade-in zoom-in-95 text-xs overscroll-contain"
                 role="menu"
               >
                 {/* Executive Current Identity Card (Click to open Profile) */}
@@ -580,6 +584,37 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                     <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                   </Link>
 
+                  {/* Dark Mode / White Mode Toggle */}
+                  <button
+                    type="button"
+                    onClick={toggleTheme}
+                    className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-slate-700 dark:text-zinc-300 hover:bg-slate-100 dark:hover:bg-zinc-800/80 transition-colors text-xs font-medium cursor-pointer select-none"
+                    role="switch"
+                    aria-checked={theme === 'dark'}
+                  >
+                    <div className="flex items-center gap-2">
+                      {theme === 'dark' ? (
+                        <Moon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                      ) : (
+                        <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      )}
+                      <span>{theme === 'dark' ? 'Dark Mode' : 'Light Mode'}</span>
+                    </div>
+
+                    {/* Smooth iOS-style Toggle Pill */}
+                    <div
+                      className={`w-8 h-4.5 rounded-full transition-colors relative flex items-center p-0.5 ${
+                        theme === 'dark' ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-zinc-700'
+                      }`}
+                    >
+                      <div
+                        className={`w-3.5 h-3.5 rounded-full bg-white shadow-xs transition-transform duration-200 ${
+                          theme === 'dark' ? 'translate-x-3.5' : 'translate-x-0'
+                        }`}
+                      />
+                    </div>
+                  </button>
+
                   <Link
                     to="/settings"
                     onClick={() => setShowUserMenu(false)}
@@ -587,7 +622,7 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       <Settings className="w-3.5 h-3.5 text-slate-400 dark:text-zinc-400" />
-                      <span>Workspace Settings</span>
+                      <span>Settings</span>
                     </div>
                     <ArrowRight className="w-3 h-3 text-slate-400 dark:text-zinc-500" />
                   </Link>

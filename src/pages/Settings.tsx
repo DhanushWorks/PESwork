@@ -121,21 +121,9 @@ export const Settings: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
-      {/* Clean Dashboard Standard Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-1">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            Workspace Settings
-          </h1>
-          <p className="text-xs text-slate-500 dark:text-zinc-400 mt-1 font-sans">
-            Configure performance evaluation cycles, Supabase cloud synchronization, and workspace operations.
-          </p>
-        </div>
-      </div>
-
+    <div className="space-y-5 sm:space-y-6 w-full pb-4 sm:pb-6 font-sans">
       {/* 1. APPRAISAL GOVERNANCE & ACTIVE CYCLE */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/[0.08]">
           <h2 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
             Appraisal Governance & Active Cycle
@@ -179,7 +167,7 @@ export const Settings: React.FC = () => {
       </div>
 
       {/* 2. SUPABASE CLOUD DATABASE CONNECTION */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 shadow-sm space-y-5 border border-slate-200 dark:border-white/[0.08]">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm space-y-5 border border-slate-200 dark:border-white/[0.08]">
         <div className="flex items-center justify-between pb-3 border-b border-slate-200 dark:border-white/[0.08]">
           <h2 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
             Supabase Cloud Database & API
@@ -291,7 +279,7 @@ export const Settings: React.FC = () => {
       </div>
 
       {/* 3. NOTIFICATIONS & PREFERENCES */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm space-y-5">
         <div className="pb-3 border-b border-slate-200 dark:border-white/[0.08]">
           <h2 className="text-xs font-bold text-slate-900 dark:text-[#F0F3FA] uppercase tracking-wider font-sans">
             In-App Alerts & Digest Preferences
@@ -368,7 +356,7 @@ export const Settings: React.FC = () => {
       </div>
 
       {/* 4. WORKSPACE DATASET & WORKFLOW REVERT CONTROLS */}
-      <div className="dark-glass-card rounded-2xl p-6 sm:p-8 space-y-5 border border-indigo-500/20 bg-indigo-500/[0.02]">
+      <div className="dark-glass-card rounded-2xl p-4 sm:p-6 lg:p-8 space-y-5 border border-indigo-500/20 bg-indigo-500/[0.02]">
         <div className="flex items-center justify-between pb-3 border-b border-indigo-500/15">
           <h2 className="text-xs font-bold text-indigo-400 uppercase tracking-wider font-sans">
             Workspace Dataset & Workflow Controls

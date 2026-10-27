@@ -465,56 +465,82 @@ export const AdminAudit: React.FC = () => {
 
   return (
     <div className="space-y-3.5 w-full pb-20 sm:pb-24 lg:pb-16 animate-fade-in font-sans">
-      {/* Search & Action Controls Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-        {/* Normal Search Input */}
-        <div className="relative w-full sm:w-64 md:w-72 flex items-center shrink-0">
-          <Search className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search audit records or actors..."
-            className="w-full h-9 pl-9 pr-8 rounded-xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition-all font-sans shadow-2xs"
-          />
-          {search && (
-            <button
-              type="button"
-              onClick={() => setSearch('')}
-              className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
-              aria-label="Clear search"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          )}
+      {/* Search & Action Controls Toolbar - 2-Row Balanced Responsive Architecture */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 w-full">
+        {/* Row 1 on Mobile: Search input + Export CSV + Refresh */}
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-1 min-w-0">
+          <div className="relative flex-1 sm:w-64 md:w-72 flex items-center min-w-0">
+            <Search className="w-4 h-4 text-slate-400 dark:text-zinc-400 absolute left-3 pointer-events-none shrink-0" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search audit records or actors..."
+              className="w-full h-9 pl-9 pr-8 rounded-xl bg-white dark:bg-[#18181b] border border-slate-200 dark:border-zinc-800 text-xs text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-zinc-500 focus:outline-none focus:border-slate-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-slate-300 dark:focus:ring-zinc-700 transition-all font-sans shadow-2xs"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 p-0.5 rounded-full hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 transition-colors cursor-pointer"
+                aria-label="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Quick Actions (Mobile only: Export & Refresh beside Search) */}
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            className="flex sm:hidden h-9 px-3 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 shadow-2xs transition-all cursor-pointer items-center justify-center gap-1.5 border border-transparent whitespace-nowrap shrink-0"
+            title="Download audit records as CSV"
+          >
+            <Download className="w-3.5 h-3.5 shrink-0" />
+            <span>Export</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={fetchLogs}
+            className="flex sm:hidden w-9 h-9 rounded-xl items-center justify-center bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer shrink-0"
+            title="Refresh event log"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin opacity-80' : ''}`} />
+          </button>
         </div>
 
-        {/* Action Buttons & Filters */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        {/* Row 2 on Mobile (Grid 3-cols) / Inline Actions on Desktop */}
+        <div className="grid grid-cols-3 sm:flex sm:items-center gap-2 w-full sm:w-auto shrink-0">
           {/* Actor Filter Custom Dropdown */}
-          <CustomDropdown
-            value={selectedActor}
-            onChange={setSelectedActor}
-            align="right"
-            triggerClassName="h-9 px-3 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all"
-            options={[
-              { value: 'all', label: `All Actors (${uniqueActors.length})` },
-              ...uniqueActors.map((a) => ({
-                value: a.id,
-                label: a.name,
-              })),
-            ]}
-          />
+          <div className="w-full sm:w-auto min-w-0">
+            <CustomDropdown
+              value={selectedActor}
+              onChange={setSelectedActor}
+              align="left"
+              fullWidth
+              className="w-full sm:w-auto"
+              triggerClassName="w-full sm:w-auto h-9 px-2.5 sm:px-3 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all justify-between"
+              options={[
+                { value: 'all', label: `All Actors (${uniqueActors.length})` },
+                ...uniqueActors.map((a) => ({
+                  value: a.id,
+                  label: a.name,
+                })),
+              ]}
+            />
+          </div>
 
           {/* Sort Toggle */}
           <button
             type="button"
             onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-            className="h-9 px-3 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5"
+            className="w-full sm:w-auto h-9 px-2 sm:px-3 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 min-w-0"
             title="Toggle chronological ordering"
           >
-            <Clock className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400" />
-            <span className="font-sans">{sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}</span>
+            <Clock className="w-3.5 h-3.5 text-slate-600 dark:text-zinc-400 shrink-0" />
+            <span className="font-sans truncate">{sortOrder === 'desc' ? 'Newest' : 'Oldest'}<span className="hidden sm:inline"> First</span></span>
           </button>
 
           {/* Verify Integrity */}
@@ -522,29 +548,29 @@ export const AdminAudit: React.FC = () => {
             type="button"
             onClick={handleVerifyLedger}
             disabled={isVerifying}
-            className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-60"
+            className="w-full sm:w-auto h-9 px-2 sm:px-3.5 rounded-xl text-xs font-semibold bg-white hover:bg-slate-50 text-slate-800 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-200 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-60 min-w-0"
             title="Verify cryptographic integrity of ledger"
           >
-            <ShieldCheck className={`w-3.5 h-3.5 opacity-80 ${isVerifying ? 'animate-spin' : ''}`} />
-            <span>{isVerifying ? 'Verifying...' : 'Verify'}</span>
+            <ShieldCheck className={`w-3.5 h-3.5 opacity-80 shrink-0 ${isVerifying ? 'animate-spin' : ''}`} />
+            <span className="truncate">{isVerifying ? 'Verifying...' : 'Verify'}</span>
           </button>
 
-          {/* Export CSV */}
+          {/* Export CSV (Desktop only) */}
           <button
             type="button"
             onClick={handleExportCSV}
-            className="h-9 px-3.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 shadow-2xs transition-all cursor-pointer flex items-center gap-1.5 border border-transparent"
+            className="hidden sm:inline-flex h-9 px-3.5 rounded-xl text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 shadow-2xs transition-all cursor-pointer items-center gap-1.5 border border-transparent whitespace-nowrap shrink-0"
             title="Download audit records as CSV"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 shrink-0" />
             <span>Export CSV</span>
           </button>
 
-          {/* Refresh */}
+          {/* Refresh (Desktop only) */}
           <button
             type="button"
             onClick={fetchLogs}
-            className="w-9 h-9 rounded-xl flex items-center justify-center bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer"
+            className="hidden sm:flex w-9 h-9 rounded-xl items-center justify-center bg-white hover:bg-slate-50 text-slate-600 hover:text-slate-900 border border-slate-200 dark:bg-[#18181b] dark:hover:bg-zinc-800 dark:text-zinc-400 dark:hover:text-white dark:border-zinc-800 shadow-2xs transition-all cursor-pointer shrink-0"
             title="Refresh event log"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin opacity-80' : ''}`} />

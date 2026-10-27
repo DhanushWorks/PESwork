@@ -199,17 +199,17 @@ export const EmployeeDevelopment: React.FC = () => {
   })
 
   return (
-    <div className="space-y-5 w-full pb-16 font-sans">
+    <div className="space-y-5 sm:space-y-6 w-full pb-4 sm:pb-6 font-sans">
       {/* SECTION 1: Skills Matrix */}
-      <div className="dark-glass-card conic-border-glow rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
+      <div className="dark-glass-card conic-border-glow rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xs dark:shadow-md space-y-5 sm:space-y-6">
+        <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
           <div>
             <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
               Skills Matrix
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">
               <span>{plan?.skills?.length || 0} Competencies</span>
             </span>
@@ -289,43 +289,54 @@ export const EmployeeDevelopment: React.FC = () => {
       </div>
 
       {/* SECTION 2: Development Commitments */}
-      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
+      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xs dark:shadow-md space-y-5 sm:space-y-6">
         {/* Top Header Row */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
-          <div>
-            <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
-              Development Commitments
-            </h2>
-          </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
+          <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
+            Development Commitments
+          </h2>
 
-          {/* Rubber Segmented Control Filter Tabs & Add Action */}
-          <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-center shrink-0">
+          {/* Controls: Segment Filter & Add Action aligned side-by-side */}
+          <div className="flex items-center justify-between sm:justify-end gap-2.5 w-full sm:w-auto">
             <RubberSegmentedControl
               options={[
                 { value: 'all', label: 'All', count: allActions.length },
                 {
                   value: 'in_progress',
-                  label: 'In Progress',
+                  label: (
+                    <>
+                      <span className="hidden sm:inline">In Progress</span>
+                      <span className="sm:hidden">Active</span>
+                    </>
+                  ),
                   count: inProgressCount,
                 },
                 {
                   value: 'completed',
-                  label: 'Completed',
+                  label: (
+                    <>
+                      <span className="hidden sm:inline">Completed</span>
+                      <span className="sm:hidden">Done</span>
+                    </>
+                  ),
                   count: completedCount,
                 },
               ]}
               value={actionFilter}
               onChange={(val) => setActionFilter(val as any)}
-              size="sm"
+              size="xs"
+              className="shrink-0"
             />
 
             <button
               type="button"
               onClick={() => setShowAddModal(true)}
-              className="h-8.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent"
+              className="h-8 px-3 rounded-full bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs active:scale-95 transition-all border border-transparent shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add Action</span>
+              <span>
+                <span className="hidden min-[380px]:inline">Add </span>Action
+              </span>
             </button>
           </div>
         </div>
@@ -497,15 +508,15 @@ export const EmployeeDevelopment: React.FC = () => {
       </div>
 
       {/* SECTION 3: Recommended Courses */}
-      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-8 shadow-xs dark:shadow-md space-y-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
+      <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-xs dark:shadow-md space-y-5 sm:space-y-6">
+        <div className="flex items-center justify-between gap-3 pb-4 border-b border-slate-200/90 dark:border-white/[0.08]">
           <div>
-            <h2 className="heading-premium text-xl sm:text-2xl font-extrabold tracking-[-0.03em] text-slate-900 dark:text-white">
+            <h2 className="heading-premium text-lg sm:text-xl font-bold tracking-[-0.03em] text-slate-900 dark:text-white">
               Recommended Courses
             </h2>
           </div>
 
-          <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+          <div className="flex items-center gap-2 shrink-0">
             <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-sans font-medium bg-slate-100 dark:bg-white/[0.05] text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-white/10">
               <BookOpen className="w-3.5 h-3.5 text-slate-500 dark:text-zinc-400" />
               <span>3 Tracks · 26 Hours</span>

@@ -352,7 +352,7 @@ export const AdminCycles: React.FC = () => {
   })
 
   return (
-    <div className="space-y-4 w-full pb-20 sm:pb-24 lg:pb-16 font-sans">
+    <div className="space-y-4 w-full pb-4 sm:pb-6 font-sans">
       {/* Search & Action Toolbar - Unified single-row balanced layout */}
       <div className="flex items-center justify-between gap-2.5 sm:gap-3 w-full">
         <AnimatedSearchBar

@@ -117,7 +117,7 @@ export const AdminOverview: React.FC = () => {
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<'all' | 'Engineering' | 'Product & Experience'>('all')
   const [staffPage, setStaffPage] = useState(1)
   const [showAllStaff, setShowAllStaff] = useState(false)
-  const STAFF_PER_PAGE = 6
+  const STAFF_PER_PAGE = 8
 
   // Reset pagination when department filter changes
   useEffect(() => {
@@ -499,7 +499,7 @@ export const AdminOverview: React.FC = () => {
   }, [cycles, activeCycle])
 
   return (
-    <div className="space-y-4 sm:space-y-5 w-full pb-24 sm:pb-28 lg:pb-20 font-sans">
+    <div className="space-y-4 sm:space-y-5 w-full pb-4 sm:pb-6 font-sans">
       {/* Metric Cards Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <MetricCard
@@ -551,7 +551,7 @@ export const AdminOverview: React.FC = () => {
       {/* Department Breakdown & Immediate Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4.5">
         {/* Department Progress Cards & Employee Roster Columns */}
-        <div className="lg:col-span-2 dark-glass-card p-4 sm:p-5 md:p-6 space-y-4 flex flex-col justify-between">
+        <div className="lg:col-span-2 dark-glass-card p-4 sm:p-5 md:p-6 flex flex-col justify-between">
           <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-white/[0.08]">
               <div className="flex items-center gap-2">
@@ -688,56 +688,56 @@ export const AdminOverview: React.FC = () => {
               </div>
             </div>
 
-            {/* Employee Cards Grid - 6 Cards per view (3 rows of 2), perfectly matching Upcoming Deadlines height */}
+            {/* Employee Cards Grid - 8 Cards per view (4 rows of 2), perfectly matching Upcoming Deadlines height */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {paginatedStaff.map(renderEmployeeCard)}
             </div>
-
-            {/* Pagination Controls to keep left and right columns balanced and equal */}
-            {displayedMembers.length > STAFF_PER_PAGE && (
-              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/[0.08] text-xs font-sans">
-                <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
-                  {showAllStaff
-                    ? `Showing all ${displayedMembers.length} staff`
-                    : `Showing ${(staffPage - 1) * STAFF_PER_PAGE + 1}–${Math.min(staffPage * STAFF_PER_PAGE, displayedMembers.length)} of ${displayedMembers.length} staff`}
-                </span>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowAllStaff((prev) => !prev)}
-                    className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
-                  >
-                    {showAllStaff ? 'Show Balanced (6)' : `Show All (${displayedMembers.length})`}
-                  </button>
-
-                  {!showAllStaff && totalStaffPages > 1 && (
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        disabled={staffPage <= 1}
-                        onClick={() => setStaffPage((p) => Math.max(1, p - 1))}
-                        className="px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors font-medium text-[11px] cursor-pointer"
-                      >
-                        Prev
-                      </button>
-                      <span className="text-[11px] font-semibold text-slate-800 dark:text-white px-1 font-mono">
-                        {staffPage} / {totalStaffPages}
-                      </span>
-                      <button
-                        type="button"
-                        disabled={staffPage >= totalStaffPages}
-                        onClick={() => setStaffPage((p) => Math.min(totalStaffPages, p + 1))}
-                        className="px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors font-medium text-[11px] cursor-pointer"
-                      >
-                        Next
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
           </div>
+
+          {/* Pagination Controls anchored to bottom to keep left and right columns balanced and equal */}
+          {displayedMembers.length > STAFF_PER_PAGE && (
+            <div className="flex items-center justify-between pt-3 mt-4 border-t border-slate-100 dark:border-white/[0.08] text-xs font-sans">
+              <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                {showAllStaff
+                  ? `Showing all ${displayedMembers.length} staff`
+                  : `Showing ${(staffPage - 1) * STAFF_PER_PAGE + 1}–${Math.min(staffPage * STAFF_PER_PAGE, displayedMembers.length)} of ${displayedMembers.length} staff`}
+              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAllStaff((prev) => !prev)}
+                  className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                >
+                  {showAllStaff ? 'Show Balanced (8)' : `Show All (${displayedMembers.length})`}
+                </button>
+
+                {!showAllStaff && totalStaffPages > 1 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      disabled={staffPage <= 1}
+                      onClick={() => setStaffPage((p) => Math.max(1, p - 1))}
+                      className="px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors font-medium text-[11px] cursor-pointer"
+                    >
+                      Prev
+                    </button>
+                    <span className="text-[11px] font-semibold text-slate-800 dark:text-white px-1 font-mono">
+                      {staffPage} / {totalStaffPages}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={staffPage >= totalStaffPages}
+                      onClick={() => setStaffPage((p) => Math.min(totalStaffPages, p + 1))}
+                      className="px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors font-medium text-[11px] cursor-pointer"
+                    >
+                      Next
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Quick Admin Actions & Talent Widget & Deadlines */}
@@ -776,75 +776,67 @@ export const AdminOverview: React.FC = () => {
             </div>
           </div>
 
-          {/* Governance Operations */}
+          {/* Governance Operations - Compact 2x2 Action Pad */}
           <div className="dark-glass-card p-4 sm:p-5 space-y-3 shadow-sm transition-all hover:border-slate-300 dark:hover:border-white/20">
             <h3 className="text-xs font-sans font-bold text-slate-900 dark:text-white uppercase tracking-wider pb-2 border-b border-slate-100 dark:border-white/[0.08]">
               Governance Operations
             </h3>
 
-            <div className="space-y-2 text-xs font-sans">
+            <div className="grid grid-cols-2 gap-2 text-xs font-sans">
               <Link
                 to="/admin/calibration"
-                className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                title="Open Calibration Hub"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
-                    <Sliders className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs truncate">Calibration Hub</div>
-                    <div className="text-[10px] text-slate-600 dark:text-zinc-300 font-medium truncate">Adjust & release</div>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
+                  <Sliders className="w-3.5 h-3.5" />
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-bold text-xs truncate">Calibration</div>
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium truncate">Adjust & release</div>
+                </div>
               </Link>
 
               <Link
                 to={`/admin/cycles/${currentCycle.id}`}
-                className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                title="Advance Cycle Stage"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
-                    <RefreshCw className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs truncate">Advance Cycle Stage</div>
-                    <div className="text-[10px] text-slate-600 dark:text-zinc-300 font-medium truncate">Advance stage</div>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
+                  <RefreshCw className="w-3.5 h-3.5" />
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-bold text-xs truncate">Cycle Stage</div>
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium truncate">Advance stage</div>
+                </div>
               </Link>
 
               <Link
                 to="/admin/users"
-                className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                title="Talent Directory"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
-                    <Users className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs truncate">Talent Directory</div>
-                    <div className="text-[10px] text-slate-600 dark:text-zinc-300 font-medium truncate">Profiles & roles</div>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
+                  <Users className="w-3.5 h-3.5" />
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-bold text-xs truncate">Directory</div>
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium truncate">Profiles & roles</div>
+                </div>
               </Link>
 
               <Link
                 to="/admin/audit"
-                className="flex items-center justify-between p-2.5 sm:p-3 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                className="flex items-center gap-2 p-2 sm:p-2.5 rounded-xl border border-slate-200 dark:border-white/[0.08] bg-slate-50/50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] hover:border-slate-300 dark:hover:border-white/20 text-slate-800 dark:text-white transition-all group"
+                title="Compliance Audit Trail"
               >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
-                    <History className="w-3.5 h-3.5" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="font-bold text-xs truncate">Audit Trail</div>
-                    <div className="text-[10px] text-slate-600 dark:text-zinc-300 font-medium truncate">Traceability logs</div>
-                  </div>
+                <div className="w-7 h-7 rounded-lg bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 flex items-center justify-center shrink-0">
+                  <History className="w-3.5 h-3.5" />
                 </div>
-                <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-slate-900 dark:group-hover:text-white transition-colors shrink-0" />
+                <div className="min-w-0">
+                  <div className="font-bold text-xs truncate">Audit Trail</div>
+                  <div className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium truncate">Audit logs</div>
+                </div>
               </Link>
             </div>
           </div>

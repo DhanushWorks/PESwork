@@ -184,30 +184,40 @@ export const EmployeeFeedback: React.FC = () => {
 
   return (
     <div className="space-y-6 w-full pb-12 animate-fade-in font-sans">
-      {/* Tabs & Action Bar Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
+      {/* Tabs & Action Bar Toolbar - Unified Single-Row Symmetrical Layout */}
+      <div className="flex items-center justify-between gap-2 sm:gap-3 w-full pb-1">
         <RubberSegmentedControl
           options={[
             {
               value: 'received',
-              label: 'Received Feedback',
+              label: (
+                <>
+                  <span className="hidden sm:inline">Received Feedback</span>
+                  <span className="sm:hidden">Received</span>
+                </>
+              ),
               count: feedback.received.length,
-              icon: <MessageSquareHeart className="w-3.5 h-3.5" />,
+              icon: <MessageSquareHeart className="w-3.5 h-3.5 shrink-0" />,
             },
             {
               value: 'sent',
-              label: 'Sent Feedback',
+              label: (
+                <>
+                  <span className="hidden sm:inline">Sent Feedback</span>
+                  <span className="sm:hidden">Sent</span>
+                </>
+              ),
               count: feedback.sent.length,
-              icon: <Send className="w-3.5 h-3.5" />,
+              icon: <Send className="w-3.5 h-3.5 shrink-0" />,
             },
           ]}
           value={activeTab}
           onChange={(val) => setActiveTab(val as 'received' | 'sent')}
           size="sm"
-          className="h-8.5"
+          className="h-8.5 shrink-0"
         />
 
-        {/* Sleek, Compact Give Feedback Button (Matching Height & Pill Shape) */}
+        {/* Sleek, Compact Give Feedback Button (Matching Height & Capsule Pill Shape) */}
         <button
           type="button"
           onClick={() => {
@@ -216,10 +226,10 @@ export const EmployeeFeedback: React.FC = () => {
             }
             setShowModal(true)
           }}
-          className="h-8.5 px-3.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-slate-100 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 whitespace-nowrap shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all shrink-0 self-end sm:self-auto"
+          className="h-8.5 px-3 sm:px-3.5 rounded-full bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-slate-100 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 whitespace-nowrap shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all shrink-0"
         >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Give Feedback</span>
+          <Plus className="w-3.5 h-3.5 shrink-0" />
+          <span><span className="hidden xs:inline">Give </span>Feedback</span>
         </button>
       </div>
 
@@ -228,14 +238,14 @@ export const EmployeeFeedback: React.FC = () => {
         <LoadingState message="Loading peer recognition..." variant="card" />
       ) : items.length === 0 ? (
         <EmptyState
-          title={activeTab === 'received' ? 'No feedback received yet' : 'No feedback sent yet'}
+          title={activeTab === 'received' ? 'No feedback yet' : 'No sent feedback'}
           description={
             activeTab === 'received'
-              ? 'Colleagues can share kudos and coaching moments with you at any time.'
-              : 'Recognize a colleague’s great work or offer a helpful tip.'
+              ? 'Feedback from colleagues will appear here.'
+              : 'Share kudos or feedback with colleagues.'
           }
           action={{
-            label: 'Give Feedback to Colleague',
+            label: 'Give Feedback',
             onClick: () => setShowModal(true),
           }}
         />
