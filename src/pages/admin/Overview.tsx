@@ -115,12 +115,27 @@ export const AdminOverview: React.FC = () => {
   const productMembers = productStaff.filter((u) => u.id !== 'u-mgr-3' && u.role !== 'admin')
 
   const [selectedDeptFilter, setSelectedDeptFilter] = useState<'all' | 'Engineering' | 'Product & Experience'>('all')
+  const [staffPage, setStaffPage] = useState(1)
+  const [showAllStaff, setShowAllStaff] = useState(false)
+  const STAFF_PER_PAGE = 6
+
+  // Reset pagination when department filter changes
+  useEffect(() => {
+    setStaffPage(1)
+  }, [selectedDeptFilter])
 
   const displayedMembers = useMemo(() => {
     if (selectedDeptFilter === 'Engineering') return engineeringMembers
     if (selectedDeptFilter === 'Product & Experience') return productMembers
     return [...engineeringMembers, ...productMembers]
   }, [selectedDeptFilter, engineeringMembers, productMembers])
+
+  const totalStaffPages = Math.ceil(displayedMembers.length / STAFF_PER_PAGE) || 1
+  const paginatedStaff = useMemo(() => {
+    if (showAllStaff) return displayedMembers
+    const start = (staffPage - 1) * STAFF_PER_PAGE
+    return displayedMembers.slice(start, start + STAFF_PER_PAGE)
+  }, [displayedMembers, staffPage, showAllStaff])
 
   // Dynamic active cycle derived from fresh cycles list
   const currentCycle = useMemo(() => {
@@ -486,7 +501,7 @@ export const AdminOverview: React.FC = () => {
   return (
     <div className="space-y-4 sm:space-y-5 w-full pb-24 sm:pb-28 lg:pb-20 font-sans">
       {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <MetricCard
           title="Active Headcount"
           value={totalEmployees}
@@ -673,10 +688,55 @@ export const AdminOverview: React.FC = () => {
               </div>
             </div>
 
-            {/* Employee Cards Grid - Perfectly Symmetrical, Zero Void */}
+            {/* Employee Cards Grid - 6 Cards per view (3 rows of 2), perfectly matching Upcoming Deadlines height */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {displayedMembers.map(renderEmployeeCard)}
+              {paginatedStaff.map(renderEmployeeCard)}
             </div>
+
+            {/* Pagination Controls to keep left and right columns balanced and equal */}
+            {displayedMembers.length > STAFF_PER_PAGE && (
+              <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-white/[0.08] text-xs font-sans">
+                <span className="text-[11px] text-slate-500 dark:text-zinc-400 font-medium">
+                  {showAllStaff
+                    ? `Showing all ${displayedMembers.length} staff`
+                    : `Showing ${(staffPage - 1) * STAFF_PER_PAGE + 1}–${Math.min(staffPage * STAFF_PER_PAGE, displayedMembers.length)} of ${displayedMembers.length} staff`}
+                </span>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllStaff((prev) => !prev)}
+                    className="text-[11px] font-semibold text-slate-600 dark:text-zinc-300 hover:text-slate-900 dark:hover:text-white px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
+                  >
+                    {showAllStaff ? 'Show Balanced (6)' : `Show All (${displayedMembers.length})`}
+                  </button>
+
+                  {!showAllStaff && totalStaffPages > 1 && (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={staffPage <= 1}
+                        onClick={() => setStaffPage((p) => Math.max(1, p - 1))}
+                        className="px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors font-medium text-[11px] cursor-pointer"
+                      >
+                        Prev
+                      </button>
+                      <span className="text-[11px] font-semibold text-slate-800 dark:text-white px-1 font-mono">
+                        {staffPage} / {totalStaffPages}
+                      </span>
+                      <button
+                        type="button"
+                        disabled={staffPage >= totalStaffPages}
+                        onClick={() => setStaffPage((p) => Math.min(totalStaffPages, p + 1))}
+                        className="px-2 py-1 rounded-md border border-slate-200 dark:border-white/10 text-slate-700 dark:text-zinc-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-white/[0.06] transition-colors font-medium text-[11px] cursor-pointer"
+                      >
+                        Next
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -827,7 +887,7 @@ export const AdminOverview: React.FC = () => {
               </div>
             ) : (
               <div className="space-y-2">
-                {upcomingDeadlines.slice(0, 4).map((dl) => (
+                {upcomingDeadlines.slice(0, 6).map((dl) => (
                   <Link
                     key={dl.id}
                     to={`/admin/cycles/${dl.cycleId}`}

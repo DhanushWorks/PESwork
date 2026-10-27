@@ -2,7 +2,7 @@ import React, { useRef, useState, useLayoutEffect, useEffect, useMemo } from 're
 
 export interface RubberSegmentOption {
   value: string
-  label: string
+  label: React.ReactNode
   count?: number
   icon?: React.ReactNode
 }
@@ -53,7 +53,7 @@ export const RubberSegmentedControl: React.FC<RubberSegmentedControlProps> = ({
 
   // Serialize options to a stable string primitive so inline array prop declarations never cause infinite re-renders
   const optionsKey = options
-    .map((o) => (typeof o === 'string' ? o : `${o.value}:${o.label}:${o.count ?? ''}`))
+    .map((o) => (typeof o === 'string' ? o : `${o.value}:${typeof o.label === 'string' ? o.label : ''}:${o.count ?? ''}`))
     .join('|')
 
   const normalizedOptions: RubberSegmentOption[] = useMemo(() => {

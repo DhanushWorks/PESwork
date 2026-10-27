@@ -108,26 +108,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       console.warn('Storage set error:', e)
     }
   }, [])
-  const [isAuthenticated, setIsAuthenticatedState] = useState<boolean>(() => {
-    try {
-      return sessionStorage.getItem('performiq_authenticated') === 'true'
-    } catch {
-      return false
-    }
-  })
-
-  const setIsAuthenticated = useCallback((val: boolean) => {
-    setIsAuthenticatedState(val)
-    try {
-      if (val) {
-        sessionStorage.setItem('performiq_authenticated', 'true')
-      } else {
-        sessionStorage.removeItem('performiq_authenticated')
-      }
-    } catch (e) {
-      console.warn('Storage set error:', e)
-    }
-  }, [])
   const [dataMode, setDataMode] = useState<'clean' | 'full'>(() => storageService.getState().dataMode || 'clean')
   const [theme, setThemeState] = useState<'light' | 'dark'>(() => {
     try {

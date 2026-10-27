@@ -419,7 +419,7 @@ export const EmployeeDashboard: React.FC = () => {
       </svg>
 
       {/* Metric Cards Row (Compact, matching Admin Overview) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
         <MetricCard
           title="Active Goals"
           value={isEnrolledInCycle ? animatedGoalsCount : 0}

@@ -146,11 +146,7 @@ export const ManagerAnalytics: React.FC = () => {
             const count = bandCounts[band.label] || 0
             const percentage = reviews.length > 0 ? Math.round((count / reviews.length) * 100) : 0
 
-            if (loading) {
-    return <LoadingState message="Loading team performance analytics..." variant="page" />
-  }
-
-  return (
+            return (
               <div key={band.band} className="space-y-1.5 text-xs">
                 <div className="flex items-center justify-between font-medium">
                   <span className="text-slate-800 dark:text-[#F0F3FA]">

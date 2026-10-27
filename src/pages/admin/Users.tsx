@@ -231,7 +231,7 @@ export const AdminUsers: React.FC = () => {
   return (
     <div className="space-y-4 w-full pb-3 font-sans">
       {/* Executive Talent Cohort Showcase Banner */}
-      <div className="rounded-2xl sm:rounded-3xl p-6 sm:p-7 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md transition-colors">
+      <div className="rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-7 border border-slate-200/90 dark:border-zinc-700/80 bg-white dark:bg-[#18181b] text-slate-900 dark:text-white shadow-xs dark:shadow-md transition-colors">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
             {/* Live Interactive Avatar Group with tooltips */}
@@ -259,12 +259,31 @@ export const AdminUsers: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 self-start lg:self-center flex-wrap">
+          {/* Action Toolbar: View Mode Switcher Capsule & Add Employee Button */}
+          <div className="flex items-center justify-between sm:justify-start lg:justify-end gap-2.5 w-full lg:w-auto pt-3.5 lg:pt-0 border-t border-slate-100 dark:border-white/[0.06] lg:border-t-0 shrink-0">
             {/* View Mode Switcher Capsule */}
             <RubberSegmentedControl
               options={[
-                { value: 'grid', label: 'Executive Cards', icon: <LayoutGrid className="w-3.5 h-3.5" /> },
-                { value: 'table', label: 'Table View', icon: <List className="w-3.5 h-3.5" /> },
+                {
+                  value: 'grid',
+                  label: (
+                    <>
+                      <span className="hidden sm:inline">Executive Cards</span>
+                      <span className="sm:hidden">Cards</span>
+                    </>
+                  ),
+                  icon: <LayoutGrid className="w-3.5 h-3.5" />,
+                },
+                {
+                  value: 'table',
+                  label: (
+                    <>
+                      <span className="hidden sm:inline">Table View</span>
+                      <span className="sm:hidden">Table</span>
+                    </>
+                  ),
+                  icon: <List className="w-3.5 h-3.5" />,
+                },
               ]}
               value={viewMode}
               onChange={(val) => setViewMode(val as 'grid' | 'table')}
@@ -274,7 +293,7 @@ export const AdminUsers: React.FC = () => {
             <button
               type="button"
               onClick={openCreateModal}
-              className="h-8.5 px-3.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0"
+              className="h-9 px-3.5 rounded-full sm:rounded-xl bg-slate-900 hover:bg-slate-800 text-white dark:bg-white dark:hover:bg-slate-100 dark:text-zinc-900 font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 transition-all border border-transparent shrink-0"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Add Employee</span>

@@ -31,39 +31,39 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       onClick={onClick}
       className={`dark-glass-card ${
         onClick ? 'dark-glass-card-lift cursor-pointer' : ''
-      } p-3.5 sm:p-4 rounded-xl sm:rounded-2xl select-none flex flex-col justify-between transition-all`}
+      } p-3 sm:p-4 rounded-xl sm:rounded-2xl select-none flex flex-col justify-between transition-all min-h-[92px] sm:min-h-[104px]`}
     >
       {/* Top row: Label & Chip Icon */}
-      <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-bold uppercase tracking-[0.06em] text-slate-900 dark:text-white">
+      <div className="flex items-center justify-between gap-1.5">
+        <span className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.05em] text-slate-900 dark:text-white truncate">
           {title}
         </span>
         {icon && (
-          <div className="w-6 h-6 rounded-lg grid place-items-center text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shrink-0">
+          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg grid place-items-center text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shrink-0">
             {icon}
           </div>
         )}
       </div>
 
       {/* Value & Badge */}
-      <div className="my-1.5 flex items-baseline justify-between gap-2 overflow-hidden">
-        <div className="text-2xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white tabular-nums leading-none truncate">
+      <div className="my-1 sm:my-1.5 flex items-baseline justify-between gap-1.5 overflow-hidden">
+        <div className="text-xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white tabular-nums leading-none truncate">
           {value}
         </div>
-        {badge && <div className="shrink-0">{badge}</div>}
+        {badge && <div className="shrink-0 scale-90 sm:scale-100 origin-right">{badge}</div>}
       </div>
 
       {/* Subtitle / Trend */}
       {(subtitle || trend) && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-zinc-300 flex-wrap font-medium">
+        <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-600 dark:text-zinc-300 flex-wrap font-medium">
           {trend && (
             <span
-              className="text-[10px] sm:text-[10.5px] font-semibold px-2 py-0.5 rounded-md border inline-flex items-center shrink-0 bg-slate-100 text-slate-800 border-slate-300/80 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700"
+              className="text-[9px] sm:text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md border inline-flex items-center shrink-0 bg-slate-100 text-slate-800 border-slate-300/80 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700"
             >
               <span>{trend.value}</span>
             </span>
           )}
-          {subtitle && <span className="line-clamp-1">{subtitle}</span>}
+          {subtitle && <span className="line-clamp-1 truncate">{subtitle}</span>}
         </div>
       )}
     </div>
