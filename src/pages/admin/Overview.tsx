@@ -525,7 +525,7 @@ export const AdminOverview: React.FC = () => {
               ? '25%'
               : '12%'
           }
-          subtitle={`Stage: ${effectiveStage.replace('_', ' ')}`}
+          subtitle={`Stage: ${effectiveStage.replace(/_/g, ' ')}`}
           trend={{ value: 'On schedule', neutral: true }}
         />
 
@@ -533,13 +533,14 @@ export const AdminOverview: React.FC = () => {
           title="Goal Execution"
           value={`${goalAttainmentRate}%`}
           subtitle={`${goals.length} tracked targets`}
+          trend={{ value: goals.length > 0 ? `${goals.filter((g) => g.status === 'approved').length} approved` : 'Active', neutral: true }}
         />
 
         <MetricCard
           title="Calibration Window"
           value="Oct 20"
           subtitle={`Release: ${formatDate(activeCycle?.deadlines?.releaseDate)}`}
-          trend={{ value: '4 days left', isPositive: true }}
+          trend={{ value: '4 days left', neutral: true }}
         />
       </div>
 

@@ -16,7 +16,6 @@ import {
   Clock,
   History,
   ShieldCheck,
-  Sparkles,
   FileCheck,
   Scale,
 } from 'lucide-react'
@@ -207,9 +206,8 @@ export const EmployeeResults: React.FC = () => {
           </div>
 
           <div className="pt-4 max-w-lg mx-auto bg-slate-50 dark:bg-white/[0.03] rounded-xl p-4 border border-slate-200 dark:border-white/[0.08] text-left text-xs space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-slate-800 dark:text-[#F0F3FA]">
-              <Sparkles className="w-4 h-4 text-slate-500 dark:text-zinc-400" />
-              <span>Next Steps</span>
+            <div className="font-semibold text-slate-800 dark:text-[#F0F3FA]">
+              Next Steps
             </div>
             <ul className="list-disc list-inside text-slate-600 dark:text-zinc-300 space-y-1 text-[11px] pl-1 font-sans">
               <li>Reviews are currently in progress.</li>

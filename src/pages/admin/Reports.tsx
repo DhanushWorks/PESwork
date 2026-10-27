@@ -13,7 +13,7 @@ import {
   CalibrationItem,
 } from '../../services'
 import { User, Goal, SelfReview, ManagerReview, CalibrationRecord, EvaluationResult } from '../../types'
-import { RefreshCw } from 'lucide-react'
+import { RefreshCw, Users, Star, Target, Sliders } from 'lucide-react'
 
 export const AdminReports: React.FC = () => {
   const { activeCycle, allCycles, switchActiveCycle } = useApp()
@@ -329,21 +329,25 @@ export const AdminReports: React.FC = () => {
           title="Participation"
           value={`${overallParticipationRate}%`}
           subtitle="Organization-wide"
+          icon={<Users className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 dark:text-zinc-300" />}
         />
         <MetricCard
           title="Average Rating"
           value={avgFinalRating}
           subtitle="Scale 1.0 – 5.0"
+          icon={<Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-500 dark:text-amber-400" />}
         />
         <MetricCard
           title="Goal Progress"
           value={`${goalExecutionIndex}%`}
           subtitle="Milestones delivered"
+          icon={<Target className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-indigo-500 dark:text-indigo-400" />}
         />
         <MetricCard
           title="Calibration"
           value={`${calibrationRate}%`}
           subtitle="Variances resolved"
+          icon={<Sliders className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-slate-600 dark:text-zinc-300" />}
         />
       </div>
 

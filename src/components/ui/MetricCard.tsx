@@ -29,25 +29,25 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   return (
     <div
       onClick={onClick}
-      className={`dark-glass-card ${
+      className={`dark-glass-card group ${
         onClick ? 'dark-glass-card-lift cursor-pointer' : ''
-      } p-3 sm:p-4 rounded-xl sm:rounded-2xl select-none flex flex-col justify-between transition-all min-h-[92px] sm:min-h-[104px]`}
+      } p-3.5 sm:p-4.5 rounded-2xl select-none flex flex-col justify-between transition-all min-h-[96px] sm:min-h-[110px]`}
     >
       {/* Top row: Label & Chip Icon */}
-      <div className="flex items-center justify-between gap-1.5">
-        <span className="text-[10.5px] sm:text-xs font-bold uppercase tracking-[0.05em] text-slate-900 dark:text-white truncate">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] sm:text-xs font-bold text-slate-700 dark:text-zinc-200 uppercase tracking-wider truncate">
           {title}
         </span>
         {icon && (
-          <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg grid place-items-center text-slate-700 dark:text-zinc-300 bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 shrink-0">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl flex items-center justify-center text-slate-600 dark:text-zinc-300 bg-slate-100/90 dark:bg-zinc-800/90 border border-slate-200/70 dark:border-zinc-700/60 shadow-2xs shrink-0 transition-transform duration-200 group-hover:scale-105">
             {icon}
           </div>
         )}
       </div>
 
       {/* Value & Badge */}
-      <div className="my-1 sm:my-1.5 flex items-baseline justify-between gap-1.5 overflow-hidden">
-        <div className="text-xl sm:text-[26px] font-bold tracking-tight text-slate-900 dark:text-white tabular-nums leading-none truncate">
+      <div className="my-1 sm:my-1.5 flex items-baseline justify-between gap-2 overflow-hidden">
+        <div className="text-xl sm:text-2xl lg:text-[26px] font-semibold tracking-tight text-slate-900 dark:text-white tabular-nums leading-tight truncate">
           {value}
         </div>
         {badge && <div className="shrink-0 scale-90 sm:scale-100 origin-right">{badge}</div>}
@@ -55,15 +55,24 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* Subtitle / Trend */}
       {(subtitle || trend) && (
-        <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-slate-600 dark:text-zinc-300 flex-wrap font-medium">
+        <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-slate-500 dark:text-zinc-400 min-w-0">
           {trend && (
             <span
-              className="text-[9px] sm:text-[10.5px] font-semibold px-1.5 py-0.5 rounded-md border inline-flex items-center shrink-0 bg-slate-100 text-slate-800 border-slate-300/80 dark:bg-zinc-800 dark:text-zinc-200 dark:border-zinc-700"
+              className={`text-[10px] sm:text-[10.5px] font-medium px-2 py-0.5 rounded-full border inline-flex items-center gap-1 shrink-0 ${
+                trend.isPositive
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/40'
+                  : trend.neutral
+                  ? 'bg-slate-100 text-slate-700 border-slate-200/80 dark:bg-zinc-800 dark:text-zinc-300 dark:border-zinc-700'
+                  : 'bg-amber-50 text-amber-700 border-amber-200/80 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/40'
+              }`}
             >
+              {trend.pulse && (
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              )}
               <span>{trend.value}</span>
             </span>
           )}
-          {subtitle && <span className="line-clamp-1 truncate">{subtitle}</span>}
+          {subtitle && <span className="truncate">{subtitle}</span>}
         </div>
       )}
     </div>
