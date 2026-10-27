@@ -626,7 +626,7 @@ export const EmployeeGoals: React.FC = () => {
       {/* Search & Segmented Filter Bar (Single-Line, No Card Wrapper: Equal Heights & Balanced Widths) */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full min-w-0 max-w-full">
         {/* Left: Status Filter Capsule */}
-        <div className="w-full sm:w-auto min-w-0 max-w-full overflow-x-auto scrollbar-none py-0.5">
+        <div className="w-full sm:w-auto min-w-0 max-w-full py-0.5">
           <RubberSegmentedControl
             options={[
               { value: 'all', label: 'All', count: goals.length },
@@ -655,6 +655,7 @@ export const EmployeeGoals: React.FC = () => {
             value={statusFilter}
             onChange={(val) => setStatusFilter(val as any)}
             size="sm"
+            className="w-full sm:w-auto"
           />
         </div>
 

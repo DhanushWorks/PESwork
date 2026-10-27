@@ -296,23 +296,20 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
               onClick={() => setShowNotifMenu(!showNotifMenu)}
               className={`relative p-2 rounded-xl transition-all duration-200 cursor-pointer group active:scale-95 border ${
                 showNotifMenu
-                  ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white border-slate-300 dark:border-white ring-2 ring-slate-900/10 dark:ring-white/40 dark:shadow-[0_0_16px_rgba(255,255,255,0.4)]'
-                  : 'bg-slate-50 dark:bg-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.16] text-slate-700 dark:text-white border-slate-200 dark:border-white/30 hover:border-slate-300 dark:hover:border-white/60 dark:shadow-[0_0_12px_rgba(255,255,255,0.1)]'
+                  ? 'bg-slate-100 dark:bg-white/20 text-slate-900 dark:text-white border-slate-300 dark:border-white ring-2 ring-slate-900/10 dark:ring-white/40'
+                  : 'bg-slate-50 dark:bg-white/[0.08] hover:bg-slate-100 dark:hover:bg-white/[0.16] text-slate-700 dark:text-white border-slate-200 dark:border-white/30 hover:border-slate-300 dark:hover:border-white/60'
               }`}
               title="Notifications"
               aria-label="View notifications"
             >
               <Bell
                 strokeWidth={2.4}
-                className={`w-4 h-4 transition-all duration-300 text-slate-800 dark:text-white dark:stroke-white dark:drop-shadow-[0_0_8px_rgba(255,255,255,0.9)] ${
-                  showNotifMenu ? 'animate-bell-ring scale-105' : 'group-hover:scale-110 dark:group-hover:drop-shadow-[0_0_12px_rgba(255,255,255,1)]'
+                className={`w-4 h-4 transition-all duration-300 text-slate-800 dark:text-white dark:stroke-white ${
+                  showNotifMenu ? 'animate-bell-ring scale-105' : 'group-hover:scale-110'
                 }`}
               />
               {unreadNotificationsCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-900 dark:bg-white opacity-90"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-900 dark:bg-white border border-white dark:border-black dark:shadow-[0_0_6px_#ffffff]"></span>
-                </span>
+                <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-slate-900 dark:bg-white border-2 border-white dark:border-black pointer-events-none" />
               )}
             </button>
 
@@ -436,16 +433,13 @@ export const AppHeader: React.FC<AppHeaderProps> = ({
                               </span>
                             </div>
 
-                            {/* Micro Card Number & Unread Pulse */}
+                            {/* Micro Card Number & Unread Indicator */}
                             <div className="flex items-center gap-1.5">
                               <span className="text-[9px] font-sans text-slate-400 dark:text-zinc-500 tracking-wider">
                                 #{cardId}
                               </span>
                               {!n.read && (
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-slate-900 dark:bg-white opacity-75" />
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-slate-900 dark:bg-white" />
-                                </span>
+                                <span className="h-2 w-2 rounded-full bg-slate-900 dark:bg-white shrink-0" />
                               )}
                             </div>
                           </div>

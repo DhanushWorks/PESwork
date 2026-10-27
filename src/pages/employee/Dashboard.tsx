@@ -660,25 +660,27 @@ export const EmployeeDashboard: React.FC = () => {
                 {upcomingDeadlines.map((dl) => (
                   <div
                     key={dl.id}
-                    className="flex items-center justify-between gap-3 py-3 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors"
+                    className="flex items-center justify-between gap-3 py-3 px-2 rounded-xl hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors group"
                   >
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center justify-between gap-2">
                         <Link
                           to={dl.actionUrl}
-                          className="text-sm font-semibold text-slate-900 dark:text-white hover:text-slate-700 dark:hover:text-zinc-200 transition-colors truncate"
+                          className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-white hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors truncate"
+                          title={dl.taskTitle}
                         >
                           {dl.taskTitle}
                         </Link>
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border ${dl.badgeClass}`}>
+                        <span
+                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] sm:text-[10.5px] font-semibold border shrink-0 whitespace-nowrap ${dl.badgeClass}`}
+                        >
                           {dl.statusLabel}
                         </span>
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-[#8D96AA] mt-0.5">
-                        <span>{dl.relatedContext}</span>
-                        <span>•</span>
-                        <span className="inline-flex items-center gap-1 font-sans">
-                          <Calendar className="w-3 h-3 text-slate-400" />
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-[#8D96AA] mt-1 min-w-0">
+                        <span className="truncate text-[11px] sm:text-xs">{dl.relatedContext}</span>
+                        <span className="inline-flex items-center gap-1 font-sans shrink-0 whitespace-nowrap text-[11px] sm:text-xs text-slate-600 dark:text-zinc-300">
+                          <Calendar className="w-3 h-3 text-slate-400 shrink-0" />
                           {formatDate(dl.dueDate)}
                         </span>
                       </div>
@@ -892,14 +894,12 @@ export const EmployeeDashboard: React.FC = () => {
                       {item.status}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-[#8D96AA] mt-1 flex items-center gap-2">
-                    <span>Period: {item.period}</span>
-                    {item.completionDate && (
-                      <>
-                        <span>•</span>
-                        <span>Completed {formatDate(item.completionDate)}</span>
-                      </>
-                    )}
+                  <div className="text-xs text-slate-500 dark:text-[#8D96AA] mt-1">
+                    <span>
+                      {item.completionDate
+                        ? `Completed ${formatDate(item.completionDate)}`
+                        : item.period}
+                    </span>
                   </div>
                   {item.managerComments && (
                     <p className="text-xs text-slate-600 dark:text-zinc-300 mt-2 line-clamp-2 bg-slate-50 dark:bg-white/[0.02] p-2.5 rounded-lg border border-slate-100 dark:border-white/[0.05]">
@@ -909,10 +909,10 @@ export const EmployeeDashboard: React.FC = () => {
                   )}
                 </div>
 
-                {/* Right: Score & View Details */}
-                <div className="flex items-center gap-4 sm:gap-6 shrink-0 md:pl-4">
-                  <div className="text-right">
-                    <div className="flex items-baseline justify-end gap-1">
+                {/* Right: Score & View Details (Full-width on mobile with balanced left/right alignment) */}
+                <div className="flex items-center justify-between md:justify-end gap-4 sm:gap-6 w-full md:w-auto shrink-0 md:pl-4 pt-3 md:pt-0 border-t md:border-0 border-slate-100 dark:border-white/[0.05]">
+                  <div className="text-left md:text-right">
+                    <div className="flex items-baseline justify-start md:justify-end gap-1">
                       <span className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white tabular-nums">
                         {item.rating.toFixed(2)}
                       </span>
@@ -925,7 +925,7 @@ export const EmployeeDashboard: React.FC = () => {
 
                   <Link
                     to="/employee/results"
-                    className="h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-zinc-900/90 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0"
+                    className="h-8.5 px-3.5 rounded-xl border border-slate-200 dark:border-white/15 bg-white dark:bg-zinc-900/90 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-800 dark:text-zinc-200 text-xs font-semibold transition-all inline-flex items-center gap-1.5 shadow-2xs hover:shadow-xs hover:-translate-y-0.5 active:translate-y-0 shrink-0"
                   >
                     <span>View Details</span>
                     <ChevronRight className="w-3.5 h-3.5" />

@@ -273,37 +273,48 @@ export const AdminReports: React.FC = () => {
   return (
     <div className="space-y-4 w-full pb-4 sm:pb-6 font-sans">
       {/* Top Filter Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1">
-        <span className="text-xs font-sans font-medium text-slate-500 dark:text-zinc-400">
-          Performance Reports
-        </span>
-        <div className="flex items-center gap-2 text-xs relative z-30">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-1 w-full min-w-0">
+        <div className="flex items-center justify-between w-full sm:w-auto">
+          <span className="text-xs font-semibold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+            Performance Reports
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs relative z-30 w-full sm:w-auto min-w-0">
           {availableDepartments.length > 1 && (
-            <CustomDropdown
-              value={selectedDept}
-              onChange={setSelectedDept}
-              options={[
-                { value: 'all', label: 'All Departments' },
-                ...availableDepartments.map((d) => ({ value: d, label: d })),
-              ]}
-            />
+            <div className="flex-1 sm:flex-initial min-w-0 sm:w-auto">
+              <CustomDropdown
+                value={selectedDept}
+                onChange={setSelectedDept}
+                fullWidth
+                className="w-full sm:w-auto"
+                options={[
+                  { value: 'all', label: 'All Departments' },
+                  ...availableDepartments.map((d) => ({ value: d, label: d })),
+                ]}
+              />
+            </div>
           )}
 
-          <CustomDropdown
-            value={activeCycle.id}
-            onChange={switchActiveCycle}
-            align="right"
-            options={allCycles.map((c) => ({
-              value: c.id,
-              label: c.name,
-            }))}
-          />
+          <div className="flex-1 sm:flex-initial min-w-0 sm:w-auto sm:max-w-xs">
+            <CustomDropdown
+              value={activeCycle.id}
+              onChange={switchActiveCycle}
+              align="right"
+              fullWidth
+              className="w-full sm:w-auto"
+              options={allCycles.map((c) => ({
+                value: c.id,
+                label: c.name,
+              }))}
+            />
+          </div>
 
           <button
             type="button"
             onClick={fetchData}
             disabled={loading}
-            className="p-1.5 rounded-lg border border-slate-200 dark:border-white/10 hover:bg-slate-100 dark:hover:bg-white/[0.08] text-slate-600 dark:text-zinc-300 transition-colors cursor-pointer shrink-0"
+            className="h-8 w-8 flex items-center justify-center rounded-lg border border-slate-200 dark:border-zinc-800 bg-white dark:bg-[#18181b] hover:bg-slate-50 dark:hover:bg-zinc-800/60 hover:border-slate-300 dark:hover:border-zinc-700 text-slate-700 dark:text-zinc-200 shadow-2xs transition-colors cursor-pointer shrink-0"
             title="Refresh reports data"
             aria-label="Refresh reports data"
           >

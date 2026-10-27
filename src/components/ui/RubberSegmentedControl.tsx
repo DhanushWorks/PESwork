@@ -150,6 +150,13 @@ export const RubberSegmentedControl: React.FC<RubberSegmentedControlProps> = ({
     updatePosition(value, !isFirst)
     prevValueRef.current = value
 
+    if (!isFirst) {
+      const btn = buttonRefs.current[value]
+      if (btn) {
+        btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+      }
+    }
+
     return () => {
       if (timerRef.current) clearTimeout(timerRef.current)
     }
@@ -174,77 +181,90 @@ export const RubberSegmentedControl: React.FC<RubberSegmentedControlProps> = ({
     if (optValue !== value) {
       onChange(optValue)
     }
+    const btn = buttonRefs.current[optValue]
+    if (btn) {
+      btn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+    }
   }
 
   return (
     <div
-      ref={containerRef}
       style={{
-        touchAction: 'manipulation',
+        touchAction: 'pan-x',
       }}
-      className={`relative inline-flex items-center p-1 rounded-full bg-slate-100/90 dark:bg-white/[0.05] border border-slate-200/80 dark:border-white/10 select-none overflow-x-auto no-scrollbar shadow-2xs ${
-        fullWidth ? 'w-full justify-between' : ''
+      className={`relative rounded-full bg-slate-100/90 dark:bg-white/[0.05] border border-slate-200/80 dark:border-white/10 select-none shadow-2xs p-1 max-w-full overflow-hidden ${
+        fullWidth ? 'w-full' : 'inline-flex'
       } ${className}`}
-      role="tablist"
-      aria-orientation="horizontal"
     >
-      {/* Sliding Rubber Indicator: FILLED DARK in White Mode, FILLED WHITE in Dark Mode */}
-      {indicator.isReady && (
-        <div
-          className={`absolute top-1 bottom-1 rounded-full bg-slate-900 dark:bg-white shadow-xs pointer-events-none ${indicatorClassName}`}
-          style={{
-            width: `${indicator.width}px`,
-            transform: `translate3d(${indicator.x}px, 0, 0) scaleX(${indicator.scaleX}) scaleY(${indicator.scaleY})`,
-            transformOrigin: indicator.origin,
-            willChange: 'transform, width',
-            transition:
-              'transform 200ms cubic-bezier(0.16, 1, 0.3, 1), width 180ms cubic-bezier(0.16, 1, 0.3, 1)',
-          }}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Segment Option Buttons */}
-      {normalizedOptions.map((opt) => {
-        const isActive = value === opt.value
-        return (
-          <button
-            key={opt.value}
-            ref={(el) => {
-              buttonRefs.current[opt.value] = el
-            }}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => handleSelect(opt.value)}
+      <div
+        ref={containerRef}
+        style={{
+          touchAction: 'pan-x',
+          WebkitOverflowScrolling: 'touch',
+          overscrollBehaviorX: 'contain',
+        }}
+        className="relative flex items-center overflow-x-auto no-scrollbar scrollbar-none w-full max-w-full h-full"
+        role="tablist"
+        aria-orientation="horizontal"
+      >
+        {/* Sliding Rubber Indicator: FILLED DARK in White Mode, FILLED WHITE in Dark Mode */}
+        {indicator.isReady && (
+          <div
+            className={`absolute top-0 bottom-0 rounded-full bg-slate-900 dark:bg-white shadow-xs pointer-events-none ${indicatorClassName}`}
             style={{
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
+              width: `${indicator.width}px`,
+              transform: `translate3d(${indicator.x}px, 0, 0) scaleX(${indicator.scaleX}) scaleY(${indicator.scaleY})`,
+              transformOrigin: indicator.origin,
+              willChange: 'transform, width',
+              transition:
+                'transform 200ms cubic-bezier(0.16, 1, 0.3, 1), width 180ms cubic-bezier(0.16, 1, 0.3, 1)',
             }}
-            className={`relative z-10 flex items-center justify-center gap-2 ${sizeClasses} font-sans font-medium rounded-full whitespace-nowrap transition-colors duration-150 cursor-pointer ${
-              fullWidth ? 'flex-1' : ''
-            } ${
-              isActive
-                ? 'text-white dark:text-black font-semibold'
-                : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
-            }`}
-          >
-            {opt.icon && <span className="shrink-0">{opt.icon}</span>}
-            <span>{opt.label}</span>
-            {typeof opt.count === 'number' && (
-              <span
-                className={`text-[10px] px-2 py-0.5 rounded-full font-sans font-bold transition-colors ${
-                  isActive
-                    ? 'bg-white/20 text-white dark:bg-black/15 dark:text-black'
-                    : 'bg-slate-200/80 text-slate-600 dark:bg-white/10 dark:text-zinc-400'
-                }`}
-              >
-                {opt.count}
-              </span>
-            )}
-          </button>
-        )
-      })}
+            aria-hidden="true"
+          />
+        )}
+
+        {/* Segment Option Buttons */}
+        {normalizedOptions.map((opt) => {
+          const isActive = value === opt.value
+          return (
+            <button
+              key={opt.value}
+              ref={(el) => {
+                buttonRefs.current[opt.value] = el
+              }}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              onClick={() => handleSelect(opt.value)}
+              style={{
+                touchAction: 'manipulation',
+                WebkitTapHighlightColor: 'transparent',
+              }}
+              className={`relative z-10 flex items-center justify-center gap-2 ${sizeClasses} font-sans font-medium rounded-full whitespace-nowrap transition-colors duration-150 cursor-pointer shrink-0 ${
+                fullWidth ? 'flex-1' : ''
+              } ${
+                isActive
+                  ? 'text-white dark:text-black font-semibold'
+                  : 'text-slate-600 hover:text-slate-900 dark:text-zinc-400 dark:hover:text-white'
+              }`}
+            >
+              {opt.icon && <span className="shrink-0">{opt.icon}</span>}
+              <span>{opt.label}</span>
+              {typeof opt.count === 'number' && (
+                <span
+                  className={`text-[10px] px-2 py-0.5 rounded-full font-sans font-bold transition-colors shrink-0 ${
+                    isActive
+                      ? 'bg-white/20 text-white dark:bg-black/15 dark:text-black'
+                      : 'bg-slate-200/80 text-slate-600 dark:bg-white/10 dark:text-zinc-400'
+                  }`}
+                >
+                  {opt.count}
+                </span>
+              )}
+            </button>
+          )
+        })}
+      </div>
     </div>
   )
 }
