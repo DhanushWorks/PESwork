@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { calibrationService, CalibrationItem, EvidencePdfMeta, GoalEvidenceItem } from '../../services'
+import { calibrationService, cycleService, CalibrationItem, EvidencePdfMeta, GoalEvidenceItem } from '../../services'
 import { apiCache } from '../../lib/apiCache'
 import { RatingBadge } from '../../components/ui/Badge'
 import { RatingInput } from '../../components/ui/RatingInput'
@@ -318,8 +318,8 @@ export const AdminCalibration: React.FC = () => {
       )
 
       success(
-        'Admin Permission Granted & Results Released',
-        `Formally approved ${selectedItem.employee.name}'s calibration (${adjustedScore.toFixed(2)}). Results are now published and synchronized across Admin, Manager, and Employee portals.`
+        'Calibration Approved',
+        `Formally approved ${selectedItem.employee.name}'s calibration (${adjustedScore.toFixed(2)}).`
       )
       setShowReviewModal(false)
       await refreshData()
@@ -337,6 +337,9 @@ export const AdminCalibration: React.FC = () => {
     setIsProcessing(true)
     try {
       await calibrationService.revokePermission(activeCycle.id, itemToRevoke.employee.id, currentUser.name)
+      if (activeCycle.stage === 'released') {
+        await cycleService.setStage(activeCycle.id, 'calibration')
+      }
       success(
         'Permission Revoked',
         `Returned ${itemToRevoke.employee.name}'s appraisal back to Calibration stage. Results are now unsealed.`

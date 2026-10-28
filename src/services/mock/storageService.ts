@@ -71,7 +71,12 @@ const BASELINE_CYCLE: ReviewCycle = {
     calibrationDue: '2026-12-15',
     releaseDate: '2026-12-20',
   },
-  participantIds: ['11111111-1111-1111-1111-111111111101', 'u-emp-1'],
+  participantIds: [
+    '11111111-1111-1111-1111-111111111101',
+    'u-emp-1',
+    '11111111-1111-1111-1111-111111111102',
+    'u-mgr-1',
+  ],
 }
 
 export function getCleanState(): DemoState {
@@ -221,8 +226,24 @@ class StorageService {
               : { ...FULL_SEED_DEVELOPMENT_PLANS },
         }
 
-        // Preserve explicit cycle stage: never overwrite or revert user-set stages
+        // Preserve explicit cycle stage and ensure baseline participant cohort contains manager Marcus Chen
         state.cycles = state.cycles.map((c) => {
+          if (c.id === BASELINE_CYCLE.id || matchesCycle(c.id, BASELINE_CYCLE.id)) {
+            const existing = Array.isArray(c.participantIds) ? c.participantIds : []
+            const merged = Array.from(
+              new Set([
+                ...existing,
+                '11111111-1111-1111-1111-111111111101',
+                'u-emp-1',
+                '11111111-1111-1111-1111-111111111102',
+                'u-mgr-1',
+              ])
+            )
+            return {
+              ...c,
+              participantIds: merged,
+            }
+          }
           return c
         })
 

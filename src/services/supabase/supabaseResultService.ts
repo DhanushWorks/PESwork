@@ -33,11 +33,10 @@ export const supabaseResultService = {
         return mockResultService.getMyResults(userId, cycleId)
       }
 
-      // Check if officially released
+      // Check if officially released to employees
       const isCycleReleased = cycle.stage === 'released' || cycle.stage === 'closed'
-      const isRowReleased = resultData.status !== 'pending'
 
-      if (!isCycleReleased && !isRowReleased) {
+      if (!isCycleReleased) {
         return {
           isReleased: false,
           cycle,
@@ -113,7 +112,7 @@ export const supabaseResultService = {
 
       for (const row of resultsData) {
         const cycle = cycleMap.get(row.cycle_id)
-        if (!cycle) continue
+        if (!cycle || (cycle.stage !== 'released' && cycle.stage !== 'closed')) continue
 
         const finalScore = Number(row.final_score || 3.0)
         const bandInfo = getRatingBand(finalScore)
@@ -155,7 +154,6 @@ export const supabaseResultService = {
    */
   async acknowledge(resultId: string): Promise<EvaluationResult> {
     apiCache.invalidate('results:')
-    const mockRes = await mockResultService.acknowledge(resultId)
 
     if (isSupabaseConfigured) {
       try {
@@ -179,6 +177,7 @@ export const supabaseResultService = {
       }
     }
 
+    const mockRes = await mockResultService.acknowledge(resultId)
     return mockRes
   },
 
@@ -187,7 +186,6 @@ export const supabaseResultService = {
    */
   async dispute(resultId: string, reason: string): Promise<EvaluationResult> {
     apiCache.invalidate('results:')
-    const mockRes = await mockResultService.dispute(resultId, reason)
 
     if (isSupabaseConfigured) {
       try {
@@ -227,6 +225,7 @@ export const supabaseResultService = {
       }
     }
 
+    const mockRes = await mockResultService.dispute(resultId, reason)
     return mockRes
   },
 

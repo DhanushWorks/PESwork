@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { goalService } from '../../services'
+import { goalService, storageService, cycleService } from '../../services'
 import { apiCache } from '../../lib/apiCache'
 import { Goal, GoalStatus } from '../../types'
 import { GoalStatusBadge } from '../../components/ui/Badge'
@@ -110,7 +110,7 @@ function getDueStatus(dueDateStr?: string) {
 }
 
 export const EmployeeGoals: React.FC = () => {
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, refreshData } = useApp()
   const { success, error, warning } = useToast()
 
   const cachedGoals = apiCache.peek<Goal[]>(`goals:user:${currentUser.id}:${activeCycle.id}`) || []
@@ -190,9 +190,16 @@ export const EmployeeGoals: React.FC = () => {
       clearTimeout(safetyTimer)
     })
 
+    const unsubscribe = storageService.subscribe(() => {
+      if (isMounted) {
+        fetchGoals()
+      }
+    })
+
     return () => {
       isMounted = false
       clearTimeout(safetyTimer)
+      unsubscribe()
     }
   }, [currentUser.id, activeCycle.id])
 
@@ -254,7 +261,7 @@ export const EmployeeGoals: React.FC = () => {
     }
 
     try {
-      await goalService.save({
+      const savedGoal = await goalService.save({
         id: editingGoal?.id,
         userId: currentUser.id,
         cycleId: activeCycle.id,
@@ -266,6 +273,17 @@ export const EmployeeGoals: React.FC = () => {
         weight: Number(formWeight),
         dueDate: formDueDate,
         status: editingGoal?.status === 'returned' ? 'draft' : editingGoal?.status || 'draft',
+      })
+
+      // Immediate optimistic update in state
+      setGoals((prev) => {
+        const idx = prev.findIndex((g) => g.id === savedGoal.id)
+        if (idx >= 0) {
+          const next = [...prev]
+          next[idx] = savedGoal
+          return next
+        }
+        return [savedGoal, ...prev]
       })
 
       success(
@@ -281,6 +299,7 @@ export const EmployeeGoals: React.FC = () => {
 
   const handleDeleteGoal = async (goalId: string) => {
     try {
+      setGoals((prev) => prev.filter((g) => g.id !== goalId))
       await goalService.delete(goalId)
       success('Goal deleted', 'Draft goal removed from plan.')
       fetchGoals()
@@ -385,7 +404,7 @@ export const EmployeeGoals: React.FC = () => {
         }
       }
 
-      await goalService.addProgress(
+      const updatedGoal = await goalService.addProgress(
         progressGoal.id,
         progressPercentage,
         progressNote || 'Regular milestone checkpoint update.',
@@ -393,6 +412,10 @@ export const EmployeeGoals: React.FC = () => {
         finalFileUrl || undefined,
         finalFileSize || undefined
       )
+
+      if (updatedGoal) {
+        setGoals((prev) => prev.map((g) => (g.id === updatedGoal.id ? updatedGoal : g)))
+      }
 
       success('Progress recorded', `Updated progress on "${progressGoal.title}" to ${progressPercentage}%.`)
       setShowProgressModal(false)
@@ -420,6 +443,17 @@ export const EmployeeGoals: React.FC = () => {
     try {
       const res = await goalService.submitGoalsForApproval(currentUser.id, activeCycle.id)
       if (res.success) {
+        setGoals((prev) =>
+          prev.map((g) =>
+            g.status === 'draft' || g.status === 'returned'
+              ? { ...g, status: 'pending_approval' }
+              : g
+          )
+        )
+        if (activeCycle && (activeCycle.stage === 'draft' || activeCycle.stage === 'goals_open')) {
+          await cycleService.setStage(activeCycle.id, 'tracking')
+        }
+        await refreshData()
         success('Goals submitted for approval', 'Marcus Chen will review and approve your performance targets.')
         setShowSubmitConfirm(false)
         fetchGoals()

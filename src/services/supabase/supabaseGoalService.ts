@@ -286,7 +286,12 @@ export const supabaseGoalService = {
   },
 
   async save(goalData: Partial<Goal> & { userId: string; cycleId: string; title: string }): Promise<Goal> {
-    if (!isSupabaseReady()) return mockGoalService.save(goalData)
+    apiCache.invalidate('goals:')
+    if (!isSupabaseReady()) {
+      const res = await mockGoalService.save(goalData)
+      apiCache.invalidate('goals:')
+      return res
+    }
 
     const tenantId = await getTenantId(goalData.userId)
 
@@ -311,14 +316,16 @@ export const supabaseGoalService = {
 
     const { data, error } = await supabase.from('goals').upsert(payload).select().single()
     if (error || !data) {
-      return mockGoalService.save(goalData)
+      const res = await mockGoalService.save(goalData)
+      apiCache.invalidate('goals:')
+      return res
     }
 
     try {
       await mockGoalService.save({ ...goalData, id: data.id })
     } catch {}
 
-    return {
+    const saved: Goal = {
       id: data.id,
       userId: data.user_id,
       cycleId: data.cycle_id,
@@ -340,20 +347,44 @@ export const supabaseGoalService = {
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     }
+
+    try {
+      storageService.updateState((state) => {
+        const exists = state.goals.some((g) => g.id === saved.id)
+        return {
+          goals: exists
+            ? state.goals.map((g) => (g.id === saved.id ? saved : g))
+            : [saved, ...state.goals],
+        }
+      })
+    } catch {}
+
+    apiCache.invalidate('goals:')
+    return saved
   },
 
   async delete(goalId: string): Promise<boolean> {
+    apiCache.invalidate('goals:')
     if (isSupabaseReady()) {
       await supabase.from('goals').delete().eq('id', goalId)
     }
     try {
-      return await mockGoalService.delete(goalId)
+      storageService.updateState((state) => ({
+        goals: state.goals.filter((g) => g.id !== goalId),
+      }))
+    } catch {}
+    try {
+      const res = await mockGoalService.delete(goalId)
+      apiCache.invalidate('goals:')
+      return res
     } catch {
+      apiCache.invalidate('goals:')
       return true
     }
   },
 
   async submitGoalsForApproval(userId: string, cycleId: string): Promise<{ success: boolean; errors?: string[] }> {
+    apiCache.invalidate('goals:')
     if (isSupabaseReady()) {
       try {
         const { error } = await supabase.rpc('submit_goals', { p_cycle_id: resolveCycleUuid(cycleId) || cycleId })
@@ -370,10 +401,13 @@ export const supabaseGoalService = {
         console.warn('Notice in supabase submitGoalsForApproval:', e)
       }
     }
-    return mockGoalService.submitGoalsForApproval(userId, cycleId)
+    const res = await mockGoalService.submitGoalsForApproval(userId, cycleId)
+    apiCache.invalidate('goals:')
+    return res
   },
 
   async decide(goalId: string, decision: 'approved' | 'returned', reason?: string): Promise<Goal> {
+    apiCache.invalidate('goals:')
     if (decision === 'returned' && (!reason || reason.trim().length < 5)) {
       throw new Error('A descriptive comment is required when returning a goal for revision.')
     }
@@ -498,6 +532,7 @@ export const supabaseGoalService = {
           }
         }
 
+        apiCache.invalidate('goals:')
         return mappedGoal
       }
       } catch (err) {
@@ -505,7 +540,9 @@ export const supabaseGoalService = {
       }
     }
 
-    return mockGoalService.decide(goalId, decision, reason)
+    const res = await mockGoalService.decide(goalId, decision, reason)
+    apiCache.invalidate('goals:')
+    return res
   },
 
   async uploadEvidence(
@@ -573,6 +610,7 @@ export const supabaseGoalService = {
     evidenceUrl?: string,
     evidenceFileSize?: string
   ): Promise<Goal> {
+    apiCache.invalidate('goals:')
     const boundedPct = Math.max(0, Math.min(100, Math.round(percentage)))
 
     if (isSupabaseReady()) {
@@ -629,10 +667,18 @@ export const supabaseGoalService = {
           await mockGoalService.addProgress(goalId, percentage, note, evidenceFileName, evidenceUrl, evidenceFileSize)
         } catch {}
 
+        apiCache.invalidate('goals:')
         const fullGoal = await this.getById(goalId)
-        if (fullGoal) return fullGoal
+        if (fullGoal) {
+          try {
+            storageService.updateState((state) => ({
+              goals: state.goals.map((g) => (g.id === goalId ? fullGoal : g)),
+            }))
+          } catch {}
+          return fullGoal
+        }
 
-        return {
+        const fallbackMapped: Goal = {
           id: updatedGoal.id,
           userId: updatedGoal.user_id,
           cycleId: updatedGoal.cycle_id,
@@ -651,13 +697,24 @@ export const supabaseGoalService = {
           createdAt: updatedGoal.created_at,
           updatedAt: updatedGoal.updated_at,
         }
+
+        try {
+          storageService.updateState((state) => ({
+            goals: state.goals.map((g) => (g.id === goalId ? fallbackMapped : g)),
+          }))
+        } catch {}
+
+        return fallbackMapped
       }
     }
 
-    return mockGoalService.addProgress(goalId, percentage, note, evidenceFileName, evidenceUrl, evidenceFileSize)
+    const res = await mockGoalService.addProgress(goalId, percentage, note, evidenceFileName, evidenceUrl, evidenceFileSize)
+    apiCache.invalidate('goals:')
+    return res
   },
 
   async removeEvidence(goalId: string, updateId?: string): Promise<Goal> {
+    apiCache.invalidate('goals:')
     if (updateId) {
       recordRemovedEvidenceId(updateId)
     } else {
@@ -714,10 +771,13 @@ export const supabaseGoalService = {
           }))
         } catch {}
 
+        apiCache.invalidate('goals:')
         return sanitizedGoal
       }
     }
 
-    return mockGoalService.removeEvidence(goalId, updateId)
+    const res = await mockGoalService.removeEvidence(goalId, updateId)
+    apiCache.invalidate('goals:')
+    return res
   },
 }

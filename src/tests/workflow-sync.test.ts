@@ -44,7 +44,7 @@ const employeeAlex: User = {
   joinedDate: '2023-03-15',
 }
 
-function runTests() {
+async function runTests() {
   console.log('=== WORKFLOW TRACKING SYNCHRONIZATION TESTS ===\n')
 
   // -------------------------------------------------------------
@@ -361,6 +361,174 @@ function runTests() {
   } else {
     throw new Error('Test 5 FAILED: Inconsistent closed stage')
   }
+
+  // -------------------------------------------------------------
+  // Scenario 6: Dynamic Auto-Advance when Cycle is nominally in 'tracking'
+  // But Employee has submitted self-review (User Issue Fix)
+  // -------------------------------------------------------------
+  console.log('--- Test 6: Dynamic Auto-Advance to Manager Review ---')
+  const nominalTrackingCycle: ReviewCycle = { ...mockCycle, stage: 'tracking' }
+  const mgrState6 = getManagerWorkflowState({
+    cycle: nominalTrackingCycle,
+    teamSummaries: [teamSummary2], // selfReviewStatus is 'submitted'
+    pendingGoals: [],
+    releasedResults: [],
+  })
+
+  if (mgrState6.effectiveStage === 'manager_review' && mgrState6.stepNumber === 5) {
+    console.log('✔ Test 6 PASSED: Cycle stage auto-advanced to Step 5 (manager_review) based on submitted self-review!\n')
+  } else {
+    throw new Error(`Test 6 FAILED: Expected manager_review, got ${mgrState6.effectiveStage}`)
+  }
+
+  // -------------------------------------------------------------
+  // Scenario 7: Calibration Stage Held - Admin Has NOT Granted Permission Yet
+  // Calibrations await approval (adminApproved: false). Dashboards MUST stay on Step 6 (Calibration),
+  // and MUST NOT jump prematurely to Step 7 (Results Released).
+  // -------------------------------------------------------------
+  console.log('--- Test 7: Calibration Gate Held (No Release Permission Granted Yet) ---')
+  const calPendingCycle: ReviewCycle = { ...mockCycle, stage: 'calibration' }
+  const unapprovedCal: CalibrationRecord = {
+    id: 'cal-u-emp-1',
+    cycleId: 'cycle-2026-h1',
+    employeeId: 'u-emp-1',
+    originalScore: 4.0,
+    adjustedScore: 4.0,
+    reason: '',
+    calibratedBy: '',
+    calibratedAt: '',
+    adminApproved: false,
+    status: 'pending_admin_approval',
+  }
+  const draftResult: EvaluationResult = {
+    ...releasedResult,
+    status: 'pending',
+  }
+
+  const empState7 = getEmployeeWorkflowState({
+    cycle: calPendingCycle,
+    selfReview: submittedSelfReview,
+    managerReview: submittedManagerReview,
+    result: null, // Not permitted yet
+  })
+
+  const mgrState7 = getManagerWorkflowState({
+    cycle: calPendingCycle,
+    teamSummaries: [teamSummary3], // Manager appraisal submitted
+    pendingGoals: [],
+    releasedResults: [draftResult],
+  })
+
+  const adminState7 = getAdminWorkflowState({
+    cycle: calPendingCycle,
+    totalEmployees: 1,
+    selfReviews: [submittedSelfReview],
+    managerReviews: [submittedManagerReview],
+    calibrations: [unapprovedCal],
+    results: [draftResult],
+  })
+
+  console.log(`Employee Stage: ${empState7.effectiveStage} (Step ${empState7.stepNumber}) - ${empState7.badgeLabel}`)
+  console.log(`Manager Stage:  ${mgrState7.effectiveStage} (Step ${mgrState7.stepNumber}) - ${mgrState7.badgeLabel}`)
+  console.log(`Admin Stage:    ${adminState7.effectiveStage} (Step ${adminState7.stepNumber}) - ${adminState7.badgeLabel}`)
+
+  if (
+    empState7.effectiveStage === 'calibration' && empState7.stepNumber === 6 &&
+    mgrState7.effectiveStage === 'calibration' && mgrState7.stepNumber === 6 &&
+    adminState7.effectiveStage === 'calibration' && adminState7.stepNumber === 6
+  ) {
+    console.log('✔ Test 7 PASSED: All three roles stay strictly on Step 6 (Calibration) until Admin explicitly grants permission!\n')
+  } else {
+    throw new Error(`Test 7 FAILED: Expected calibration (6), got Emp: ${empState7.effectiveStage}, Mgr: ${mgrState7.effectiveStage}, Admin: ${adminState7.effectiveStage}`)
+  }
+
+  // -------------------------------------------------------------
+  // Scenario 8: Result Acknowledgement with Supabase UUID
+  // Ensures acknowledging a result by Supabase UUID never fails with "Result not found"
+  // -------------------------------------------------------------
+  console.log('--- Test 8: Result Acknowledgement with UUID ---')
+  const { resultService } = await import('../services/index')
+  const ackOutcome = await resultService.acknowledge('10c9e9b6-38d6-4e94-b217-dbe42727aa7a')
+  if (ackOutcome && ackOutcome.acknowledged === true) {
+    console.log(`✔ Test 8 PASSED: Successfully acknowledged result (${ackOutcome.id}) without errors!\n`)
+  } else {
+    throw new Error('Test 8 FAILED: Expected acknowledged result')
+  }
+
+  // -------------------------------------------------------------
+  // Scenario 9: Complete 8-Stage Lifecycle Validation (User Process)
+  // 1. draft -> 2. goals_open -> 3. tracking (pending approval) ->
+  // 4. self_review (goals approved) -> 5. manager_review ->
+  // 6. calibration -> 7. released -> 8. closed
+  // -------------------------------------------------------------
+  console.log('--- Test 9: Complete 8-Stage Lifecycle Progression ---')
+  const lifeCycle: ReviewCycle = { ...mockCycle, stage: 'draft' }
+
+  // Stage 1: Draft
+  const s1 = getEmployeeWorkflowState({ cycle: lifeCycle })
+  if (s1.stepNumber !== 1 || s1.effectiveStage !== 'draft') {
+    throw new Error(`Stage 1 failed: expected draft (1), got ${s1.effectiveStage} (${s1.stepNumber})`)
+  }
+
+  // Stage 2: Goals Open
+  const cycleOpen: ReviewCycle = { ...lifeCycle, stage: 'goals_open' }
+  const s2 = getEmployeeWorkflowState({ cycle: cycleOpen, goals: [] })
+  if (s2.stepNumber !== 2 || s2.effectiveStage !== 'goals_open') {
+    throw new Error(`Stage 2 failed: expected goals_open (2), got ${s2.effectiveStage} (${s2.stepNumber})`)
+  }
+
+  // Stage 3: Employee creates goals and submits for approval -> Goal Tracking (pending approval)
+  const pendingGoal: Goal = {
+    id: 'g-1',
+    userId: 'u-emp-1',
+    cycleId: lifeCycle.id,
+    title: 'Complete backend migration',
+    metric: '100% services on new cluster',
+    weight: 100,
+    progress: 0,
+    status: 'pending_approval',
+    createdAt: '2026-07-02T10:00:00Z',
+    updatedAt: '2026-07-02T10:00:00Z',
+  }
+  const s3 = getEmployeeWorkflowState({ cycle: cycleOpen, goals: [pendingGoal] })
+  if (s3.stepNumber !== 3 || s3.effectiveStage !== 'tracking' || !s3.badgeLabel.includes('Pending')) {
+    throw new Error(`Stage 3 failed: expected tracking (3) pending approval, got ${s3.effectiveStage} (${s3.stepNumber}) - ${s3.badgeLabel}`)
+  }
+
+  // Stage 4: Manager approves goals -> Self-Review (update progress and write reflection)
+  const approvedGoal: Goal = { ...pendingGoal, status: 'approved' }
+  const s4 = getEmployeeWorkflowState({ cycle: cycleOpen, goals: [approvedGoal] })
+  if (s4.stepNumber !== 4 || s4.effectiveStage !== 'self_review') {
+    throw new Error(`Stage 4 failed: expected self_review (4), got ${s4.effectiveStage} (${s4.stepNumber})`)
+  }
+
+  // Stage 5: Employee submits self-review -> Manager Review (waiting for manager evaluation)
+  const s5 = getEmployeeWorkflowState({ cycle: cycleOpen, goals: [approvedGoal], selfReview: submittedSelfReview })
+  if (s5.stepNumber !== 5 || s5.effectiveStage !== 'manager_review') {
+    throw new Error(`Stage 5 failed: expected manager_review (5), got ${s5.effectiveStage} (${s5.stepNumber})`)
+  }
+
+  // Stage 6: Manager submits review -> Calibration Gate
+  const s6 = getEmployeeWorkflowState({ cycle: cycleOpen, goals: [approvedGoal], selfReview: submittedSelfReview, managerReview: submittedManagerReview })
+  if (s6.stepNumber !== 6 || s6.effectiveStage !== 'calibration') {
+    throw new Error(`Stage 6 failed: expected calibration (6), got ${s6.effectiveStage} (${s6.stepNumber})`)
+  }
+
+  // Stage 7: Admin calibrates & permits -> Results Released
+  const cycleReleased: ReviewCycle = { ...lifeCycle, stage: 'released' }
+  const s7 = getEmployeeWorkflowState({ cycle: cycleReleased, goals: [approvedGoal], selfReview: submittedSelfReview, managerReview: submittedManagerReview, result: releasedResult })
+  if (s7.stepNumber !== 7 || s7.effectiveStage !== 'released') {
+    throw new Error(`Stage 7 failed: expected released (7), got ${s7.effectiveStage} (${s7.stepNumber})`)
+  }
+
+  // Stage 8: Cycle Closed
+  const stage8ClosedCycle: ReviewCycle = { ...lifeCycle, stage: 'closed' }
+  const s8 = getEmployeeWorkflowState({ cycle: stage8ClosedCycle, goals: [approvedGoal], selfReview: submittedSelfReview, managerReview: submittedManagerReview, result: releasedResult })
+  if (s8.stepNumber !== 8 || s8.effectiveStage !== 'closed') {
+    throw new Error(`Stage 8 failed: expected closed (8), got ${s8.effectiveStage} (${s8.stepNumber})`)
+  }
+
+  console.log('✔ Test 9 PASSED: Complete 8-Stage Lifecycle accurately validated from Draft to Closed!\n')
 
   console.log('========================================================')
   console.log('ALL WORKFLOW SYNCHRONIZATION TESTS PASSED SUCCESSFULLY! 🎉')

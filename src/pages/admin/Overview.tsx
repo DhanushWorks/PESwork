@@ -546,7 +546,7 @@ export const AdminOverview: React.FC = () => {
 
       {/* Workflow Tracking: Progression Stepper */}
       <section>
-        <StageStepper currentStage={currentCycle?.stage || 'draft'} cycle={currentCycle} />
+        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
       </section>
 
       {/* Department Breakdown & Immediate Actions */}

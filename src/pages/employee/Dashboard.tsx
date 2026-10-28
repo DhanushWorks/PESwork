@@ -153,14 +153,19 @@ export const EmployeeDashboard: React.FC = () => {
       actionUrl: string
     }> = []
 
-    // A. Self-Review required
-    const isSelfReviewActive = effectiveStage === 'self_review' || activeCycle.stage === 'self_review'
+    // A. Self-Review required (Open when in self_review OR tracking with approved goals)
+    const allGoalsApproved = goals.length > 0 && goals.every((g) => g.status === 'approved' || g.status === 'completed')
+    const isSelfReviewActive =
+      effectiveStage === 'self_review' ||
+      activeCycle.stage === 'self_review' ||
+      ((effectiveStage === 'tracking' || activeCycle.stage === 'tracking') && allGoalsApproved)
+
     if (isSelfReviewActive && (!selfReview || selfReview.status !== 'submitted')) {
       list.push({
         id: 'task-self-review',
         title: 'Complete & Submit Self-Review',
         relatedContext: activeCycle.name,
-        description: 'Self-evaluation window is open. Assess your accomplishments, competencies, and targets.',
+        description: 'Goal plan approved by manager. Self-evaluation window is open — assess your accomplishments, competencies, and targets.',
         status: selfReview?.status === 'draft' ? 'Draft Saved' : 'Action Required',
         dueDate: activeCycle.deadlines?.selfReviewDue,
         actionLabel: selfReview?.status === 'draft' ? 'Resume Review' : 'Start Self-Review',
@@ -381,8 +386,8 @@ export const EmployeeDashboard: React.FC = () => {
       })
     })
 
-    // Add active cycle result if released and not already present
-    if (releasedResult && !list.some((h) => h.cycleId === activeCycle.id)) {
+    // Only include closed cycles in historical performance archive (do not leak active cycle before close)
+    if (activeCycle.stage === 'closed' && releasedResult && !list.some((h) => h.cycleId === activeCycle.id)) {
       list.push({
         id: `curr-${releasedResult.id}`,
         cycleId: activeCycle.id,
@@ -391,7 +396,7 @@ export const EmployeeDashboard: React.FC = () => {
         rating: releasedResult.compositeScore,
         ratingBand: releasedResult.ratingBand,
         ratingLabel: releasedResult.finalRatingLabel,
-        status: releasedResult.acknowledged ? 'Acknowledged' : 'Released',
+        status: releasedResult.acknowledged ? 'Acknowledged' : 'Published',
         managerComments: releasedResult.managerComments,
         acknowledged: releasedResult.acknowledged,
         completionDate: releasedResult.acknowledgedAt || activeCycle.endDate,
@@ -475,7 +480,7 @@ export const EmployeeDashboard: React.FC = () => {
           value={
             !isEnrolledInCycle
               ? 'Not Enrolled'
-              : releasedResult
+              : (activeCycle.stage === 'released' || activeCycle.stage === 'closed' || effectiveStage === 'released' || effectiveStage === 'closed') && releasedResult
               ? `${releasedResult.compositeScore.toFixed(2)}`
               : effectiveStage === 'manager_review'
               ? 'Manager Review'
@@ -483,13 +488,17 @@ export const EmployeeDashboard: React.FC = () => {
           }
           badge={
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-semibold border border-slate-200 dark:border-white/10 bg-slate-100 dark:bg-white/[0.04] text-slate-700 dark:text-zinc-300">
-              {!isEnrolledInCycle ? 'Unassigned' : releasedResult ? 'Released' : 'Sealed'}
+              {!isEnrolledInCycle
+                ? 'Unassigned'
+                : (activeCycle.stage === 'released' || activeCycle.stage === 'closed' || effectiveStage === 'released' || effectiveStage === 'closed') && releasedResult
+                ? 'Released'
+                : 'Sealed'}
             </span>
           }
           subtitle={
             !isEnrolledInCycle
               ? 'Awaiting Admin cycle assignment'
-              : releasedResult
+              : (activeCycle.stage === 'released' || activeCycle.stage === 'closed' || effectiveStage === 'released' || effectiveStage === 'closed') && releasedResult
               ? (releasedResult.ratingBand || releasedResult.finalRatingLabel || 'Final Rating')
               : 'Appears after calibration release'
           }
@@ -499,7 +508,7 @@ export const EmployeeDashboard: React.FC = () => {
       {/* Workflow Tracking: Progression Stepper */}
       <section>
         {isEnrolledInCycle ? (
-          <StageStepper currentStage={currentCycle?.stage || 'draft'} cycle={currentCycle} />
+          <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
         ) : (
           <div className="dark-glass-card rounded-2xl sm:rounded-3xl p-6 sm:p-7 space-y-3 shadow-xs dark:shadow-md transition-all">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-200/90 dark:border-white/[0.08]">

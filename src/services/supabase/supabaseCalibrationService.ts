@@ -542,16 +542,6 @@ export const supabaseCalibrationService = {
           .eq('cycle_id', targetCycleUuid)
           .eq('user_id', targetUserUuid)
 
-        // Advance cycle to Stage 7 (released) when admin grants permission, preserving closed state
-        await supabase
-          .from('review_cycles')
-          .update({
-            stage: 'released',
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', targetCycleUuid)
-          .neq('stage', 'closed')
-
         // Also notify employee
         await notificationService.create({
           userId: employeeId,

@@ -179,6 +179,19 @@ export const StageStepper: React.FC<StageStepperProps> = ({
                 </Link>
               )
             )}
+            {currentUser?.role === 'employee' && (
+              currentStage === 'tracking' || currentStage === 'self_review' ? (
+                <Link
+                  to="/employee/self-review"
+                  className="group inline-flex items-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-slate-900 dark:text-zinc-200 dark:hover:text-white px-3.5 py-1.5 rounded-xl border border-slate-200 dark:border-white/20 bg-white hover:bg-slate-100 dark:bg-zinc-900/90 dark:hover:bg-zinc-800 hover:border-slate-300 dark:hover:border-zinc-500 transition-all cursor-pointer shadow-2xs hover:shadow-md hover:-translate-y-0.5 active:translate-y-0"
+                  title="Proceed to Self-Review"
+                >
+                  <CheckSquare className="w-3.5 h-3.5 text-indigo-500" />
+                  <span>Self-Review</span>
+                  <ArrowRight className="w-3.5 h-3.5 transition-transform duration-200 group-hover:translate-x-1" />
+                </Link>
+              ) : null
+            )}
           </div>
         </div>
       ) : (

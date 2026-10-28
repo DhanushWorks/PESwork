@@ -8,6 +8,7 @@ import {
   reviewService,
   feedbackService,
   storageService,
+  cycleService,
 } from '../../services'
 import { Goal, ManagerReview, SelfReview, User, FeedbackItem } from '../../types'
 import { RatingInput } from '../../components/ui/RatingInput'
@@ -181,6 +182,9 @@ export const ManagerReviewWorkspace: React.FC = () => {
         recommendations,
       })
       setExistingReview(submitted)
+      if (activeCycle && (activeCycle.stage === 'draft' || activeCycle.stage === 'goals_open' || activeCycle.stage === 'tracking' || activeCycle.stage === 'self_review' || activeCycle.stage === 'manager_review')) {
+        await cycleService.setStage(activeCycle.id, 'calibration')
+      }
       await refreshData()
       setShowSubmitConfirm(false)
       success(

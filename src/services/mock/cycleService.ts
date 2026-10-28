@@ -154,17 +154,28 @@ export const cycleService = {
     const cycle = await this.getById(cycleId)
     if (!cycle) return []
 
-    const { users } = storageService.getState()
-    if (cycle.participantIds !== undefined && Array.isArray(cycle.participantIds)) {
-      return users
-        .filter((u) => u.role !== 'admin')
-        .filter((u) =>
-          cycle.participantIds!.some((pId) => u.id === pId || matchesUser(u.id, pId))
-        )
-    }
+    const { users, goals, selfReviews, managerReviews, calibrations, results } = storageService.getState()
+    const participantIds = Array.isArray(cycle.participantIds) ? [...cycle.participantIds] : []
 
-    // Strict: cycles only include explicitly enrolled non-admin participants
-    return []
+    // Also include any non-admin staff with evaluation records for this cycle
+    const cycleUserIds = new Set<string>()
+    ;(goals || []).filter((g) => g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId) || (cycle && matchesCycle(g.cycleId, cycle.id))).forEach((g) => cycleUserIds.add(g.userId))
+    ;(selfReviews || []).filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId) || (cycle && matchesCycle(s.cycleId, cycle.id))).forEach((s) => cycleUserIds.add(s.userId))
+    ;(managerReviews || []).filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId) || (cycle && matchesCycle(m.cycleId, cycle.id))).forEach((m) => cycleUserIds.add(m.employeeId))
+    ;(calibrations || []).filter((c) => c.cycleId === cycleId || matchesCycle(c.cycleId, cycleId) || (cycle && matchesCycle(c.cycleId, cycle.id))).forEach((c) => cycleUserIds.add(c.employeeId))
+    ;(results || []).filter((r) => r.cycleId === cycleId || matchesCycle(r.cycleId, cycleId) || (cycle && matchesCycle(r.cycleId, cycle.id))).forEach((r) => cycleUserIds.add(r.employeeId))
+
+    cycleUserIds.forEach((uid) => {
+      if (!participantIds.some((pId) => pId === uid || matchesUser(pId, uid))) {
+        participantIds.push(uid)
+      }
+    })
+
+    return users
+      .filter((u) => u.role !== 'admin')
+      .filter((u) =>
+        participantIds.some((pId) => u.id === pId || matchesUser(u.id, pId))
+      )
   },
 
   /**
@@ -227,7 +238,12 @@ export const cycleService = {
     }
 
     storageService.updateState((state) => {
-      const newCycles = state.cycles.map((c) => (c.id === cycleId ? updatedCycle : c))
+      const newCycles = state.cycles.map((c) => {
+        if (c.id === cycleId || c.id === cycle.id || matchesCycle(c.id, cycleId) || matchesCycle(c.id, cycle.id)) {
+          return { ...c, ...updatedCycle, id: c.id }
+        }
+        return c
+      })
 
       // Only purge if explicitly requested or if no submitted evaluations exist
       let filteredGoals = state.goals
@@ -304,7 +320,12 @@ export const cycleService = {
     }
 
     storageService.updateState((state) => {
-      const newCycles = state.cycles.map((c) => (c.id === cycleId ? updatedCycle : c))
+      const newCycles = state.cycles.map((c) => {
+        if (c.id === cycleId || c.id === cycle.id || matchesCycle(c.id, cycleId) || matchesCycle(c.id, cycle.id)) {
+          return { ...c, ...updatedCycle, id: c.id }
+        }
+        return c
+      })
 
       const audit = {
         id: `audit-${Date.now()}`,
@@ -352,7 +373,12 @@ export const cycleService = {
     }
 
     storageService.updateState((state) => {
-      const newCycles = state.cycles.map((c) => (c.id === cycleId ? updatedCycle : c))
+      const newCycles = state.cycles.map((c) => {
+        if (c.id === cycleId || c.id === cycle.id || matchesCycle(c.id, cycleId) || matchesCycle(c.id, cycle.id)) {
+          return { ...c, ...updatedCycle, id: c.id }
+        }
+        return c
+      })
       const audit = {
         id: `audit-${Date.now()}`,
         actorId: state.currentUserId,

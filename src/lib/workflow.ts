@@ -24,6 +24,12 @@ export type WorkflowStateInfo = {
   secondaryActionLink?: string
 }
 
+export function maxStage(a: CycleStage, b: CycleStage): CycleStage {
+  const indexA = STAGE_ORDER.indexOf(a)
+  const indexB = STAGE_ORDER.indexOf(b)
+  return indexB > indexA ? b : a
+}
+
 /**
  * Calculates the synchronized workflow state for an individual Employee.
  */
@@ -39,16 +45,38 @@ export function getEmployeeWorkflowState(params: {
 
   const isManagerReviewSubmitted = managerReview?.status === 'submitted'
   const isSelfReviewSubmitted = selfReview?.status === 'submitted'
+  const hasSelfReviewProgress = Boolean(selfReview && (selfReview.status === 'draft' || selfReview.status === 'submitted'))
   const isResultReleased =
     cycle.stage === 'released' ||
-    (!!result && (result as any).status !== 'pending' && (result as any).isReleased !== false)
+    cycle.stage === 'closed'
 
   const hasApprovedGoals = goals.some((g) => g.status === 'approved' || g.status === 'completed')
-  const hasPendingGoals = goals.some((g) => g.status === 'pending_approval' || g.status === 'draft' || g.status === 'returned')
+  const hasPendingGoals = goals.some((g) => g.status === 'pending_approval' || g.status === 'returned')
+  const hasDraftGoals = goals.some((g) => g.status === 'draft')
+  const hasGoalsCreated = goals.length > 0
   const allGoalsApproved = goals.length > 0 && goals.every((g) => g.status === 'approved' || g.status === 'completed')
 
-  // The cycle stage is the master authority for the workflow stage
-  const effectiveStage: CycleStage = cycle.stage
+  // Dynamically resolve workflow stage based on live action artifacts
+  let dynamicStage: CycleStage = cycle.stage
+  if (cycle.stage === 'closed') {
+    dynamicStage = 'closed'
+  } else if (isResultReleased) {
+    dynamicStage = 'released'
+  } else if (isManagerReviewSubmitted || cycle.stage === 'calibration') {
+    dynamicStage = 'calibration'
+  } else if (isSelfReviewSubmitted || cycle.stage === 'manager_review') {
+    dynamicStage = 'manager_review'
+  } else if (allGoalsApproved || cycle.stage === 'self_review' || hasSelfReviewProgress) {
+    dynamicStage = 'self_review'
+  } else if (hasGoalsCreated || hasPendingGoals || hasApprovedGoals || cycle.stage === 'tracking') {
+    dynamicStage = 'tracking'
+  } else if (cycle.stage === 'goals_open') {
+    dynamicStage = 'goals_open'
+  } else {
+    dynamicStage = cycle.stage || 'draft'
+  }
+
+  const effectiveStage: CycleStage = maxStage(cycle.stage, dynamicStage)
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
   const stepNumber = stageIndex >= 0 ? stageIndex + 1 : 1
@@ -107,15 +135,29 @@ export function getEmployeeWorkflowState(params: {
         effectiveStage,
         stageIndex,
         stepNumber,
-        badgeLabel: 'Self-Review',
-        title: 'Self-Review',
-        description: 'Self-evaluation open.',
-        actionLabel: 'Start Self-Review',
+        badgeLabel: isSelfReviewSubmitted ? 'Self-Review Submitted' : 'Self-Review Open',
+        title: 'Self-Review Reflection',
+        description: isSelfReviewSubmitted
+          ? 'Self-review submitted. Waiting for manager evaluation.'
+          : 'Goals approved! Update milestone progress & submit self-review.',
+        actionLabel: isSelfReviewSubmitted ? 'View Submitted Review' : 'Start Self-Review',
         actionLink: '/employee/self-review',
         secondaryActionLabel: 'View Goals & Evidence',
         secondaryActionLink: '/employee/goals',
       }
     case 'tracking':
+      if (hasPendingGoals) {
+        return {
+          effectiveStage,
+          stageIndex,
+          stepNumber,
+          badgeLabel: 'Goals Pending Approval',
+          title: 'Goals Awaiting Approval',
+          description: 'Goals submitted to manager. Awaiting approval.',
+          actionLabel: 'View Goals & Approvals',
+          actionLink: '/employee/goals',
+        }
+      }
       return {
         effectiveStage,
         stageIndex,
@@ -172,18 +214,38 @@ export function getManagerWorkflowState(params: {
     pendingManagerReviews[0]?.employee ||
     teamSummaries.find((t) => t.managerReviewStatus !== 'submitted')?.employee
 
-  const cleanReleasedResults = releasedResults.filter((r) => (r as any).status !== 'pending')
+  // Released strictly when cycle is officially released or closed by Admin
   const hasReleasedResults =
     cycle.stage === 'released' ||
-    cleanReleasedResults.length > 0
+    cycle.stage === 'closed'
 
+  const hasTeamGoals = teamSummaries.some((t) => t.goalsCount > 0) || pendingGoals.length > 0
   const allTeamGoalsApproved =
     totalReports > 0
-      ? teamSummaries.every((t) => t.goalsCount > 0 && t.goalsApprovedCount >= t.goalsCount)
-      : pendingGoals.length === 0
+      ? teamSummaries.every((t) => t.goalsCount > 0 && t.goalsApprovedCount >= t.goalsCount) && pendingGoals.length === 0
+      : pendingGoals.length === 0 && hasTeamGoals
 
-  // The cycle stage is the master authority for the manager workflow
-  const effectiveStage: CycleStage = cycle.stage
+  // Dynamically resolve workflow stage based on live team artifacts
+  let dynamicStage: CycleStage = cycle.stage
+  if (cycle.stage === 'closed') {
+    dynamicStage = 'closed'
+  } else if (hasReleasedResults) {
+    dynamicStage = 'released'
+  } else if (totalReports > 0 && submittedManagerReviews.length >= totalReports) {
+    dynamicStage = 'calibration'
+  } else if (submittedSelfReviews.length > 0 || cycle.stage === 'manager_review') {
+    dynamicStage = 'manager_review'
+  } else if (allTeamGoalsApproved || cycle.stage === 'self_review') {
+    dynamicStage = 'self_review'
+  } else if (hasTeamGoals || pendingGoals.length > 0 || cycle.stage === 'tracking') {
+    dynamicStage = 'tracking'
+  } else if (cycle.stage === 'goals_open') {
+    dynamicStage = 'goals_open'
+  } else {
+    dynamicStage = cycle.stage || 'draft'
+  }
+
+  const effectiveStage: CycleStage = maxStage(cycle.stage, dynamicStage)
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
   const stepNumber = stageIndex >= 0 ? stageIndex + 1 : 1
@@ -242,9 +304,9 @@ export function getManagerWorkflowState(params: {
         effectiveStage,
         stageIndex,
         stepNumber,
-        badgeLabel: 'Self-Reviews',
-        title: 'Self-Reviews',
-        description: `${submittedSelfReviews.length} of ${totalReports} submitted.`,
+        badgeLabel: 'Self-Reviews In Progress',
+        title: 'Self-Review Stage',
+        description: `${submittedSelfReviews.length} of ${totalReports} team self-evaluations submitted.`,
         actionLabel: 'Inspect Team Roster',
         actionLink: '#roster',
         secondaryActionLabel: pendingGoals.length > 0 ? 'Goal Approvals' : undefined,
@@ -255,20 +317,34 @@ export function getManagerWorkflowState(params: {
         effectiveStage,
         stageIndex,
         stepNumber,
-        badgeLabel: 'Goal Approvals',
-        title: 'Goal Approvals',
-        description: `${pendingGoals.length} goals pending approval.`,
-        actionLabel: 'Review Goals',
-        actionLink: '/manager/approvals',
+        badgeLabel: 'Goals Open',
+        title: 'Goal Setting',
+        description: 'Direct reports are drafting strategic goals.',
+        actionLabel: 'Inspect Team Roster',
+        actionLink: '#roster',
+        secondaryActionLabel: pendingGoals.length > 0 ? 'Goal Approvals' : undefined,
+        secondaryActionLink: pendingGoals.length > 0 ? '/manager/approvals' : undefined,
       }
     case 'tracking':
+      if (pendingGoals.length > 0) {
+        return {
+          effectiveStage,
+          stageIndex,
+          stepNumber,
+          badgeLabel: 'Goal Approvals Pending',
+          title: 'Goal Approvals',
+          description: `${pendingGoals.length} team goal(s) pending your approval.`,
+          actionLabel: 'Review & Approve Goals',
+          actionLink: '/manager/approvals',
+        }
+      }
       return {
         effectiveStage,
         stageIndex,
         stepNumber,
-        badgeLabel: 'Goal Tracking',
+        badgeLabel: 'Goals Approved',
         title: 'Goal Tracking',
-        description: 'Team milestones in progress.',
+        description: 'Team goals approved. Direct reports tracking progress.',
         actionLabel: 'Inspect Team Roster',
         actionLink: '#roster',
       }
@@ -308,18 +384,37 @@ export function getAdminWorkflowState(params: {
 
   const approvedGoals = cycleGoals.filter((g) => g.status === 'approved' || g.status === 'completed')
   const pendingGoals = cycleGoals.filter((g) => g.status === 'pending_approval' || g.status === 'draft')
+  const hasGoals = cycleGoals.length > 0
   const allGoalsApproved =
     (cycleGoals.length > 0 && approvedGoals.length >= cycleGoals.length) ||
     (cycleGoals.length > 0 && pendingGoals.length === 0)
 
+  // Released strictly if cycle is officially released or closed by Admin
   const isFormallyReleased =
     cycle.stage === 'released' ||
-    cycle.stage === 'closed' ||
-    approvedCals.length > 0 ||
-    cycleResults.length > 0
+    cycle.stage === 'closed'
 
-  // The cycle stage is the master authority for the admin workflow
-  const effectiveStage: CycleStage = cycle.stage
+  // Dynamically resolve workflow stage based on company-wide artifacts
+  let dynamicStage: CycleStage = cycle.stage
+  if (cycle.stage === 'closed') {
+    dynamicStage = 'closed'
+  } else if (isFormallyReleased) {
+    dynamicStage = 'released'
+  } else if (cycleMgr.length > 0 && cycleMgr.length >= (totalEmployees || 1)) {
+    dynamicStage = 'calibration'
+  } else if (cycleMgr.length > 0 || cycleSelf.length > 0 || cycle.stage === 'manager_review') {
+    dynamicStage = 'manager_review'
+  } else if (allGoalsApproved || cycle.stage === 'self_review') {
+    dynamicStage = 'self_review'
+  } else if (hasGoals || cycle.stage === 'tracking') {
+    dynamicStage = 'tracking'
+  } else if (cycle.stage === 'goals_open') {
+    dynamicStage = 'goals_open'
+  } else {
+    dynamicStage = cycle.stage || 'draft'
+  }
+
+  const effectiveStage: CycleStage = maxStage(cycle.stage, dynamicStage)
 
   const stageIndex = STAGE_ORDER.indexOf(effectiveStage)
   const stepNumber = stageIndex >= 0 ? stageIndex + 1 : 1
@@ -388,13 +483,25 @@ export function getAdminWorkflowState(params: {
         actionLink: '/admin/users',
       }
     case 'tracking':
+      if (pendingGoals.length > 0) {
+        return {
+          effectiveStage,
+          stageIndex,
+          stepNumber,
+          badgeLabel: 'Goal Approvals Pending',
+          title: 'Goal Approvals',
+          description: `${pendingGoals.length} goals submitted and awaiting manager approvals.`,
+          actionLabel: 'Cycle Management',
+          actionLink: `/admin/cycles/${cycle.id}`,
+        }
+      }
       return {
         effectiveStage,
         stageIndex,
         stepNumber,
         badgeLabel: 'Goal Tracking',
         title: 'Goal Tracking',
-        description: 'Milestones and evidence in progress.',
+        description: `${approvedGoals.length} goals approved and tracked.`,
         actionLabel: 'Cycle Management',
         actionLink: `/admin/cycles/${cycle.id}`,
       }
@@ -432,6 +539,8 @@ export function matchesUser(idA?: string, idB?: string): boolean {
   if (mgrIds.includes(idA) && mgrIds.includes(idB)) return true
   const adminIds = ['u-admin', '11111111-1111-1111-1111-111111111103']
   if (adminIds.includes(idA) && adminIds.includes(idB)) return true
+  if (toDatabaseUserId(idA) === toDatabaseUserId(idB)) return true
+  if (toAppUserId(idA) === toAppUserId(idB)) return true
   return false
 }
 

@@ -381,16 +381,8 @@ export const calibrationService = {
       const filteredCals = s.calibrations.filter((c) => !(c.cycleId === cycleId && c.employeeId === employeeId))
       const filteredResults = s.results.filter((r) => !(r.cycleId === cycleId && r.employeeId === employeeId))
 
-      const updatedCycles = s.cycles.map((c) => {
-        if (c.id === cycleId || matchesCycle(c.id, cycleId)) {
-          if (c.stage === 'closed') return c
-          return { ...c, stage: 'released' as const }
-        }
-        return c
-      })
-
       return {
-        cycles: updatedCycles,
+        cycles: s.cycles,
         activeCycleId: cycleId,
         calibrations: [...filteredCals, approvedCal],
         results: [...filteredResults, evaluationResult],
@@ -398,15 +390,6 @@ export const calibrationService = {
         auditLogs: [audit, ...s.auditLogs],
       }
     })
-
-    try {
-      const currentC = await cycleService.getById(cycleId)
-      if (currentC?.stage !== 'closed') {
-        await cycleService.setStage(cycleId, 'released')
-      }
-    } catch (e) {
-      console.warn('Notice setting cycle stage in approveAndRelease:', e)
-    }
 
     return { calibration: approvedCal, result: evaluationResult }
   },
@@ -459,7 +442,16 @@ export const calibrationService = {
         details: `Admin ${adminName} revoked release permission for ${employee?.name || employeeId}. Appraisal returned to Calibration stage.`,
       }
 
+      const hasOtherApproved = updatedCals.some(
+        (c) => (c.cycleId === cycleId || matchesCycle(c.cycleId, cycleId)) && c.adminApproved
+      )
+
       return {
+        cycles: hasOtherApproved
+          ? state.cycles
+          : state.cycles.map((c) =>
+              c.id === cycleId || matchesCycle(c.id, cycleId) ? { ...c, stage: 'calibration' as const } : c
+            ),
         calibrations: updatedCals,
         results: filteredResults,
         notifications: [...revokeNotifs, ...state.notifications],

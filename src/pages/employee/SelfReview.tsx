@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { reviewService } from '../../services'
+import { reviewService, cycleService } from '../../services'
 import { SelfReview } from '../../types'
 import { RatingInput } from '../../components/ui/RatingInput'
 import { LoadingState } from '../../components/ui/LoadingState'
@@ -34,7 +34,7 @@ const VALUES = [
 ]
 
 export const EmployeeSelfReview: React.FC = () => {
-  const { currentUser, activeCycle } = useApp()
+  const { currentUser, activeCycle, refreshData } = useApp()
   const { success, error } = useToast()
 
   const [loading, setLoading] = useState(true)
@@ -164,6 +164,10 @@ export const EmployeeSelfReview: React.FC = () => {
       })
       setSelfReview(submitted)
       setShowSubmitConfirm(false)
+      if (activeCycle && (activeCycle.stage === 'draft' || activeCycle.stage === 'goals_open' || activeCycle.stage === 'tracking' || activeCycle.stage === 'self_review')) {
+        await cycleService.setStage(activeCycle.id, 'manager_review')
+      }
+      await refreshData()
       success(
         'Self-review submitted!',
         'Your reflection has been formally recorded and shared with your manager.'

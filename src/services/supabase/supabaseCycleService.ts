@@ -117,7 +117,12 @@ export const supabaseCycleService = {
         .select('user_id')
         .eq('cycle_id', targetUuid)
 
-      const participantIds = participants ? participants.map((p) => p.user_id) : []
+      const dbParticipantIds = participants ? participants.map((p) => p.user_id) : []
+      const mockCycle = await mockCycleService.getById(id)
+      const mockParticipantIds = mockCycle?.participantIds || []
+
+      // Merge participant IDs from both Supabase and mock storage
+      const mergedParticipantIds = Array.from(new Set([...dbParticipantIds, ...mockParticipantIds]))
 
       return {
         id: data.id,
@@ -128,7 +133,7 @@ export const supabaseCycleService = {
         description: data.description || `Evaluation cycle for ${data.name}`,
         weights: data.weights || { goals: 60, competencies: 30, values: 10 },
         deadlines: normalizeCycleDeadlines(data.deadlines, data.start_date, data.end_date),
-        participantIds,
+        participantIds: mergedParticipantIds,
       }
     } catch (err) {
       markSupabaseOffline(err)
@@ -228,6 +233,7 @@ export const supabaseCycleService = {
   },
 
   async create(cycleData: Omit<ReviewCycle, 'id'>): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     const mockCreated = await mockCycleService.create(cycleData)
 
     if (isSupabaseConfigured) {
@@ -266,6 +272,7 @@ export const supabaseCycleService = {
             activeCycleId: data.id,
           }))
 
+          apiCache.invalidate('cycles:')
           return {
             id: data.id,
             name: data.name,
@@ -283,10 +290,12 @@ export const supabaseCycleService = {
       }
     }
 
+    apiCache.invalidate('cycles:')
     return mockCreated
   },
 
   async update(id: string, updates: Partial<ReviewCycle>): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     const updated = await mockCycleService.update(id, updates)
     const targetUuid = resolveCycleUuid(id)
 
@@ -306,12 +315,17 @@ export const supabaseCycleService = {
       }
     }
 
+    apiCache.invalidate('cycles:')
     return updated
   },
 
   async getEnrolledParticipants(cycleId: string): Promise<User[]> {
     const allUsers = await supabasePeopleService.list()
     const targetUuid = resolveCycleUuid(cycleId)
+    const mockEnrolled = await mockCycleService.getEnrolledParticipants(cycleId)
+
+    const enrolledUserIds = new Set<string>()
+    mockEnrolled.forEach((u) => enrolledUserIds.add(u.id))
 
     if (isSupabaseReady() && targetUuid) {
       try {
@@ -321,31 +335,19 @@ export const supabaseCycleService = {
           .eq('cycle_id', targetUuid)
 
         if (!error && participants) {
-          const enrolledUserIds = participants.map((p) => p.user_id)
-          const matched = allUsers
-            .filter((u) => u.role !== 'admin')
-            .filter((u) =>
-              enrolledUserIds.some((pId) => u.id === pId || matchesUser(u.id, pId))
-            )
-          return matched
+          participants.forEach((p) => enrolledUserIds.add(p.user_id))
         }
       } catch (e) {
         console.warn('Supabase getEnrolledParticipants error:', e)
       }
     }
 
-    // Fallback to cycle participantIds on the cycle record
-    const cycle = await this.getById(cycleId)
-    if (!cycle) return []
-
-    const participantIds = cycle.participantIds || []
-    if (participantIds.length === 0) return []
-
-    return allUsers
+    const matched = allUsers
       .filter((u) => u.role !== 'admin')
       .filter((u) =>
-        participantIds.some((pId) => u.id === pId || matchesUser(u.id, pId))
+        Array.from(enrolledUserIds).some((pId) => u.id === pId || matchesUser(u.id, pId))
       )
+    return matched
   },
 
   async checkParticipantEvaluationHistory(cycleId: string, userId: string) {
@@ -358,6 +360,7 @@ export const supabaseCycleService = {
     actorName: string = 'Admin',
     purgeEvaluations: boolean = false
   ): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     const targetUuid = resolveCycleUuid(cycleId)
     const targetUserId = toDatabaseUserId(userId)
     if (isSupabaseConfigured && targetUuid && UUID_REGEX.test(targetUserId)) {
@@ -372,10 +375,13 @@ export const supabaseCycleService = {
       }
     }
 
-    return mockCycleService.removeParticipant(cycleId, userId, actorName, purgeEvaluations)
+    const res = await mockCycleService.removeParticipant(cycleId, userId, actorName, purgeEvaluations)
+    apiCache.invalidate('cycles:')
+    return res
   },
 
   async addParticipant(cycleId: string, userId: string, actorName: string = 'Admin'): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     const targetUuid = resolveCycleUuid(cycleId)
     const targetUserId = toDatabaseUserId(userId)
     if (isSupabaseConfigured && targetUuid && UUID_REGEX.test(targetUserId)) {
@@ -393,10 +399,13 @@ export const supabaseCycleService = {
       }
     }
 
-    return mockCycleService.addParticipant(cycleId, userId, actorName)
+    const res = await mockCycleService.addParticipant(cycleId, userId, actorName)
+    apiCache.invalidate('cycles:')
+    return res
   },
 
   async addParticipantsBulk(cycleId: string, userIds: string[], actorName: string = 'Admin'): Promise<ReviewCycle> {
+    apiCache.invalidate('cycles:')
     const targetUuid = resolveCycleUuid(cycleId)
     if (isSupabaseConfigured && targetUuid) {
       try {
@@ -417,10 +426,13 @@ export const supabaseCycleService = {
       }
     }
 
-    return mockCycleService.addParticipantsBulk(cycleId, userIds, actorName)
+    const res = await mockCycleService.addParticipantsBulk(cycleId, userIds, actorName)
+    apiCache.invalidate('cycles:')
+    return res
   },
 
   async delete(cycleId: string, actorName: string = 'Admin'): Promise<void> {
+    apiCache.invalidate('cycles:')
     // Step 1: Best-effort Supabase cleanup — fully non-fatal, never blocks local delete
     if (isSupabaseConfigured) {
       // Only send to Supabase if we have a valid UUID (prevents "invalid input syntax for uuid" errors)
@@ -466,5 +478,6 @@ export const supabaseCycleService = {
         // Alias already cleaned up — safe to ignore
       }
     }
+    apiCache.invalidate('cycles:')
   },
 }

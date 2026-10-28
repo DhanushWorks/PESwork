@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useApp } from '../../app/AppContext'
 import { useToast } from '../../components/ui/Toast'
-import { goalService, peopleService } from '../../services'
+import { cycleService, goalService, peopleService } from '../../services'
 import { Goal, User } from '../../types'
 import { Modal, ConfirmDialog } from '../../components/ui/Modal'
 import { EmptyState } from '../../components/ui/EmptyState'
@@ -75,6 +75,10 @@ export const ManagerApprovals: React.FC = () => {
     try {
       await goalService.decide(goalId, 'approved')
       success('Goal approved', `Approved "${goalTitle}". Target is now active.`)
+      const remaining = pendingGoals.filter((p) => p.goal.id !== goalId)
+      if (activeCycle && remaining.length === 0 && (activeCycle.stage === 'draft' || activeCycle.stage === 'goals_open' || activeCycle.stage === 'tracking')) {
+        await cycleService.setStage(activeCycle.id, 'self_review')
+      }
       await fetchPendingGoals()
       await refreshData()
     } catch (err: any) {
@@ -106,6 +110,10 @@ export const ManagerApprovals: React.FC = () => {
 
       if (errors.length > 0) {
         error('Some goals could not be approved', errors.join('; '))
+      }
+
+      if (activeCycle && (activeCycle.stage === 'draft' || activeCycle.stage === 'goals_open' || activeCycle.stage === 'tracking')) {
+        await cycleService.setStage(activeCycle.id, 'self_review')
       }
 
       setShowApproveAllConfirm(false)
