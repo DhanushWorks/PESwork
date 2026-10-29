@@ -23,19 +23,43 @@ export const goalService = {
     let resultGoal: Goal
 
     if (goalData.id) {
-      // Update existing
+      // Update existing or insert if not found
       const existing = await this.getById(goalData.id)
-      if (!existing) throw new Error(`Goal ${goalData.id} not found`)
+      if (existing) {
+        resultGoal = {
+          ...existing,
+          ...goalData,
+          updatedAt: new Date().toISOString(),
+        }
 
-      resultGoal = {
-        ...existing,
-        ...goalData,
-        updatedAt: new Date().toISOString(),
+        storageService.updateState((state) => ({
+          goals: state.goals.map((g) => (g.id === resultGoal.id ? resultGoal : g)),
+        }))
+      } else {
+        const newGoal: Goal = {
+          id: goalData.id,
+          userId: goalData.userId,
+          cycleId: goalData.cycleId,
+          title: goalData.title,
+          description: goalData.description || '',
+          metric: goalData.metric || '',
+          target: Number(goalData.target) || 100,
+          current: Number(goalData.current) || 0,
+          unit: goalData.unit || '%',
+          weight: Number(goalData.weight) || 20,
+          progress: Number(goalData.progress) || 0,
+          dueDate: goalData.dueDate || new Date().toISOString().split('T')[0],
+          status: (goalData.status as GoalStatus) || 'draft',
+          progressHistory: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }
+        resultGoal = newGoal
+
+        storageService.updateState((state) => ({
+          goals: [...state.goals, newGoal],
+        }))
       }
-
-      storageService.updateState((state) => ({
-        goals: state.goals.map((g) => (g.id === resultGoal.id ? resultGoal : g)),
-      }))
     } else {
       // Create new draft
       const newGoal: Goal = {
@@ -66,17 +90,24 @@ export const goalService = {
     return resultGoal
   },
 
-  async submitGoalsForApproval(userId: string, cycleId: string): Promise<{ success: boolean; errors?: string[] }> {
-    const userGoals = await this.listForUser(userId, cycleId)
+  async submitGoalsForApproval(userId: string, cycleId: string, clientGoals?: Goal[]): Promise<{ success: boolean; errors?: string[] }> {
+    const userGoals = (clientGoals && clientGoals.length > 0) ? clientGoals : await this.listForUser(userId, cycleId)
     const validation = validateGoalSet(userGoals)
 
     if (!validation.isValid) {
       return { success: false, errors: validation.errors }
     }
 
+    const goalIdsToUpdate = new Set(userGoals.map((g) => g.id))
+
     storageService.updateState((state) => {
       const goals = state.goals.map((g) => {
-        if (g.userId === userId && g.cycleId === cycleId && (g.status === 'draft' || g.status === 'returned')) {
+        if (
+          goalIdsToUpdate.has(g.id) ||
+          ((g.userId === userId || matchesUser(g.userId, userId)) &&
+           (g.cycleId === cycleId || matchesCycle(g.cycleId, cycleId)) &&
+           (g.status === 'draft' || g.status === 'returned'))
+        ) {
           return {
             ...g,
             status: 'pending_approval' as GoalStatus,
@@ -88,7 +119,7 @@ export const goalService = {
       })
 
       // Add audit log
-      const user = state.users.find((u) => u.id === userId)
+      const user = state.users.find((u) => u.id === userId || matchesUser(u.id, userId))
       const audit = {
         id: `audit-${Date.now()}`,
         actorId: userId,

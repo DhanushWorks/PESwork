@@ -236,11 +236,16 @@ export const supabaseResultService = {
     return apiCache.getOrFetch(`results:cycle:${cycleId}`, async () => {
     if (!isSupabaseReady()) return mockResultService.getAllResults(cycleId)
 
+    const resolvedUuid = resolveCycleUuid(cycleId)
+    if (!resolvedUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      return []
+    }
+
     try {
       const { data, error } = await supabase
         .from('final_results')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .eq('cycle_id', resolvedUuid)
 
       if (error) {
         console.warn('Notice in supabaseResultService.getAllResults:', error.message)

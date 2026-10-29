@@ -445,14 +445,17 @@ export function getAdminWorkflowState(params: {
         secondaryActionLink: `/admin/cycles/${cycle.id}`,
       }
     case 'calibration': {
+      const isAllApproved = approvedCals.length > 0 && (cycleMgr.length === 0 || approvedCals.length >= cycleMgr.length)
       return {
         effectiveStage,
         stageIndex,
         stepNumber,
-        badgeLabel: 'In Calibration',
-        title: 'Calibration Gate',
-        description: `${approvedCals.length} of ${cycleMgr.length} appraisals approved.`,
-        actionLabel: 'Open Calibration Hub',
+        badgeLabel: isAllApproved ? 'Calibration Approved' : 'In Calibration',
+        title: isAllApproved ? 'Calibration Approved' : 'Calibration Gate',
+        description: isAllApproved
+          ? `All ${approvedCals.length} appraisals calibrated & approved.`
+          : `${approvedCals.length} of ${cycleMgr.length} appraisals approved.`,
+        actionLabel: isAllApproved ? 'Release Results' : 'Open Calibration Hub',
         actionLink: '/admin/calibration',
         secondaryActionLabel: 'Cycle Settings',
         secondaryActionLink: `/admin/cycles/${cycle.id}`,

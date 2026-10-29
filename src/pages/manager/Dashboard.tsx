@@ -688,7 +688,7 @@ export const ManagerDashboard: React.FC = () => {
 
                       {/* Column 5: Appraisal Score */}
                       <td className="py-3.5 px-2 sm:px-3 min-w-[120px] whitespace-nowrap">
-                        {summary.compositeScore ? (
+                        {summary.compositeScore && (isMrSubmitted || summary.isReleased || summary.adminApproved) ? (
                           <div className="flex items-center gap-1.5">
                             <RatingBadge score={summary.compositeScore} />
                             {(summary.isReleased || summary.adminApproved) && (
@@ -796,11 +796,15 @@ export const ManagerDashboard: React.FC = () => {
                       <span className="text-[10px] text-slate-400 dark:text-zinc-500 uppercase tracking-wider">
                         Appraisal
                       </span>
-                      {summary.compositeScore ? (
+                      {summary.compositeScore && (isMrSubmitted || summary.isReleased || summary.adminApproved) ? (
                         <RatingBadge score={summary.compositeScore} />
-                      ) : (
+                      ) : isSrSubmitted ? (
                         <span className="text-[11px] text-amber-600 dark:text-[#FFB454] font-semibold">
                           Needs Review
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-slate-400 dark:text-zinc-500 font-medium">
+                          Waiting
                         </span>
                       )}
                     </div>

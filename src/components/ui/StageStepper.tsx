@@ -4,6 +4,8 @@ import { CycleStage, ReviewCycle } from '../../types'
 import { CYCLE_STAGE_DETAILS, STAGE_ORDER, formatDate } from '../../lib/formatters'
 import { useInView } from '../../hooks/useInView'
 import { useApp } from '../../app/AppContext'
+import { storageService } from '../../services/mock/storageService'
+import { matchesCycle } from '../../lib/workflow'
 import { ArrowRight, Calendar, Check, CheckSquare } from 'lucide-react'
 
 type StageStepperProps = {
@@ -14,6 +16,7 @@ type StageStepperProps = {
   isFinished?: boolean
   cycle?: ReviewCycle | null
   showCycleInfo?: boolean
+  isCalibrationApproved?: boolean
 }
 
 export const StageStepper: React.FC<StageStepperProps> = ({
@@ -24,10 +27,25 @@ export const StageStepper: React.FC<StageStepperProps> = ({
   isFinished = false,
   cycle,
   showCycleInfo = true,
+  isCalibrationApproved,
 }) => {
   const { activeCycle, currentUser } = useApp()
   const effectiveCycle = cycle ?? activeCycle
   const isActiveWorkspace = effectiveCycle?.id === activeCycle?.id
+
+  const isCalApproved = React.useMemo(() => {
+    if (isCalibrationApproved !== undefined) return isCalibrationApproved
+    if (effectiveCycle?.stage === 'released' || effectiveCycle?.stage === 'closed') return true
+    try {
+      const state = storageService.getState()
+      const cycleCals = (state.calibrations || []).filter(
+        (c: any) => (c.cycleId === effectiveCycle?.id || matchesCycle(c.cycleId, effectiveCycle?.id)) && c.adminApproved
+      )
+      return cycleCals.length > 0
+    } catch {
+      return false
+    }
+  }, [isCalibrationApproved, effectiveCycle?.id, effectiveCycle?.stage])
 
   const currentIndex = STAGE_ORDER.indexOf(currentStage)
   // The cycle is only finished when explicitly closed (or isFinished flag is true)
@@ -87,10 +105,15 @@ export const StageStepper: React.FC<StageStepperProps> = ({
     // Progressive illumination of step nodes in sync with the traveling line
     const timeouts: number[] = []
     const totalDuration = 1000 // duration of line draw
-    const effectiveIndex = isCycleFinished ? STAGE_ORDER.length - 1 : Math.max(0, currentIndex)
+    const isCalApprovedCurrent = currentStage === 'calibration' && isCalApproved
+    const effectiveIndex = isCycleFinished
+      ? STAGE_ORDER.length - 1
+      : isCalApprovedCurrent
+      ? 6
+      : Math.max(0, currentIndex)
 
     STAGE_ORDER.forEach((_, idx) => {
-      if (isCycleFinished || idx <= currentIndex) {
+      if (isCycleFinished || (isCalApprovedCurrent ? idx <= 6 : idx <= currentIndex)) {
         const delay = 120 + (effectiveIndex > 0 ? (idx / effectiveIndex) * totalDuration : 0)
         const timer = window.setTimeout(() => {
           setActiveStepIndex(idx)
@@ -103,13 +126,20 @@ export const StageStepper: React.FC<StageStepperProps> = ({
       clearTimeout(lineTimer)
       timeouts.forEach(clearTimeout)
     }
-  }, [isInView, currentIndex, currentStage, isCycleFinished])
+  }, [isInView, currentIndex, currentStage, isCycleFinished, isCalApproved])
+
+  const isCalApprovedCurrent = currentStage === 'calibration' && isCalApproved
+  const effectiveIndexForLine = isCycleFinished
+    ? STAGE_ORDER.length - 1
+    : isCalApprovedCurrent
+    ? 6
+    : currentIndex
 
   const targetPercentage =
     isCycleFinished
       ? 100
-      : currentIndex >= 0
-      ? (Math.min(currentIndex, STAGE_ORDER.length - 1) / (STAGE_ORDER.length - 1)) * 100
+      : effectiveIndexForLine >= 0
+      ? (Math.min(effectiveIndexForLine, STAGE_ORDER.length - 1) / (STAGE_ORDER.length - 1)) * 100
       : 0
 
   return (
@@ -231,9 +261,18 @@ export const StageStepper: React.FC<StageStepperProps> = ({
           {/* Step Nodes Row */}
           <div className="relative flex justify-between">
             {STAGE_ORDER.map((stage, idx) => {
-              const isCompleted = isCycleFinished ? true : idx < currentIndex
-              const isCurrent = isCycleFinished ? false : idx === currentIndex
-              const isLit = isCycleFinished ? true : idx <= activeStepIndex
+              const isCalibrationStepCompleted = stage === 'calibration' && isCalApproved
+              const isCompleted = isCycleFinished ? true : (isCalibrationStepCompleted || idx < currentIndex)
+              const isCurrent = isCycleFinished
+                ? false
+                : isCalApprovedCurrent
+                ? stage === 'released'
+                : idx === currentIndex
+              const isLit = isCycleFinished
+                ? true
+                : isCalApprovedCurrent
+                ? idx <= Math.max(activeStepIndex, 6)
+                : idx <= activeStepIndex
               const details = CYCLE_STAGE_DETAILS[stage]
 
               return (

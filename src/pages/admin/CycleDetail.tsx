@@ -615,6 +615,7 @@ export const AdminCycleDetail: React.FC = () => {
           readOnly={!isAdmin}
           onStageSelect={isAdmin ? handleRequestStageSelect : undefined}
           showCycleInfo={false}
+          isCalibrationApproved={isCurrentStageComplete || approvedCalibrationsCount > 0 || calibrations.some((c) => c.adminApproved)}
         />
 
         {/* Live Stage Progression Status Banner */}

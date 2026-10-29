@@ -501,7 +501,7 @@ export const supabaseReviewService = {
           selfReviewSubmittedAt: sr?.submitted_at || undefined,
           managerReviewStatus: mr ? (mr.status as any) : 'not_started',
           managerReviewSubmittedAt: mr?.submitted_at || undefined,
-          compositeScore: mr ? Number(mr.overall_rating || mr.component_values?.compositeScore) : undefined,
+          compositeScore: (mr && mr.status === 'submitted') ? Number(mr.overall_rating || mr.component_values?.compositeScore) : undefined,
           goalsCount: userGoals.length,
           goalsApprovedCount: approvedGoals.length,
         }
@@ -520,11 +520,16 @@ export const supabaseReviewService = {
     return apiCache.getOrFetch(`reviews:self:${cycleId}`, async () => {
     if (!isSupabaseReady()) return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
 
+    const resolvedUuid = resolveCycleUuid(cycleId)
+    if (!resolvedUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      return []
+    }
+
     try {
       const { data, error } = await supabase
         .from('self_assessments')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .eq('cycle_id', resolvedUuid)
 
       if (error || !data || data.length === 0) {
         return storageService.getState().selfReviews.filter((s) => s.cycleId === cycleId || matchesCycle(s.cycleId, cycleId))
@@ -561,11 +566,16 @@ export const supabaseReviewService = {
     return apiCache.getOrFetch(`reviews:mgr:${cycleId}`, async () => {
     if (!isSupabaseReady()) return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))
 
+    const resolvedUuid = resolveCycleUuid(cycleId)
+    if (!resolvedUuid || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(resolvedUuid)) {
+      return []
+    }
+
     try {
       const { data, error } = await supabase
         .from('manager_reviews')
         .select('*')
-        .eq('cycle_id', cycleId)
+        .eq('cycle_id', resolvedUuid)
 
       if (error || !data || data.length === 0) {
         return storageService.getState().managerReviews.filter((m) => m.cycleId === cycleId || matchesCycle(m.cycleId, cycleId))

@@ -66,12 +66,31 @@ export const AdminOverview: React.FC = () => {
         const gResults = await Promise.all(gPromises)
         const state = storageService.getState()
 
+        const freshCals: CalibrationRecord[] = [
+          ...(state.calibrations || []),
+          ...(calList || [])
+            .filter((c) => c.adminApproved || c.calibrationRecord)
+            .map((c) => ({
+              id: c.calibrationRecord?.id || `cal-${c.employee.id}`,
+              cycleId: activeCycle.id,
+              employeeId: c.employee.id,
+              originalScore: c.currentScore,
+              adjustedScore: c.currentScore,
+              reason: c.calibrationRecord?.reason || '',
+              calibratedBy: c.calibrationRecord?.calibratedBy || 'Admin Eleanor Vance',
+              calibratedAt: c.calibrationRecord?.calibratedAt || new Date().toISOString(),
+              adminApproved: c.adminApproved,
+              adminApprovedAt: c.adminApprovedAt,
+              status: c.adminApproved ? ('approved' as const) : ('pending_admin_approval' as const),
+            })),
+        ]
+
         if (isMounted) {
           setUsers(uList)
           setGoals(gResults.flat())
           setSelfReviews(srList || state.selfReviews || [])
           setManagerReviews(mrList || state.managerReviews || [])
-          setCalibrations(state.calibrations || [])
+          setCalibrations(freshCals)
           setResults(allResults)
           setCalibrationItems(calList || [])
           setCycles(cycleList || [])
@@ -546,7 +565,11 @@ export const AdminOverview: React.FC = () => {
 
       {/* Workflow Tracking: Progression Stepper */}
       <section>
-        <StageStepper currentStage={effectiveStage} cycle={currentCycle} />
+        <StageStepper
+          currentStage={effectiveStage}
+          cycle={currentCycle}
+          isCalibrationApproved={calibrations.some((c) => c.adminApproved) || calibrationItems.some((c) => c.adminApproved)}
+        />
       </section>
 
       {/* Department Breakdown & Immediate Actions */}

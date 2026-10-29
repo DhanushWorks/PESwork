@@ -146,7 +146,8 @@ export const reviewService = {
       )
 
       const isReleased = Boolean(res || cal?.adminApproved)
-      const finalScore = res?.compositeScore ?? cal?.adjustedScore ?? mr?.compositeScore
+      const isMrSubmitted = mr?.status === 'submitted'
+      const finalScore = res?.compositeScore ?? cal?.adjustedScore ?? (isMrSubmitted ? mr?.compositeScore : undefined)
 
       return {
         employee,

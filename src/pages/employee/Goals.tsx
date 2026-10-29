@@ -441,7 +441,7 @@ export const EmployeeGoals: React.FC = () => {
 
     setIsSubmitting(true)
     try {
-      const res = await goalService.submitGoalsForApproval(currentUser.id, activeCycle.id)
+      const res = await goalService.submitGoalsForApproval(currentUser.id, activeCycle.id, goals)
       if (res.success) {
         setGoals((prev) =>
           prev.map((g) =>

@@ -1,6 +1,7 @@
 import { apiCache } from '../../lib/apiCache'
 import { supabase, isSupabaseConfigured, isSupabaseReady, markSupabaseOffline } from '../../lib/supabase'
 import { Goal, GoalStatus, ProgressLog } from '../../types'
+import { validateGoalSet } from '../../lib/validation'
 import { goalService as mockGoalService } from '../mock/goalService'
 import { supabaseNotificationService as notificationService } from './supabaseNotificationService'
 import { storageService } from '../mock/storageService'
@@ -383,14 +384,23 @@ export const supabaseGoalService = {
     }
   },
 
-  async submitGoalsForApproval(userId: string, cycleId: string): Promise<{ success: boolean; errors?: string[] }> {
+  async submitGoalsForApproval(userId: string, cycleId: string, clientGoals?: Goal[]): Promise<{ success: boolean; errors?: string[] }> {
     apiCache.invalidate('goals:')
+    const userGoals = (clientGoals && clientGoals.length > 0) ? clientGoals : await this.listForUser(userId, cycleId)
+    const validation = validateGoalSet(userGoals)
+    if (!validation.isValid) {
+      return { success: false, errors: validation.errors }
+    }
+
     if (isSupabaseReady()) {
       try {
-        const { error } = await supabase.rpc('submit_goals', { p_cycle_id: resolveCycleUuid(cycleId) || cycleId })
-        if (error) {
-          console.warn('RPC submit_goals notice:', error.message)
-          // Direct update fallback in Supabase
+        const goalIds = userGoals.map((g) => g.id).filter((id) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))
+        if (goalIds.length > 0) {
+          await supabase
+            .from('goals')
+            .update({ status: 'pending_approval' })
+            .in('id', goalIds)
+        } else {
           await supabase
             .from('goals')
             .update({ status: 'pending_approval' })
@@ -401,7 +411,7 @@ export const supabaseGoalService = {
         console.warn('Notice in supabase submitGoalsForApproval:', e)
       }
     }
-    const res = await mockGoalService.submitGoalsForApproval(userId, cycleId)
+    const res = await mockGoalService.submitGoalsForApproval(userId, cycleId, userGoals)
     apiCache.invalidate('goals:')
     return res
   },
